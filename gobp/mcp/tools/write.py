@@ -248,6 +248,7 @@ def decision_lock(index: GraphIndex, project_root: Path, args: dict[str, Any]) -
         "risks": args.get("risks", []),
         "locked_by": locked_by,
         "locked_at": now,
+        "session_id": session_id,
         "created": now,
         "updated": now,
     }
