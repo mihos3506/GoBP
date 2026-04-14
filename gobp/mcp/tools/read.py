@@ -123,7 +123,77 @@ def gobp_overview(index: GraphIndex, project_root: Path, args: dict[str, Any]) -
 
 
 def find(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> dict[str, Any]:
-    return {"ok": False, "error": "find not yet implemented"}
+    """Fuzzy search nodes by id, exact name, or substring match.
+
+    Args:
+        query: str (required) - search term
+        limit: int (optional, default 20) - max results
+
+    Returns:
+        matches list with match type: exact_id | exact_name | substring
+    """
+    query = args.get("query")
+    if not query or not isinstance(query, str):
+        return {"ok": False, "error": "query parameter required"}
+
+    limit = int(args.get("limit", 20))
+    query_lower = query.lower()
+
+    matches: list[dict[str, Any]] = []
+
+    # Exact ID match (highest priority)
+    exact_id_node = index.get_node(query)
+    if exact_id_node:
+        matches.append(
+            {
+                "id": exact_id_node.get("id"),
+                "type": exact_id_node.get("type"),
+                "name": exact_id_node.get("name", ""),
+                "status": exact_id_node.get("status", ""),
+                "match": "exact_id",
+            }
+        )
+
+    # Exact name + substring matches
+    for node in index.all_nodes():
+        node_id = node.get("id", "")
+        if node_id == query:
+            continue  # Already added as exact_id
+
+        name = node.get("name", "")
+        name_lower = name.lower()
+
+        if name_lower == query_lower:
+            match_type = "exact_name"
+        elif query_lower in name_lower or query_lower in node_id.lower():
+            match_type = "substring"
+        else:
+            continue
+
+        matches.append(
+            {
+                "id": node_id,
+                "type": node.get("type"),
+                "name": name,
+                "status": node.get("status", ""),
+                "match": match_type,
+            }
+        )
+
+    # Sort: exact_id > exact_name > substring
+    priority = {"exact_id": 0, "exact_name": 1, "substring": 2}
+    matches.sort(key=lambda m: priority.get(m["match"], 99))
+
+    total = len(matches)
+    truncated = total > limit
+    matches = matches[:limit]
+
+    return {
+        "ok": True,
+        "matches": matches,
+        "count": len(matches),
+        "truncated": truncated,
+    }
 
 
 def signature(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> dict[str, Any]:
