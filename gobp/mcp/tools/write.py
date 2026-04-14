@@ -190,7 +190,121 @@ def node_upsert(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> 
 
 
 def decision_lock(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> dict[str, Any]:
-    return {"ok": False, "error": "decision_lock not yet implemented"}
+    """Lock a decision with full verification record.
+
+    Input: topic, what, why, alternatives_considered, risks, related_ideas, session_id, locked_by
+    Output: ok, decision_id, warnings
+    """
+    # Required fields
+    required = ["topic", "what", "why", "session_id", "locked_by"]
+    for field in required:
+        if field not in args or not args[field]:
+            return {"ok": False, "error": f"Missing required field: {field}"}
+
+    topic = args["topic"]
+    what = args["what"]
+    why = args["why"]
+    session_id = args["session_id"]
+    locked_by = args["locked_by"]
+
+    if not isinstance(locked_by, list) or len(locked_by) < 2:
+        return {
+            "ok": False,
+            "error": "locked_by must be a list of at least 2 entities (e.g. ['CEO', 'AI'])",
+        }
+
+    # Check session
+    session = index.get_node(session_id)
+    if not session:
+        return {"ok": False, "error": f"Session not found: {session_id}"}
+    if session.get("status") == "COMPLETED":
+        return {"ok": False, "error": "Session already ended"}
+
+    # Generate decision ID
+    existing_decisions = index.nodes_by_type("Decision")
+    numbers: list[int] = []
+    for d in existing_decisions:
+        did = d.get("id", "")
+        if did.startswith("dec:d"):
+            try:
+                numbers.append(int(did[5:]))
+            except ValueError:
+                pass
+    next_num = max(numbers, default=0) + 1
+    decision_id = f"dec:d{next_num:03d}"
+
+    now = datetime.now(timezone.utc).isoformat()
+    decision = {
+        "id": decision_id,
+        "type": "Decision",
+        "name": what[:80],  # Short name from 'what'
+        "status": "LOCKED",
+        "topic": topic,
+        "what": what,
+        "why": why,
+        "alternatives_considered": args.get("alternatives_considered", []),
+        "risks": args.get("risks", []),
+        "locked_by": locked_by,
+        "locked_at": now,
+        "created": now,
+        "updated": now,
+    }
+
+    # Load schema + validate
+    try:
+        schema_path = Path(__file__).parent.parent.parent / "schema" / "core_nodes.yaml"
+        schema = load_schema(schema_path)
+    except Exception as e:
+        return {"ok": False, "error": f"Failed to load schema: {e}"}
+
+    result = validate_node(decision, schema)
+    if not result.ok:
+        return {"ok": False, "errors": result.errors}
+
+    warnings = list(result.warnings)
+    if not decision["alternatives_considered"]:
+        warnings.append("No alternatives_considered — recommended for locked decisions")
+
+    # Write decision
+    try:
+        create_node(project_root, decision, schema, actor="decision_lock")
+    except Exception as e:
+        return {"ok": False, "error": f"Write failed: {e}"}
+
+    # Create discovered_in edge
+    try:
+        edges_schema_path = Path(__file__).parent.parent.parent / "schema" / "core_edges.yaml"
+        edges_schema = load_schema(edges_schema_path)
+        create_edge(
+            project_root,
+            {"from": decision_id, "to": session_id, "type": "discovered_in"},
+            edges_schema,
+            actor="decision_lock",
+        )
+    except Exception as e:
+        warnings.append(f"Failed to create discovered_in edge: {e}")
+
+    # Create relates_to edges to related_ideas
+    related_ideas = args.get("related_ideas", [])
+    for idea_id in related_ideas:
+        if index.get_node(idea_id):
+            try:
+                create_edge(
+                    project_root,
+                    {"from": decision_id, "to": idea_id, "type": "relates_to"},
+                    edges_schema,
+                    actor="decision_lock",
+                )
+            except Exception as e:
+                warnings.append(f"Failed to create relates_to edge for {idea_id}: {e}")
+        else:
+            warnings.append(f"related_idea not found: {idea_id}")
+
+    return {
+        "ok": True,
+        "decision_id": decision_id,
+        "warnings": warnings,
+    }
 
 
 def session_log(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> dict[str, Any]:
