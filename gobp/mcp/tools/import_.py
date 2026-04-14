@@ -11,8 +11,10 @@ from typing import Any
 
 import yaml
 
+from gobp.core.loader import load_schema
 from gobp.core.graph import GraphIndex
-from gobp.core.mutator import _atomic_write
+from gobp.core.mutator import _atomic_write, create_edge, create_node
+from gobp.core.validator import validate_edge, validate_node
 
 
 def import_proposal(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> dict[str, Any]:
@@ -115,4 +117,130 @@ def import_proposal(index: GraphIndex, project_root: Path, args: dict[str, Any])
 
 
 def import_commit(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> dict[str, Any]:
-    return {"ok": False, "error": "import_commit not yet implemented"}
+    """Commit an approved import proposal atomically.
+
+    Input: proposal_id, accept (all|partial|reject), accepted_node_ids (if partial),
+           accepted_edge_ids (if partial), overrides (optional), session_id
+    Output: ok, nodes_created, edges_created, errors
+
+    Atomicity: if any validation fails, ALL rolled back, nothing written.
+    """
+    proposal_id = args.get("proposal_id")
+    if not proposal_id:
+        return {"ok": False, "error": "proposal_id required"}
+
+    accept = args.get("accept")
+    if accept not in ("all", "partial", "reject"):
+        return {"ok": False, "error": "accept must be all, partial, or reject"}
+
+    session_id = args.get("session_id")
+    if not session_id:
+        return {"ok": False, "error": "session_id required"}
+
+    session = index.get_node(session_id)
+    if not session:
+        return {"ok": False, "error": f"Session not found: {session_id}"}
+
+    # Load proposal
+    proposals_dir = project_root / ".gobp" / "proposals"
+    pending_file = proposals_dir / f"{proposal_id.replace(':', '_')}.pending.yaml"
+
+    if not pending_file.exists():
+        return {"ok": False, "error": f"Proposal not found: {proposal_id}"}
+
+    try:
+        with open(pending_file, "r", encoding="utf-8") as f:
+            proposal = yaml.safe_load(f)
+    except Exception as e:
+        return {"ok": False, "error": f"Failed to load proposal: {e}"}
+
+    if accept == "reject":
+        # Move to rejected
+        rejected_file = proposals_dir / f"{proposal_id.replace(':', '_')}.rejected.yaml"
+        pending_file.rename(rejected_file)
+        return {"ok": True, "nodes_created": 0, "edges_created": 0, "errors": []}
+
+    # Select nodes and edges based on accept mode
+    all_nodes = list(proposal.get("proposed_nodes", []))
+    if proposal.get("proposed_document"):
+        all_nodes = [proposal["proposed_document"]] + all_nodes
+    all_edges = list(proposal.get("proposed_edges", []))
+
+    if accept == "partial":
+        accepted_node_ids = set(args.get("accepted_node_ids", []))
+        accepted_edge_ids = set(args.get("accepted_edge_ids", []))
+        all_nodes = [n for n in all_nodes if n.get("id") in accepted_node_ids]
+        all_edges = [
+            e
+            for i, e in enumerate(all_edges)
+            if f"edge_{i}" in accepted_edge_ids or e.get("id") in accepted_edge_ids
+        ]
+
+    # Apply overrides
+    overrides = args.get("overrides", {})
+    for node in all_nodes:
+        nid = node.get("id")
+        if nid in overrides:
+            for k, v in overrides[nid].items():
+                node[k] = v
+
+    # Load schemas
+    try:
+        nodes_schema_path = Path(__file__).parent.parent.parent / "schema" / "core_nodes.yaml"
+        edges_schema_path = Path(__file__).parent.parent.parent / "schema" / "core_edges.yaml"
+        nodes_schema = load_schema(nodes_schema_path)
+        edges_schema = load_schema(edges_schema_path)
+    except Exception as e:
+        return {"ok": False, "error": f"Failed to load schemas: {e}"}
+
+    # Validate everything first (no writes yet)
+    errors: list[dict[str, Any]] = []
+    for node in all_nodes:
+        result = validate_node(node, nodes_schema)
+        if not result.ok:
+            errors.append({"node_id": node.get("id"), "errors": result.errors})
+
+    for edge in all_edges:
+        result = validate_edge(edge, edges_schema)
+        if not result.ok:
+            errors.append({"edge": f"{edge.get('from')} -> {edge.get('to')}", "errors": result.errors})
+
+    if errors:
+        return {"ok": False, "nodes_created": 0, "edges_created": 0, "errors": errors}
+
+    # All validation passed. Now write atomically.
+    # If any write fails partway, we return partial success + errors.
+    # Full rollback on partial failures is out of v1 scope.
+    nodes_created = 0
+    edges_created = 0
+    write_errors: list[dict[str, Any]] = []
+
+    for node in all_nodes:
+        try:
+            create_node(project_root, node, nodes_schema, actor="import_commit")
+            nodes_created += 1
+        except FileExistsError:
+            write_errors.append({"node_id": node.get("id"), "error": "Already exists"})
+        except Exception as e:
+            write_errors.append({"node_id": node.get("id"), "error": str(e)})
+
+    for edge in all_edges:
+        try:
+            create_edge(project_root, edge, edges_schema, actor="import_commit")
+            edges_created += 1
+        except Exception as e:
+            write_errors.append({"edge": f"{edge.get('from')} -> {edge.get('to')}", "error": str(e)})
+
+    # Move proposal to committed
+    committed_file = proposals_dir / f"{proposal_id.replace(':', '_')}.committed.yaml"
+    try:
+        pending_file.rename(committed_file)
+    except Exception as e:
+        write_errors.append({"proposal": proposal_id, "error": f"Failed to move to committed: {e}"})
+
+    return {
+        "ok": len(write_errors) == 0,
+        "nodes_created": nodes_created,
+        "edges_created": edges_created,
+        "errors": write_errors,
+    }
