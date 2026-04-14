@@ -10,23 +10,6 @@ from gobp.core.graph import GraphIndex
 from gobp.core.prune import dry_run, run_prune
 
 
-def _make_root(tmp_path: Path) -> Path:
-    """Create minimal .gobp/ structure with required schema files."""
-    (tmp_path / ".gobp" / "nodes").mkdir(parents=True)
-    (tmp_path / ".gobp" / "edges").mkdir(parents=True)
-    (tmp_path / ".gobp" / "history").mkdir(parents=True)
-
-    # GraphIndex.load_from_disk requires schema files at <root>/gobp/schema/
-    import shutil
-    repo_schema = Path(__file__).parent.parent / "gobp" / "schema"
-    dest_schema = tmp_path / "gobp" / "schema"
-    dest_schema.mkdir(parents=True)
-    shutil.copy(repo_schema / "core_nodes.yaml", dest_schema / "core_nodes.yaml")
-    shutil.copy(repo_schema / "core_edges.yaml", dest_schema / "core_edges.yaml")
-
-    return tmp_path
-
-
 def _write_node(root: Path, node: dict) -> None:
     node_id = node["id"].replace(":", "_")
     path = root / ".gobp" / "nodes" / f"{node_id}.md"
@@ -38,17 +21,17 @@ def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-def test_dry_run_empty_graph(tmp_path: Path):
+def test_dry_run_empty_graph(gobp_root: Path):
     """dry_run returns empty list on empty graph."""
-    root = _make_root(tmp_path)
+    root = gobp_root
     index = GraphIndex.load_from_disk(root)
     result = dry_run(index)
     assert result == []
 
 
-def test_dry_run_finds_withdrawn_node(tmp_path: Path):
+def test_dry_run_finds_withdrawn_node(gobp_root: Path):
     """dry_run identifies WITHDRAWN node with no edges."""
-    root = _make_root(tmp_path)
+    root = gobp_root
     _write_node(root, {
         "id": "dec:d901",
         "type": "Decision",
@@ -69,9 +52,9 @@ def test_dry_run_finds_withdrawn_node(tmp_path: Path):
     assert candidates[0]["id"] == "dec:d901"
 
 
-def test_dry_run_skips_active_node(tmp_path: Path):
+def test_dry_run_skips_active_node(gobp_root: Path):
     """dry_run skips ACTIVE nodes even with no edges."""
-    root = _make_root(tmp_path)
+    root = gobp_root
     _write_node(root, {
         "id": "node:active001",
         "type": "Node",
@@ -85,9 +68,9 @@ def test_dry_run_skips_active_node(tmp_path: Path):
     assert candidates == []
 
 
-def test_run_prune_nothing_to_prune(tmp_path: Path):
+def test_run_prune_nothing_to_prune(gobp_root: Path):
     """run_prune returns ok with empty lists when nothing prunable."""
-    root = _make_root(tmp_path)
+    root = gobp_root
     index = GraphIndex.load_from_disk(root)
     result = run_prune(index, root)
     assert result["ok"] is True
@@ -96,9 +79,9 @@ def test_run_prune_nothing_to_prune(tmp_path: Path):
     assert "Nothing to prune" in result["message"]
 
 
-def test_run_prune_archives_node_file(tmp_path: Path):
+def test_run_prune_archives_node_file(gobp_root: Path):
     """run_prune moves node file to archive directory."""
-    root = _make_root(tmp_path)
+    root = gobp_root
     _write_node(root, {
         "id": "dec:d902",
         "type": "Decision",
@@ -127,9 +110,9 @@ def test_run_prune_archives_node_file(tmp_path: Path):
     assert archive_dir.exists()
 
 
-def test_run_prune_logs_history_event(tmp_path: Path):
+def test_run_prune_logs_history_event(gobp_root: Path):
     """run_prune appends to history log."""
-    root = _make_root(tmp_path)
+    root = gobp_root
     _write_node(root, {
         "id": "dec:d903",
         "type": "Decision",

@@ -10,27 +10,6 @@ from gobp.core.graph import GraphIndex
 from gobp.core.lessons import extract_candidates
 
 
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
-def _make_gobp_root(tmp_path: Path) -> Path:
-    """Create minimal .gobp/ structure with required schema files."""
-    (tmp_path / ".gobp" / "nodes").mkdir(parents=True)
-    (tmp_path / ".gobp" / "edges").mkdir(parents=True)
-    (tmp_path / ".gobp" / "history").mkdir(parents=True)
-
-    # GraphIndex.load_from_disk requires schema files at <root>/gobp/schema/
-    import shutil
-    repo_schema = Path(__file__).parent.parent / "gobp" / "schema"
-    dest_schema = tmp_path / "gobp" / "schema"
-    dest_schema.mkdir(parents=True)
-    shutil.copy(repo_schema / "core_nodes.yaml", dest_schema / "core_nodes.yaml")
-    shutil.copy(repo_schema / "core_edges.yaml", dest_schema / "core_edges.yaml")
-
-    return tmp_path
-
-
 def _write_node(gobp_root: Path, node: dict) -> None:
     """Write a node to .gobp/nodes/."""
     node_id = node["id"].replace(":", "-")
@@ -51,9 +30,9 @@ def _days_ago_iso(days: int) -> str:
 # Tests: empty graph
 # ---------------------------------------------------------------------------
 
-def test_extract_candidates_empty_graph(tmp_path: Path):
+def test_extract_candidates_empty_graph(gobp_root: Path):
     """Empty graph returns empty candidates."""
-    root = _make_gobp_root(tmp_path)
+    root = gobp_root
     index = GraphIndex.load_from_disk(root)
     candidates = extract_candidates(index, root)
     assert candidates == []
@@ -63,9 +42,9 @@ def test_extract_candidates_empty_graph(tmp_path: Path):
 # Tests: P1 — failed sessions
 # ---------------------------------------------------------------------------
 
-def test_p1_detects_interrupted_session(tmp_path: Path):
+def test_p1_detects_interrupted_session(gobp_root: Path):
     """P1 fires for INTERRUPTED session."""
-    root = _make_gobp_root(tmp_path)
+    root = gobp_root
     _write_node(root, {
         "id": "session:2026-04-14_s001",
         "type": "Session",
@@ -87,9 +66,9 @@ def test_p1_detects_interrupted_session(tmp_path: Path):
     assert p1[0]["severity"] == "medium"
 
 
-def test_p1_detects_failed_session_as_high_severity(tmp_path: Path):
+def test_p1_detects_failed_session_as_high_severity(gobp_root: Path):
     """P1 FAILED session -> severity=high."""
-    root = _make_gobp_root(tmp_path)
+    root = gobp_root
     _write_node(root, {
         "id": "session:2026-04-14_s002",
         "type": "Session",
@@ -109,9 +88,9 @@ def test_p1_detects_failed_session_as_high_severity(tmp_path: Path):
     assert any(c["severity"] == "high" for c in p1)
 
 
-def test_p1_skips_completed_sessions(tmp_path: Path):
+def test_p1_skips_completed_sessions(gobp_root: Path):
     """P1 does not flag COMPLETED sessions."""
-    root = _make_gobp_root(tmp_path)
+    root = gobp_root
     _write_node(root, {
         "id": "session:s003",
         "type": "Session",
@@ -133,9 +112,9 @@ def test_p1_skips_completed_sessions(tmp_path: Path):
 # Tests: P2 — recurring uncertainty
 # ---------------------------------------------------------------------------
 
-def test_p2_detects_undecided_topic(tmp_path: Path):
+def test_p2_detects_undecided_topic(gobp_root: Path):
     """P2 fires when 3+ Ideas share a topic with no Decision."""
-    root = _make_gobp_root(tmp_path)
+    root = gobp_root
     for i in range(3):
         _write_node(root, {
             "id": f"idea:i00{i}",
@@ -157,9 +136,9 @@ def test_p2_detects_undecided_topic(tmp_path: Path):
     assert "auth:login" in p2[0]["title"]
 
 
-def test_p2_skips_topic_with_locked_decision(tmp_path: Path):
+def test_p2_skips_topic_with_locked_decision(gobp_root: Path):
     """P2 does not flag a topic if a locked Decision exists."""
-    root = _make_gobp_root(tmp_path)
+    root = gobp_root
     for i in range(3):
         _write_node(root, {
             "id": f"idea:i01{i}",
@@ -196,9 +175,9 @@ def test_p2_skips_topic_with_locked_decision(tmp_path: Path):
 # Tests: P3 — premature decisions
 # ---------------------------------------------------------------------------
 
-def test_p3_detects_decision_superseded_within_7_days(tmp_path: Path):
+def test_p3_detects_decision_superseded_within_7_days(gobp_root: Path):
     """P3 fires when Decision is superseded within 7 days."""
-    root = _make_gobp_root(tmp_path)
+    root = gobp_root
     locked_at = _days_ago_iso(5)
     updated = _days_ago_iso(3)
     _write_node(root, {
@@ -222,9 +201,9 @@ def test_p3_detects_decision_superseded_within_7_days(tmp_path: Path):
     assert "dec:d010" in p3[0]["evidence"]
 
 
-def test_p3_skips_decision_superseded_after_7_days(tmp_path: Path):
+def test_p3_skips_decision_superseded_after_7_days(gobp_root: Path):
     """P3 skips Decision superseded after 7+ days (normal lifecycle)."""
-    root = _make_gobp_root(tmp_path)
+    root = gobp_root
     locked_at = _days_ago_iso(30)
     updated = _days_ago_iso(15)
     _write_node(root, {
@@ -250,9 +229,9 @@ def test_p3_skips_decision_superseded_after_7_days(tmp_path: Path):
 # Tests: P4 — orphan nodes
 # ---------------------------------------------------------------------------
 
-def test_p4_detects_old_orphan_node(tmp_path: Path):
+def test_p4_detects_old_orphan_node(gobp_root: Path):
     """P4 fires for non-Session node older than 30 days with no edges."""
-    root = _make_gobp_root(tmp_path)
+    root = gobp_root
     _write_node(root, {
         "id": "node:orphan001",
         "type": "Node",
@@ -268,9 +247,9 @@ def test_p4_detects_old_orphan_node(tmp_path: Path):
     assert "node:orphan001" in p4[0]["evidence"]
 
 
-def test_p4_skips_recent_orphan(tmp_path: Path):
+def test_p4_skips_recent_orphan(gobp_root: Path):
     """P4 skips orphan nodes created less than 30 days ago."""
-    root = _make_gobp_root(tmp_path)
+    root = gobp_root
     _write_node(root, {
         "id": "node:recent001",
         "type": "Node",
@@ -289,9 +268,9 @@ def test_p4_skips_recent_orphan(tmp_path: Path):
 # Tests: max_candidates cap
 # ---------------------------------------------------------------------------
 
-def test_max_candidates_cap(tmp_path: Path):
+def test_max_candidates_cap(gobp_root: Path):
     """extract_candidates respects max_candidates cap."""
-    root = _make_gobp_root(tmp_path)
+    root = gobp_root
     # Create 10 interrupted sessions to get 10 P1 candidates
     for i in range(10):
         _write_node(root, {
