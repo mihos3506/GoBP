@@ -287,16 +287,21 @@ node_id:
 **Output:**
 ```yaml
 ok: boolean
-node:
+signature:
   id: string
   type: string
   name: string
   status: string
-  # Plus type-specific fields (for Idea: maturity, confidence)
-  # For Decision: what, why, locked_at
-  # For Session: actor, goal, status
-  # Compact — only the most informative fields
+  subtype: string (optional)
+  description: string (optional)
+  tags: list[string] (optional)
+  topic: string (optional, Decision only)
+  what: string (optional, Decision only)
+  why: string (optional, Decision only)
+  goal: string (optional, Session only)
 ```
+
+**Note:** Output key renamed from `node` to `signature` to avoid collision with `context()` output and to keep naming consistent with tool output patterns.
 
 **Token budget:** Target 100-300 tokens, max 500.
 
@@ -309,7 +314,7 @@ node:
 ```json
 {
   "ok": true,
-  "node": {
+  "signature": {
     "id": "dec:d015",
     "type": "Decision",
     "name": "",
