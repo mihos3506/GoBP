@@ -171,3 +171,57 @@ def validate_node(node: dict[str, Any], schema: dict[str, Any]) -> ValidationRes
         errors=errors,
         warnings=warnings,
     )
+
+
+def validate_edge(edge: dict[str, Any], schema: dict[str, Any]) -> ValidationResult:
+    """Validate an edge dict against the core_edges schema.
+
+    Args:
+        edge: Edge data dict.
+        schema: Schema dict (from loader.load_schema on core_edges.yaml).
+
+    Returns:
+        ValidationResult.
+    """
+    errors: list[str] = []
+    warnings: list[str] = []
+
+    # Determine edge type
+    edge_type = edge.get("type")
+    if not edge_type:
+        return ValidationResult(
+            ok=False,
+            errors=["edge missing 'type' field"],
+        )
+
+    # Find type definition
+    edge_types = schema.get("edge_types", {})
+    if edge_type not in edge_types:
+        return ValidationResult(
+            ok=False,
+            errors=[f"unknown edge type: {edge_type}. Known: {list(edge_types.keys())}"],
+        )
+
+    type_def = edge_types[edge_type]
+
+    # Check required fields (from, to, type at minimum)
+    required = type_def.get("required", {})
+    for field_name, field_spec in required.items():
+        errors.extend(_check_field(edge, field_name, field_spec, is_required=True))
+
+    # Check optional fields
+    optional = type_def.get("optional", {})
+    for field_name, field_spec in optional.items():
+        errors.extend(_check_field(edge, field_name, field_spec, is_required=False))
+
+    # Unknown field warnings
+    known_fields = set(required.keys()) | set(optional.keys())
+    unknown_fields = set(edge.keys()) - known_fields
+    for unknown in unknown_fields:
+        warnings.append(f"unknown field: {unknown}")
+
+    return ValidationResult(
+        ok=len(errors) == 0,
+        errors=errors,
+        warnings=warnings,
+    )
