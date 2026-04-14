@@ -64,3 +64,65 @@ def _atomic_write(target_path: Path, content: str) -> None:
             except OSError:
                 pass
         raise
+
+
+def create_node(
+    gobp_root: Path,
+    node: dict[str, Any],
+    schema: dict[str, Any],
+    actor: str = "unknown",
+) -> Path:
+    """Create a new node file on disk.
+
+    Validates the node against schema, writes markdown file with YAML
+    frontmatter, and appends creation event to history log.
+
+    Args:
+        gobp_root: Project root.
+        node: Node data dict (must have 'id' and 'type').
+        schema: Nodes schema dict (from loader.load_schema).
+        actor: Who is creating this node.
+
+    Returns:
+        Path to the created node file.
+
+    Raises:
+        ValueError: If node fails validation or lacks 'id'.
+        FileExistsError: If node file already exists (use update_node instead).
+    """
+    # Validate first
+    result = validate_node(node, schema)
+    if not result.ok:
+        raise ValueError(f"Node validation failed: {result.errors}")
+
+    node_id = node.get("id")
+    if not node_id:
+        raise ValueError("Node missing 'id' field")
+
+    # Derive filename from ID (replace ':' with '_' for filesystem safety)
+    safe_name = node_id.replace(":", "_").replace("/", "_")
+    node_file = gobp_root / ".gobp" / "nodes" / f"{safe_name}.md"
+
+    if node_file.exists():
+        raise FileExistsError(
+            f"Node file already exists: {node_file}. Use update_node instead."
+        )
+
+    # Build markdown content with YAML frontmatter
+    frontmatter_yaml = yaml.safe_dump(node, default_flow_style=False, sort_keys=False)
+    content = (
+        f"---\n{frontmatter_yaml}---\n\n"
+        "(Auto-generated node file. Edit the YAML above or add body content below.)\n"
+    )
+
+    _atomic_write(node_file, content)
+
+    # Log to history
+    append_event(
+        gobp_root=gobp_root,
+        event_type="node.created",
+        payload={"id": node_id, "type": node.get("type"), "file": str(node_file)},
+        actor=actor,
+    )
+
+    return node_file
