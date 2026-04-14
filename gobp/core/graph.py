@@ -52,49 +52,53 @@ class GraphIndex:
         """
         index = cls()
 
-        # Load schemas (required)
         package_root = gobp_root / "gobp"
         schema_dir = package_root / "schema"
         index._nodes_schema = load_schema(schema_dir / "core_nodes.yaml")
         index._edges_schema = load_schema(schema_dir / "core_edges.yaml")
 
-        # Load node files (optional - .gobp/nodes/ may not exist yet)
         data_dir = gobp_root / ".gobp"
-        nodes_dir = data_dir / "nodes"
-        if nodes_dir.exists() and nodes_dir.is_dir():
-            for node_file in nodes_dir.glob("**/*.md"):
-                try:
-                    node = load_node_file(node_file)
-                    result = validate_node(node, index._nodes_schema)
-                    if result.ok:
-                        node_id = node.get("id")
-                        if node_id:
-                            index._nodes[node_id] = node
-                        else:
-                            index._load_errors.append(f"{node_file}: node has no 'id' field")
-                    else:
-                        index._load_errors.append(f"{node_file}: validation failed: {result.errors}")
-                except (ValueError, FileNotFoundError) as e:
-                    index._load_errors.append(f"{node_file}: {e}")
-
-        # Load edge files (optional)
-        edges_dir = data_dir / "edges"
-        if edges_dir.exists() and edges_dir.is_dir():
-            for edge_file in edges_dir.glob("**/*.yaml"):
-                try:
-                    edges = load_edge_file(edge_file)
-                    for edge in edges:
-                        result = validate_edge(edge, index._edges_schema)
-                        if result.ok:
-                            index._edges.append(edge)
-                        else:
-                            index._load_errors.append(
-                                f"{edge_file}: edge validation failed: {result.errors}"
-                            )
-                except (ValueError, FileNotFoundError) as e:
-                    index._load_errors.append(f"{edge_file}: {e}")
+        index._load_nodes(data_dir / "nodes")
+        index._load_edges(data_dir / "edges")
 
         return index
+
+    def _load_nodes(self, nodes_dir: Path) -> None:
+        """Load all node markdown files from nodes_dir into the index."""
+        if not nodes_dir.exists() or not nodes_dir.is_dir():
+            return
+        for node_file in nodes_dir.glob("**/*.md"):
+            try:
+                node = load_node_file(node_file)
+                result = validate_node(node, self._nodes_schema)
+                if result.ok:
+                    node_id = node.get("id")
+                    if node_id:
+                        self._nodes[node_id] = node
+                    else:
+                        self._load_errors.append(f"{node_file}: node has no 'id' field")
+                else:
+                    self._load_errors.append(f"{node_file}: validation failed: {result.errors}")
+            except (ValueError, FileNotFoundError) as e:
+                self._load_errors.append(f"{node_file}: {e}")
+
+    def _load_edges(self, edges_dir: Path) -> None:
+        """Load all edge YAML files from edges_dir into the index."""
+        if not edges_dir.exists() or not edges_dir.is_dir():
+            return
+        for edge_file in edges_dir.glob("**/*.yaml"):
+            try:
+                edges = load_edge_file(edge_file)
+                for edge in edges:
+                    result = validate_edge(edge, self._edges_schema)
+                    if result.ok:
+                        self._edges.append(edge)
+                    else:
+                        self._load_errors.append(
+                            f"{edge_file}: edge validation failed: {result.errors}"
+                        )
+            except (ValueError, FileNotFoundError) as e:
+                self._load_errors.append(f"{edge_file}: {e}")
 
     @property
     def load_errors(self) -> list[str]:

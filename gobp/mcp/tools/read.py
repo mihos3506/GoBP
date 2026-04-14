@@ -13,9 +13,12 @@ import gobp
 from gobp.core.graph import GraphIndex
 
 
-def _truncate(text: str, max_chars: int = 100) -> str:
+_FIND_PRIORITY: dict[str, int] = {"exact_id": 0, "exact_name": 1, "substring": 2}
+
+
+def _truncate(text: str | None, max_chars: int = 100) -> str:
     """Truncate text to max_chars, appending '...' if truncated."""
-    if text is None:
+    if not text:
         return ""
     if len(text) <= max_chars:
         return text
@@ -180,9 +183,7 @@ def find(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> dict[st
             }
         )
 
-    # Sort: exact_id > exact_name > substring
-    priority = {"exact_id": 0, "exact_name": 1, "substring": 2}
-    matches.sort(key=lambda m: priority.get(m["match"], 99))
+    matches.sort(key=lambda m: _FIND_PRIORITY.get(m["match"], 99))
 
     total = len(matches)
     truncated = total > limit

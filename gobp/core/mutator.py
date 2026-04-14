@@ -18,6 +18,7 @@ from typing import Any
 import yaml
 
 from gobp.core.history import append_event
+from gobp.core.loader import parse_frontmatter
 from gobp.core.validator import validate_edge, validate_node
 
 
@@ -40,7 +41,6 @@ def _atomic_write(target_path: Path, content: str) -> None:
     """
     target_path.parent.mkdir(parents=True, exist_ok=True)
 
-    # Create temp file in same folder (ensures atomic rename works)
     fd, temp_path_str = tempfile.mkstemp(
         prefix=f".{target_path.name}.",
         suffix=".tmp",
@@ -54,16 +54,28 @@ def _atomic_write(target_path: Path, content: str) -> None:
             f.flush()
             os.fsync(f.fileno())
 
-        # Atomic rename (replaces target if exists)
         os.replace(str(temp_path), str(target_path))
     except Exception:
-        # Clean up temp file on any error
         if temp_path.exists():
             try:
                 temp_path.unlink()
             except OSError:
                 pass
         raise
+
+
+def _node_file_path(gobp_root: Path, node_id: str) -> Path:
+    """Return the expected file path for a node given its ID.
+
+    Args:
+        gobp_root: Project root.
+        node_id: Node ID (e.g., ``"idea:i001"``).
+
+    Returns:
+        Path to the ``.md`` file inside ``.gobp/nodes/``.
+    """
+    safe_name = node_id.replace(":", "_").replace("/", "_")
+    return gobp_root / ".gobp" / "nodes" / f"{safe_name}.md"
 
 
 def create_node(
@@ -90,7 +102,6 @@ def create_node(
         ValueError: If node fails validation or lacks 'id'.
         FileExistsError: If node file already exists (use update_node instead).
     """
-    # Validate first
     result = validate_node(node, schema)
     if not result.ok:
         raise ValueError(f"Node validation failed: {result.errors}")
@@ -99,16 +110,13 @@ def create_node(
     if not node_id:
         raise ValueError("Node missing 'id' field")
 
-    # Derive filename from ID (replace ':' with '_' for filesystem safety)
-    safe_name = node_id.replace(":", "_").replace("/", "_")
-    node_file = gobp_root / ".gobp" / "nodes" / f"{safe_name}.md"
+    node_file = _node_file_path(gobp_root, node_id)
 
     if node_file.exists():
         raise FileExistsError(
             f"Node file already exists: {node_file}. Use update_node instead."
         )
 
-    # Build markdown content with YAML frontmatter
     frontmatter_yaml = yaml.safe_dump(node, default_flow_style=False, sort_keys=False)
     content = (
         f"---\n{frontmatter_yaml}---\n\n"
@@ -117,7 +125,6 @@ def create_node(
 
     _atomic_write(node_file, content)
 
-    # Log to history
     append_event(
         gobp_root=gobp_root,
         event_type="node.created",
@@ -161,8 +168,7 @@ def update_node(
     if not node_id:
         raise ValueError("Node missing 'id' field")
 
-    safe_name = node_id.replace(":", "_").replace("/", "_")
-    node_file = gobp_root / ".gobp" / "nodes" / f"{safe_name}.md"
+    node_file = _node_file_path(gobp_root, node_id)
 
     if not node_file.exists():
         raise FileNotFoundError(
@@ -207,27 +213,19 @@ def delete_node(
         FileNotFoundError: If node file does not exist.
         ValueError: If node file is malformed.
     """
-    safe_name = node_id.replace(":", "_").replace("/", "_")
-    node_file = gobp_root / ".gobp" / "nodes" / f"{safe_name}.md"
+    node_file = _node_file_path(gobp_root, node_id)
 
     if not node_file.exists():
         raise FileNotFoundError(f"Node file not found: {node_file}")
 
-    # Read current content
     content = node_file.read_text(encoding="utf-8")
-
-    # Parse frontmatter to get current node data
-    from gobp.core.loader import parse_frontmatter
-
     frontmatter, body = parse_frontmatter(content)
 
     if not frontmatter:
         raise ValueError(f"Node file has no frontmatter: {node_file}")
 
-    # Mark as archived
     frontmatter["status"] = "ARCHIVED"
 
-    # Rewrite
     frontmatter_yaml = yaml.safe_dump(frontmatter, default_flow_style=False, sort_keys=False)
     new_content = f"---\n{frontmatter_yaml}---\n\n{body}"
 
@@ -277,18 +275,14 @@ def create_edge(
 
     edge_file = edges_dir / edge_file_name
 
-    # Read existing edges (if file exists)
     existing_edges: list[dict[str, Any]] = []
     if edge_file.exists():
-        content = edge_file.read_text(encoding="utf-8")
-        loaded = yaml.safe_load(content)
+        loaded = yaml.safe_load(edge_file.read_text(encoding="utf-8"))
         if isinstance(loaded, list):
             existing_edges = loaded
 
-    # Append new edge
     existing_edges.append(edge)
 
-    # Write back atomically
     new_content = yaml.safe_dump(existing_edges, default_flow_style=False, sort_keys=False)
     _atomic_write(edge_file, new_content)
 
@@ -340,12 +334,10 @@ def delete_edge(
     if not edge_file.exists():
         raise FileNotFoundError(f"Edge file not found: {edge_file}")
 
-    content = edge_file.read_text(encoding="utf-8")
-    loaded = yaml.safe_load(content)
+    loaded = yaml.safe_load(edge_file.read_text(encoding="utf-8"))
     if not isinstance(loaded, list):
         loaded = []
 
-    # Filter out matching edges
     initial_count = len(loaded)
     remaining = [
         e for e in loaded

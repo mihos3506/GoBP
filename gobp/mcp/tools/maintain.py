@@ -8,8 +8,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from gobp.core.loader import load_schema
 from gobp.core.graph import GraphIndex
+from gobp.core.loader import load_schema, package_schema_dir
 from gobp.core.validator import validate_edge, validate_node
 
 
@@ -30,10 +30,9 @@ def validate(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> dic
 
     # Load schemas
     try:
-        nodes_schema_path = Path(__file__).parent.parent.parent / "schema" / "core_nodes.yaml"
-        edges_schema_path = Path(__file__).parent.parent.parent / "schema" / "core_edges.yaml"
-        nodes_schema = load_schema(nodes_schema_path)
-        edges_schema = load_schema(edges_schema_path)
+        schema_dir = package_schema_dir()
+        nodes_schema = load_schema(schema_dir / "core_nodes.yaml")
+        edges_schema = load_schema(schema_dir / "core_edges.yaml")
     except Exception as e:
         return {"ok": False, "error": f"Failed to load schemas: {e}"}
 

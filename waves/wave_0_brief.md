@@ -1,146 +1,131 @@
-# ◈ GoBP WAVE 0 BRIEF — REPO BOOTSTRAP
+# WAVE 0 BRIEF — REPO BOOTSTRAP
 
 **Wave:** 0
-**Title:** Repo Bootstrap — Package Structure + Core Schemas + Templates
+**Title:** Repo Bootstrap — Package Skeleton + Core Schemas + Templates
 **Author:** CTO Chat (Claude Opus 4.6)
 **Date:** 2026-04-14
-**For:** Cursor (executor)
+**For:** Cursor (Tier 1 Dev), Claude CLI (Tier 3 Audit)
 **Status:** READY FOR EXECUTION
-**Estimated effort:** 1.5-2 hours
-**Wave count:** This is the first of an estimated 8 waves to ship GoBP v1
+**Task count:** 9 atomic tasks
+**Estimated effort:** 1.5-2 hours total
 
 ---
 
-## 0. CONTEXT
+## CONTEXT
 
-You are starting work on **GoBP — Graph of Brainstorm Project**. This is the first wave. Before you do anything, you must read the foundational docs as instructed in `.cursorrules` Phase 1.
+This is the first wave of GoBP development. It establishes the repository skeleton: Python package structure, dependencies, core schema files, and templates. **No business logic yet** — code logic begins in Wave 1.
 
-GoBP is a knowledge store for AI agents. It is being built so AI sessions stop forgetting context, so dev tools stop loading 60K tokens of docs to code 1 feature, and so brainstorm ideas stop drifting into wrong implementations.
+Wave 0 is intentionally small. It verifies the 3-tier pipeline (Cursor dev → Qodo test → Claude CLI audit) works before tackling harder waves.
 
-Wave 0 establishes the **skeleton** of the project: package structure, dependencies, core schema files, and templates. **No code logic yet.** Code logic begins in Wave 1.
+**Pipeline rule:** Each task below is atomic. Each task = 1 git commit. Cursor executes, Claude CLI audits, commit only after audit passes. Do NOT batch tasks into single commit.
 
-This is intentional. Wave 0 is small and safe so we can verify the workflow (CTO writes Brief → Cursor executes → CEO reviews → wave closes) before tackling harder waves.
-
----
-
-## 1. GOALS
-
-By the end of this wave:
-1. The Python package `gobp/` exists with proper structure but mostly empty modules
-2. Dependencies are declared in `pyproject.toml` and `requirements.txt`
-3. A virtual environment is set up and verified working
-4. Core schema YAML files exist and are valid YAML
-5. 6 markdown templates exist for the 6 node types
-6. A basic test exists that verifies the package can be imported
-7. Everything committed to git with proper commit message
-
-**You are NOT:**
-- Implementing GraphIndex class (Wave 1)
-- Implementing MCP server (Wave 3)
-- Implementing CLI (Wave 4)
-- Loading any data into the schema
-- Writing any business logic
+**Required reading before starting any task:**
+- `CLAUDE.md`
+- `.cursorrules`
+- `CHARTER.md`
+- `docs/VISION.md`
+- `docs/ARCHITECTURE.md`
+- `docs/SCHEMA.md` (heavy reference for Task 5 and 6)
 
 ---
 
-## 2. PREREQUISITES (verify before starting)
+## GOALS
 
-Before Phase 1 (reading), confirm these prerequisites by running commands in PowerShell at `D:\GoBP\`:
+By end of Wave 0:
+1. Python package `gobp/` exists with stub modules
+2. `pyproject.toml` + `requirements.txt` declare dependencies
+3. Virtual environment works
+4. Core schema YAML files valid
+5. 6 node templates exist
+6. Smoke tests pass
+7. README install section added
+8. 9 commits total (1 per task)
+
+**NOT in Wave 0:**
+- GraphIndex class implementation (Wave 1)
+- MCP server implementation (Wave 3)
+- CLI command implementation (Wave 4)
+- Any business logic
+
+---
+
+## PREREQUISITES (verify before Task 1)
+
+Run in PowerShell at `D:\GoBP\`:
 
 ```powershell
-# Check Python is installed and version >= 3.10
+# Python 3.10+
 python --version
-# Expected: Python 3.10.x or higher
 
-# Check Git is installed
+# Git
 git --version
-# Expected: git version 2.x
 
-# Check we are in the right folder
+# In correct folder
 pwd
 # Expected: D:\GoBP
 
-# Check git is connected to the right remote
+# Remote correct
 git remote -v
-# Expected: origin https://github.com/mihos3506/GoBP.git ...
+# Expected: origin https://github.com/mihos3506/GoBP.git
 
-# Check current branch
+# On main branch
 git branch --show-current
 # Expected: main
+
+# Clean tree
+git status
+# Expected: nothing to commit, working tree clean
 ```
 
-If any check fails, STOP and report to CTO. Do not proceed.
+If any check fails, STOP and escalate.
 
 ---
 
-## 3. TASKS
+# TASKS
 
-You will execute these tasks in order. Each task is independent and verifiable.
+## TASK 1 — Create Python package skeleton
 
-### Task 0 — Read foundational docs
+**Goal:** Create empty package structure with stub files.
 
-Per `.cursorrules` Phase 1. Read in order:
-1. `CHARTER.md`
-2. `README.md`
-3. `docs/VISION.md`
-4. `docs/ARCHITECTURE.md` (focus on sections 1, 2, 3, 4, 6)
-5. `docs/SCHEMA.md` (full read — you will reference this heavily)
+**Scope:**
+- Create folders: `gobp/`, `gobp/core/`, `gobp/schema/`, `gobp/mcp/`, `gobp/mcp/tools/`, `gobp/cli/`, `gobp/templates/`, `tests/`
+- Create `__init__.py` in each package folder (8 files)
+- Create stub files (docstring only, no code yet)
 
-You can skim `INPUT_MODEL.md`, `IMPORT_MODEL.md`, `MCP_TOOLS.md` — these are for later waves.
-
-**Acceptance:** Confirm in your Phase 7 report which docs you read.
-
----
-
-### Task 1 — Create Python package skeleton
-
-Create the following directory structure and empty files:
+**Files to create:**
 
 ```
-D:\GoBP\
-└── gobp\
-    ├── __init__.py
-    ├── core\
-    │   ├── __init__.py
-    │   ├── graph.py          (empty stub, only docstring)
-    │   ├── loader.py         (empty stub)
-    │   ├── validator.py      (empty stub)
-    │   ├── mutator.py        (empty stub)
-    │   └── history.py        (empty stub)
-    ├── schema\
-    │   ├── __init__.py
-    │   ├── core_nodes.yaml   (created in Task 4)
-    │   └── core_edges.yaml   (created in Task 4)
-    ├── mcp\
-    │   ├── __init__.py
-    │   ├── server.py         (empty stub)
-    │   └── tools\
-    │       ├── __init__.py
-    │       ├── read.py       (empty stub)
-    │       ├── write.py      (empty stub)
-    │       ├── import_.py    (empty stub)
-    │       └── maintain.py   (empty stub)
-    ├── cli\
-    │   ├── __init__.py
-    │   ├── __main__.py       (basic entry point only)
-    │   └── commands.py       (empty stub)
-    └── templates\
-        ├── node.md           (created in Task 5)
-        ├── idea.md           (created in Task 5)
-        ├── decision.md       (created in Task 5)
-        ├── session.md        (created in Task 5)
-        ├── document.md       (created in Task 5)
-        └── lesson.md         (created in Task 5)
+gobp/__init__.py
+gobp/core/__init__.py
+gobp/core/graph.py          (stub)
+gobp/core/loader.py         (stub)
+gobp/core/validator.py      (stub)
+gobp/core/mutator.py        (stub)
+gobp/core/history.py        (stub)
+gobp/schema/__init__.py
+gobp/mcp/__init__.py
+gobp/mcp/server.py          (stub)
+gobp/mcp/tools/__init__.py
+gobp/mcp/tools/read.py      (stub)
+gobp/mcp/tools/write.py     (stub)
+gobp/mcp/tools/import_.py   (stub)
+gobp/mcp/tools/maintain.py  (stub)
+gobp/cli/__init__.py
+gobp/cli/__main__.py        (basic entry)
+gobp/cli/commands.py        (stub)
+tests/__init__.py           (empty)
 ```
 
-**Each `__init__.py` file content:**
+**Content patterns:**
+
+Every `__init__.py`:
 ```python
-"""<package name> — short description"""
+"""<package name> — <short description>"""
 
 __version__ = "0.1.0"
 ```
 
-**Each empty stub file content (e.g., graph.py):**
+Every stub `.py` file (e.g., `graph.py`):
 ```python
 """GoBP core graph index.
 
@@ -149,12 +134,13 @@ Implementation begins in Wave 1.
 """
 ```
 
-**Special: `gobp/cli/__main__.py`:**
+Special `gobp/cli/__main__.py`:
 ```python
 """GoBP CLI entry point.
 
 Implementation begins in Wave 4.
 """
+
 
 def main() -> None:
     """Entry point for the gobp CLI command."""
@@ -165,16 +151,38 @@ if __name__ == "__main__":
     main()
 ```
 
-**Acceptance:**
-- `python -c "import gobp"` runs without error
-- `python -c "from gobp.core import graph"` runs without error
-- All folders and files exist as listed
+**Acceptance criteria:**
+- All 19 files exist at specified paths
+- All files are valid Python (no syntax errors)
+- `python -c "import gobp"` runs without error (after Task 2 when dependencies installed)
+
+**Commit message:**
+```
+Wave 0 Task 1: create Python package skeleton
+
+- gobp/ package with 5 subpackages (core, schema, mcp, cli, templates)
+- 8 __init__.py files
+- 11 stub .py files with module docstrings
+- tests/ folder with empty __init__.py
+
+All files are empty stubs. Implementation begins in Wave 1+.
+```
 
 ---
 
-### Task 2 — Create `pyproject.toml`
+## TASK 2 — Create pyproject.toml
 
-Create `D:\GoBP\pyproject.toml`:
+**Goal:** Define Python package metadata and dependencies.
+
+**Scope:**
+- Create `pyproject.toml` at repo root
+- Declare dependencies: `mcp`, `pyyaml`
+- Declare dev dependencies: `pytest`, `pytest-asyncio`
+- Configure setuptools package discovery
+
+**File to create:** `D:\GoBP\pyproject.toml`
+
+**Content (exact):**
 
 ```toml
 [build-system]
@@ -223,40 +231,137 @@ exclude = ["tests*", "examples*"]
 gobp = ["schema/*.yaml", "templates/*.md"]
 ```
 
-**Acceptance:**
+**Acceptance criteria:**
 - File exists at `D:\GoBP\pyproject.toml`
-- Valid TOML syntax (verify by running any TOML parser or `python -c "import tomllib; tomllib.load(open('pyproject.toml','rb'))"`)
+- Valid TOML (parseable)
+- Verify: `python -c "import tomllib; tomllib.load(open('pyproject.toml','rb'))"` (no errors)
+
+**Commit message:**
+```
+Wave 0 Task 2: create pyproject.toml
+
+- Package metadata: name, version, description, authors
+- Dependencies: mcp>=0.9.0, pyyaml>=6.0
+- Dev dependencies: pytest>=7.0, pytest-asyncio>=0.21
+- Console script: gobp -> gobp.cli.__main__:main
+- Package data: schema/*.yaml, templates/*.md
+
+Sets dependency baseline for GoBP v1.
+```
 
 ---
 
-### Task 3 — Create `requirements.txt`
+## TASK 3 — Create requirements files
 
-Create `D:\GoBP\requirements.txt`:
+**Goal:** Create pip-installable requirements files for quick install.
 
+**Files to create:**
+
+`D:\GoBP\requirements.txt`:
 ```
 mcp>=0.9.0
 pyyaml>=6.0
 ```
 
-Create `D:\GoBP\requirements-dev.txt`:
-
+`D:\GoBP\requirements-dev.txt`:
 ```
 -r requirements.txt
 pytest>=7.0
 pytest-asyncio>=0.21
 ```
 
-**Acceptance:**
+**Acceptance criteria:**
 - Both files exist
-- `pip install -r requirements.txt` would work (do NOT actually install yet — that is Task 6)
+- Correct content
+- `pip install --dry-run -r requirements.txt` would succeed (do not actually install yet)
+
+**Commit message:**
+```
+Wave 0 Task 3: create requirements files
+
+- requirements.txt: runtime deps (mcp, pyyaml)
+- requirements-dev.txt: adds pytest, pytest-asyncio
+
+Both files consistent with pyproject.toml dependencies.
+```
 
 ---
 
-### Task 4 — Create core schema YAML files
+## TASK 4 — Set up virtual environment and install
 
-These define the 6 node types and 5 edge types. Reference `docs/SCHEMA.md` sections 2 and 3 for the full specifications. You will translate the schema descriptions in SCHEMA.md into the YAML format below.
+**Goal:** Create venv, install dependencies, verify imports work.
 
-**File: `gobp/schema/core_nodes.yaml`**
+**Commands to run:**
+
+```powershell
+# Create venv
+python -m venv venv
+
+# Activate (Windows PowerShell)
+.\venv\Scripts\Activate.ps1
+# If ExecutionPolicy error, run once:
+# Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
+
+# Verify venv active (prompt should show (venv))
+
+# Upgrade pip
+python -m pip install --upgrade pip
+
+# Install dev deps + package in editable mode
+pip install -r requirements-dev.txt
+pip install -e .
+
+# Verify installations
+python -c "import gobp; print(gobp.__version__)"
+# Expected: 0.1.0
+
+python -c "import yaml; print(yaml.__version__)"
+# Expected: a version string
+
+python -c "import mcp; print('mcp OK')"
+# Expected: mcp OK
+
+python -c "import pytest; print('pytest OK')"
+# Expected: pytest OK
+```
+
+**Acceptance criteria:**
+- `venv/` folder exists
+- `gobp.__version__` returns "0.1.0"
+- All 4 import checks succeed
+- `pip list` shows `gobp 0.1.0` in editable mode
+
+**No files to create, but the venv setup is the "artifact" of this task.**
+
+**Commit message:**
+```
+Wave 0 Task 4: set up virtual environment
+
+No files committed (venv/ is gitignored).
+
+Actions performed:
+- Created venv at venv/
+- Upgraded pip
+- Installed mcp, pyyaml, pytest, pytest-asyncio
+- Installed gobp in editable mode
+- Verified all imports work
+
+Environment ready for development.
+```
+
+**Note:** This task has no files to stage. Commit is empty (`git commit --allow-empty`) for audit trail purposes.
+
+---
+
+## TASK 5 — Create core node schema YAML
+
+**Goal:** Translate `docs/SCHEMA.md` node type definitions into machine-readable YAML.
+
+**File to create:** `gobp/schema/core_nodes.yaml`
+
+**Required reading:** `docs/SCHEMA.md` sections defining Node, Idea, Decision, Session, Document, Lesson.
+
+**Content (exact — paste verbatim):**
 
 ```yaml
 # GoBP Core Node Types
@@ -272,7 +377,7 @@ node_types:
     description: "Generic container for any entity, feature, tool, concept"
     id_prefix: "node"
     parent: null
-    
+
     required:
       id:
         type: "str"
@@ -288,7 +393,7 @@ node_types:
         type: "timestamp"
       updated:
         type: "timestamp"
-    
+
     optional:
       subtype:
         type: "str"
@@ -300,7 +405,7 @@ node_types:
       custom_fields:
         type: "dict"
         default: {}
-    
+
     constraints:
       - "created <= updated"
 
@@ -308,7 +413,7 @@ node_types:
     description: "Unstructured brainstorm captured from conversation"
     id_prefix: "idea"
     parent: null
-    
+
     required:
       id:
         type: "str"
@@ -334,7 +439,7 @@ node_types:
         type: "timestamp"
       updated:
         type: "timestamp"
-    
+
     optional:
       supersedes:
         type: "node_ref"
@@ -352,7 +457,7 @@ node_types:
     description: "Locked authoritative knowledge"
     id_prefix: "dec"
     parent: null
-    
+
     required:
       id:
         type: "str"
@@ -379,7 +484,7 @@ node_types:
         type: "timestamp"
       updated:
         type: "timestamp"
-    
+
     optional:
       alternatives_considered:
         type: "list[dict]"
@@ -397,7 +502,7 @@ node_types:
     description: "Record of one AI working session"
     id_prefix: "session"
     parent: null
-    
+
     required:
       id:
         type: "str"
@@ -418,7 +523,7 @@ node_types:
         type: "timestamp"
       updated:
         type: "timestamp"
-    
+
     optional:
       ended_at:
         type: "timestamp"
@@ -444,7 +549,7 @@ node_types:
     description: "Pointer to external doc file with metadata"
     id_prefix: "doc"
     parent: null
-    
+
     required:
       id:
         type: "str"
@@ -467,7 +572,7 @@ node_types:
         type: "timestamp"
       updated:
         type: "timestamp"
-    
+
     optional:
       sections:
         type: "list[dict]"
@@ -488,7 +593,7 @@ node_types:
     description: "Something learned from experience"
     id_prefix: "lesson"
     parent: null
-    
+
     required:
       id:
         type: "str"
@@ -515,7 +620,7 @@ node_types:
         type: "timestamp"
       updated:
         type: "timestamp"
-    
+
     optional:
       related_nodes:
         type: "list[node_ref]"
@@ -533,7 +638,36 @@ node_types:
         default: []
 ```
 
-**File: `gobp/schema/core_edges.yaml`**
+**Acceptance criteria:**
+- File exists at `gobp/schema/core_nodes.yaml`
+- Valid YAML: `python -c "import yaml; yaml.safe_load(open('gobp/schema/core_nodes.yaml'))"` (no errors)
+- Contains exactly 6 node types: Node, Idea, Decision, Session, Document, Lesson
+- Every type has `required` and (if applicable) `optional` sections
+
+**Commit message:**
+```
+Wave 0 Task 5: create core node schema YAML
+
+- gobp/schema/core_nodes.yaml: 6 node types defined
+  - Node (generic container)
+  - Idea (brainstorm capture)
+  - Decision (locked knowledge)
+  - Session (AI work session)
+  - Document (external doc pointer)
+  - Lesson (learned experience)
+
+Translated from docs/SCHEMA.md. Used by loader/validator in Wave 1.
+```
+
+---
+
+## TASK 6 — Create core edge schema YAML
+
+**Goal:** Translate `docs/SCHEMA.md` edge type definitions into YAML.
+
+**File to create:** `gobp/schema/core_edges.yaml`
+
+**Content (exact):**
 
 ```yaml
 # GoBP Core Edge Types
@@ -550,7 +684,7 @@ edge_types:
     directional: false
     cardinality: "many_to_many"
     allowed_node_types: ["all"]
-    
+
     required:
       from:
         type: "node_ref"
@@ -559,7 +693,7 @@ edge_types:
       type:
         type: "str"
         enum_values: ["relates_to"]
-    
+
     optional:
       reason:
         type: "str"
@@ -569,7 +703,7 @@ edge_types:
     directional: true
     cardinality: "one_to_one"
     allowed_node_types: ["Idea", "Decision", "Node"]
-    
+
     required:
       from:
         type: "node_ref"
@@ -578,7 +712,7 @@ edge_types:
       type:
         type: "str"
         enum_values: ["supersedes"]
-    
+
     optional:
       reason:
         type: "str"
@@ -590,7 +724,7 @@ edge_types:
     directional: true
     cardinality: "many_to_many"
     allowed_node_types: ["Node->Decision", "Node->Node"]
-    
+
     required:
       from:
         type: "node_ref"
@@ -599,7 +733,7 @@ edge_types:
       type:
         type: "str"
         enum_values: ["implements"]
-    
+
     optional:
       partial:
         type: "bool"
@@ -612,7 +746,7 @@ edge_types:
     directional: true
     cardinality: "many_to_one"
     allowed_node_types: ["all->Session"]
-    
+
     required:
       from:
         type: "node_ref"
@@ -621,7 +755,7 @@ edge_types:
       type:
         type: "str"
         enum_values: ["discovered_in"]
-    
+
     optional:
       position_in_session:
         type: "int"
@@ -631,7 +765,7 @@ edge_types:
     directional: true
     cardinality: "many_to_many"
     allowed_node_types: ["all->Document"]
-    
+
     required:
       from:
         type: "node_ref"
@@ -640,7 +774,7 @@ edge_types:
       type:
         type: "str"
         enum_values: ["references"]
-    
+
     optional:
       section:
         type: "str"
@@ -648,19 +782,34 @@ edge_types:
         type: "list[int]"
 ```
 
-**Acceptance:**
-- Both files exist at correct paths
-- Both files are valid YAML (verify with `python -c "import yaml; yaml.safe_load(open('gobp/schema/core_nodes.yaml'))"`)
-- 6 node types defined in core_nodes.yaml
-- 5 edge types defined in core_edges.yaml
+**Acceptance criteria:**
+- File exists at `gobp/schema/core_edges.yaml`
+- Valid YAML
+- Contains exactly 5 edge types: relates_to, supersedes, implements, discovered_in, references
+
+**Commit message:**
+```
+Wave 0 Task 6: create core edge schema YAML
+
+- gobp/schema/core_edges.yaml: 5 edge types defined
+  - relates_to (generic connection)
+  - supersedes (versioning)
+  - implements (concrete -> spec)
+  - discovered_in (node -> session)
+  - references (node -> document)
+
+Translated from docs/SCHEMA.md. Used by validator in Wave 1.
+```
 
 ---
 
-### Task 5 — Create node templates
+## TASK 7 — Create 6 node templates
 
-Create 6 template files in `gobp/templates/`. Each template is a markdown file with YAML front-matter showing the structure of that node type, with placeholder values.
+**Goal:** Create markdown templates for humans/AI to use when creating new nodes manually.
 
-**File: `gobp/templates/node.md`**
+**Files to create (6 files):**
+
+### `gobp/templates/node.md`
 
 ```markdown
 ---
@@ -684,7 +833,7 @@ tags: []
 (Any additional notes for human readers or AI agents.)
 ```
 
-**File: `gobp/templates/idea.md`**
+### `gobp/templates/idea.md`
 
 ```markdown
 ---
@@ -710,7 +859,7 @@ ceo_verified: false
 (Links to related ideas, decisions, or features.)
 ```
 
-**File: `gobp/templates/decision.md`**
+### `gobp/templates/decision.md`
 
 ```markdown
 ---
@@ -739,7 +888,7 @@ related_ideas: []
 (Specifics relevant to building things based on this decision.)
 ```
 
-**File: `gobp/templates/session.md`**
+### `gobp/templates/session.md`
 
 ```markdown
 ---
@@ -772,7 +921,7 @@ updated: 2026-04-14T00:00:00
 (Context for the next session to pick up.)
 ```
 
-**File: `gobp/templates/document.md`**
+### `gobp/templates/document.md`
 
 ```markdown
 ---
@@ -799,7 +948,7 @@ updated: 2026-04-14T00:00:00
 (Which nodes reference this document.)
 ```
 
-**File: `gobp/templates/lesson.md`**
+### `gobp/templates/lesson.md`
 
 ```markdown
 ---
@@ -829,69 +978,46 @@ updated: 2026-04-14T00:00:00
 (Specific signs that this lesson applies.)
 ```
 
-**Acceptance:**
-- All 6 template files exist
-- Each is valid YAML front-matter (the part between `---` lines)
-- Each matches the schema defined in `core_nodes.yaml`
+**Acceptance criteria:**
+- All 6 files exist
+- Each has valid YAML frontmatter (between `---` lines)
+- Frontmatter matches schema defined in `core_nodes.yaml`
 
----
+**Commit message:**
+```
+Wave 0 Task 7: create 6 node templates
 
-### Task 6 — Set up Python virtual environment
+- gobp/templates/node.md
+- gobp/templates/idea.md
+- gobp/templates/decision.md
+- gobp/templates/session.md
+- gobp/templates/document.md
+- gobp/templates/lesson.md
 
-Run these commands in PowerShell at `D:\GoBP\`:
-
-```powershell
-# Create venv
-python -m venv venv
-
-# Activate venv
-.\venv\Scripts\Activate.ps1
-
-# If you get a script execution error, run this once:
-# Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
-
-# Verify activation (should show (venv) in prompt)
-
-# Upgrade pip
-python -m pip install --upgrade pip
-
-# Install dev dependencies
-pip install -r requirements-dev.txt
-
-# Install the package itself in editable mode
-pip install -e .
-
-# Verify
-python -c "import gobp; print(gobp.__version__)"
-# Expected: 0.1.0
-
-python -c "import yaml; print(yaml.__version__)"
-# Expected: a version string
-
-python -c "import mcp; print('mcp imported OK')"
-# Expected: mcp imported OK
+Each template has YAML frontmatter with all required fields + placeholder values.
+Used by humans/AI when creating new nodes manually.
 ```
 
-**Acceptance:**
-- `venv/` folder exists
-- All imports work
-- `gobp.__version__` returns "0.1.0"
-
-If `pip install` fails because Python version too low, STOP and report to CTO.
-
 ---
 
-### Task 7 — Write smoke tests
+## TASK 8 — Write smoke tests
 
-Create `D:\GoBP\tests\__init__.py` (empty file).
+**Goal:** Create tests that verify Wave 0 deliverables exist and are valid. No business logic tests yet.
 
-Create `D:\GoBP\tests\test_smoke.py`:
+**File to create:** `tests/test_smoke.py`
+
+**Content (exact):**
 
 ```python
-"""Smoke tests for GoBP package.
+"""Smoke tests for GoBP Wave 0 deliverables.
 
-These tests verify the package can be imported and basic structure exists.
-They do NOT test any business logic — that begins in Wave 1+.
+These tests verify:
+1. The gobp package can be imported
+2. All stub modules exist
+3. Schema YAML files are valid and complete
+4. Templates exist with correct frontmatter
+
+They do NOT test business logic — that begins in Wave 1.
 """
 
 import importlib
@@ -904,6 +1030,7 @@ import yaml
 # =============================================================================
 # Package import tests
 # =============================================================================
+
 
 def test_gobp_package_importable():
     """The top-level gobp package can be imported."""
@@ -938,7 +1065,7 @@ def test_mcp_modules_importable():
 
 
 def test_cli_modules_importable():
-    """CLI module can be imported."""
+    """CLI module can be imported and has main function."""
     import gobp.cli.__main__
     assert callable(gobp.cli.__main__.main)
 
@@ -947,6 +1074,7 @@ def test_cli_modules_importable():
 # Schema file tests
 # =============================================================================
 
+
 def get_schema_dir() -> Path:
     """Return the path to the gobp/schema/ folder."""
     import gobp
@@ -954,48 +1082,75 @@ def get_schema_dir() -> Path:
 
 
 def test_core_nodes_yaml_exists():
-    """core_nodes.yaml exists in the schema folder."""
+    """core_nodes.yaml exists."""
     schema_file = get_schema_dir() / "core_nodes.yaml"
     assert schema_file.exists(), f"Missing: {schema_file}"
 
 
 def test_core_edges_yaml_exists():
-    """core_edges.yaml exists in the schema folder."""
+    """core_edges.yaml exists."""
     schema_file = get_schema_dir() / "core_edges.yaml"
     assert schema_file.exists(), f"Missing: {schema_file}"
 
 
 def test_core_nodes_yaml_valid():
-    """core_nodes.yaml is valid YAML and has expected structure."""
+    """core_nodes.yaml is valid YAML with correct structure."""
     schema_file = get_schema_dir() / "core_nodes.yaml"
     with open(schema_file, "r", encoding="utf-8") as f:
         data = yaml.safe_load(f)
-    
+
     assert "schema_version" in data
+    assert data["schema_version"] == "1.0"
     assert "node_types" in data
-    
+
     expected_types = {"Node", "Idea", "Decision", "Session", "Document", "Lesson"}
     actual_types = set(data["node_types"].keys())
     assert actual_types == expected_types, f"Expected {expected_types}, got {actual_types}"
 
 
 def test_core_edges_yaml_valid():
-    """core_edges.yaml is valid YAML and has expected structure."""
+    """core_edges.yaml is valid YAML with correct structure."""
     schema_file = get_schema_dir() / "core_edges.yaml"
     with open(schema_file, "r", encoding="utf-8") as f:
         data = yaml.safe_load(f)
-    
+
     assert "schema_version" in data
+    assert data["schema_version"] == "1.0"
     assert "edge_types" in data
-    
+
     expected_types = {"relates_to", "supersedes", "implements", "discovered_in", "references"}
     actual_types = set(data["edge_types"].keys())
     assert actual_types == expected_types, f"Expected {expected_types}, got {actual_types}"
 
 
+def test_every_node_type_has_required_fields():
+    """Each node type declares required fields."""
+    schema_file = get_schema_dir() / "core_nodes.yaml"
+    with open(schema_file, "r", encoding="utf-8") as f:
+        data = yaml.safe_load(f)
+
+    for type_name, type_def in data["node_types"].items():
+        assert "required" in type_def, f"{type_name} missing 'required' section"
+        assert "id" in type_def["required"], f"{type_name} missing required 'id'"
+        assert "created" in type_def["required"], f"{type_name} missing required 'created'"
+
+
+def test_every_edge_type_has_from_to():
+    """Each edge type has from and to fields."""
+    schema_file = get_schema_dir() / "core_edges.yaml"
+    with open(schema_file, "r", encoding="utf-8") as f:
+        data = yaml.safe_load(f)
+
+    for type_name, type_def in data["edge_types"].items():
+        assert "required" in type_def, f"{type_name} missing 'required' section"
+        assert "from" in type_def["required"], f"{type_name} missing 'from'"
+        assert "to" in type_def["required"], f"{type_name} missing 'to'"
+
+
 # =============================================================================
 # Template file tests
 # =============================================================================
+
 
 def get_templates_dir() -> Path:
     """Return the path to the gobp/templates/ folder."""
@@ -1007,42 +1162,88 @@ def test_all_templates_exist():
     """All 6 template files exist."""
     expected = ["node.md", "idea.md", "decision.md", "session.md", "document.md", "lesson.md"]
     templates_dir = get_templates_dir()
-    
+
     for template_name in expected:
         template_file = templates_dir / template_name
         assert template_file.exists(), f"Missing template: {template_file}"
 
 
 def test_templates_have_yaml_frontmatter():
-    """Each template starts with YAML front-matter (--- delimited)."""
+    """Each template starts and ends YAML frontmatter correctly."""
     templates_dir = get_templates_dir()
-    
+
     for template_file in templates_dir.glob("*.md"):
         content = template_file.read_text(encoding="utf-8")
-        assert content.startswith("---\n"), f"{template_file.name} missing front-matter start"
-        assert "\n---\n" in content[4:], f"{template_file.name} missing front-matter end"
+        assert content.startswith("---\n"), f"{template_file.name} missing frontmatter start"
+        # Find closing ---
+        lines = content.split("\n")
+        closing_found = False
+        for i, line in enumerate(lines[1:], start=1):
+            if line.strip() == "---":
+                closing_found = True
+                break
+        assert closing_found, f"{template_file.name} missing frontmatter end"
+
+
+def test_templates_frontmatter_parseable():
+    """Each template's frontmatter is valid YAML."""
+    templates_dir = get_templates_dir()
+
+    for template_file in templates_dir.glob("*.md"):
+        content = template_file.read_text(encoding="utf-8")
+        # Extract frontmatter between --- markers
+        parts = content.split("---\n", 2)
+        assert len(parts) >= 3, f"{template_file.name} frontmatter malformed"
+        frontmatter_text = parts[1]
+        # Should parse as YAML without error
+        data = yaml.safe_load(frontmatter_text)
+        assert data is not None
+        assert "id" in data, f"{template_file.name} frontmatter missing 'id'"
+        assert "type" in data, f"{template_file.name} frontmatter missing 'type'"
 ```
 
-**Run the tests:**
-
+**Run tests:**
 ```powershell
 # With venv activated
-pytest tests/ -v
+pytest tests/test_smoke.py -v
 ```
 
-**Acceptance:**
-- All tests pass (11 tests total)
-- No errors or warnings
+**Acceptance criteria:**
+- All 13 tests pass
+- 0 failures, 0 errors, 0 warnings
 
-If any test fails, debug and fix per Phase 5 of `.cursorrules`.
+If any test fails, debug and fix per `.cursorrules` Phase 5.
+
+**Commit message:**
+```
+Wave 0 Task 8: write smoke tests
+
+- tests/test_smoke.py: 13 tests verifying Wave 0 deliverables
+  - Package imports (4 tests)
+  - Schema YAML existence + structure (4 tests)
+  - Schema field requirements (2 tests)
+  - Template existence + frontmatter (3 tests)
+
+All tests pass. No business logic tested (that begins Wave 1).
+```
 
 ---
 
-### Task 8 — Update README.md to add install instructions
+## TASK 9 — Add install section to README
 
-Add a new section to `README.md` (do NOT edit existing sections, only ADD this section).
+**Goal:** Document how to install GoBP for development.
 
-Insert this section AFTER the "Quick Start" section and BEFORE the "Core Concepts in 60 Seconds" section:
+**File to modify:** `README.md` (existing file at repo root)
+
+**Rules:**
+- Do NOT delete any existing content
+- Do NOT modify existing sections
+- ADD a new section in the correct location
+
+**Where to insert:**
+Find the section "## 🛠️ Quick Start" (or equivalent near the top). Insert the new "## 🛠️ Installation (Development)" section AFTER Quick Start but BEFORE any "Core Concepts" or similar section.
+
+**Section to add:**
 
 ```markdown
 ## 🛠️ Installation (Development)
@@ -1050,18 +1251,20 @@ Insert this section AFTER the "Quick Start" section and BEFORE the "Core Concept
 ### Prerequisites
 - Python 3.10 or higher
 - Git
-- A working virtual environment tool (venv ships with Python)
+- A virtual environment tool (venv ships with Python)
 
 ### Setup
 
-```bash
+\`\`\`bash
 git clone https://github.com/mihos3506/GoBP.git
 cd GoBP
 
 # Create and activate virtual environment
 python -m venv venv
+
 # Windows
 .\venv\Scripts\Activate.ps1
+
 # macOS/Linux
 source venv/bin/activate
 
@@ -1073,133 +1276,126 @@ pip install -r requirements-dev.txt
 python -c "import gobp; print(gobp.__version__)"
 # Should print: 0.1.0
 
-# Run tests
-pytest tests/ -v
-```
+# Run smoke tests
+pytest tests/test_smoke.py -v
+\`\`\`
 
 After Wave 0, the package is importable but has no functionality yet. Functionality begins in Wave 1.
 ```
 
-**Acceptance:**
-- README.md still has all original content
-- New "Installation (Development)" section added in the correct position
-- Code block syntax is correct
+**Note:** In the markdown above, replace `\`\`\`bash` with triple backticks followed by `bash` (the backslashes are escapes for this Brief file only — in the actual README, use real backticks).
+
+**Acceptance criteria:**
+- README.md still has all original content (check with `git diff`)
+- New "Installation (Development)" section added at correct position
+- Code blocks render correctly
+- `git diff README.md` shows only added lines, no deletions
+
+**Commit message:**
+```
+Wave 0 Task 9: add install section to README
+
+- README.md: added "Installation (Development)" section
+  - Prerequisites list
+  - Clone + venv + pip install commands
+  - Verify import + run tests commands
+
+No existing content modified. Section inserted after Quick Start.
+```
 
 ---
 
-### Task 9 — Commit and push
+# POST-WAVE VERIFICATION
 
-Run these commands in PowerShell at `D:\GoBP\`:
+After all 9 tasks committed, Claude CLI performs final wave audit:
 
+## Checklist
+
+- [ ] 9 commits exist in git log (one per task)
+- [ ] `git status` clean
+- [ ] `gobp/` package exists with all 19 files
+- [ ] `pyproject.toml` valid
+- [ ] `requirements.txt` + `requirements-dev.txt` exist
+- [ ] `venv/` exists (not committed, gitignored)
+- [ ] `gobp/schema/core_nodes.yaml` valid (6 node types)
+- [ ] `gobp/schema/core_edges.yaml` valid (5 edge types)
+- [ ] 6 templates in `gobp/templates/`
+- [ ] 13 smoke tests pass: `pytest tests/test_smoke.py -v`
+- [ ] `python -c "import gobp"` works
+- [ ] README.md has Install section
+- [ ] No foundational docs modified
+- [ ] No files outside task scope created
+
+## Push approval
+
+After all checks pass, wait for CEO approval to push:
+
+```
+Push to GitHub? (y/n)
+```
+
+If CEO approves:
 ```powershell
-# Check what changed
-git status
-
-# Stage everything
-git add .
-
-# Verify staging is correct (should NOT include venv/ or __pycache__/ — gitignore handles these)
-git status
-
-# Commit with proper message
-git commit -m "Wave 0: bootstrap repo with package structure, schemas, and templates"
-
-# Push to GitHub
 git push origin main
 ```
 
-**Acceptance:**
-- Commit succeeds with no errors
-- Push succeeds
-- `git status` after push shows: `nothing to commit, working tree clean`
+## Wave complete summary
+
+Print final summary:
+```
+═══════════════════════════════════════════════
+WAVE 0 COMPLETE
+
+Tasks: 9 / 9 done
+Commits: 9
+Files created: ~35
+Tests passing: 13
+Time: <duration>
+
+Ready for Wave 1.
+═══════════════════════════════════════════════
+```
 
 ---
 
-## 4. PHASE 7 REPORT
+# ESCALATION TRIGGERS
 
-After all tasks complete, write your Phase 7 report following the format in `.cursorrules`. Save it to `waves/wave_0_report.md` (you create this file).
+Claude CLI escalates to CEO (→ CTO Chat) if:
 
-Include:
-- Which docs you read
-- Files created (with line counts)
-- Tests written and results
-- Discoveries (especially anything that suggests SCHEMA.md or ARCHITECTURE.md needs revision)
-- Out-of-scope items deferred
-- Issues encountered
+- Cursor fails 3 retries on same task
+- Audit fails repeatedly after Cursor fixes
+- `pip install` fails due to environment issue
+- Python version incompatible
+- YAML validation fails despite Brief content being correct
+- Any foundational doc appears wrong
+- Task spec is ambiguous
 
----
-
-## 5. ACCEPTANCE CRITERIA (CTO will check)
-
-Wave 0 is complete when:
-
-- [x] Foundational docs read (verified by Cursor's report)
-- [ ] `gobp/` package exists with all required submodules
-- [ ] `pyproject.toml` valid
-- [ ] `requirements.txt` and `requirements-dev.txt` exist
-- [ ] `gobp/schema/core_nodes.yaml` valid YAML, 6 node types
-- [ ] `gobp/schema/core_edges.yaml` valid YAML, 5 edge types
-- [ ] 6 templates in `gobp/templates/`
-- [ ] `venv/` works, `pip install -e .` succeeds
-- [ ] `python -c "import gobp"` works
-- [ ] All 11 smoke tests pass
-- [ ] README.md has Install section added
-- [ ] Wave 0 report at `waves/wave_0_report.md`
-- [ ] Everything committed and pushed to GitHub
-- [ ] No files outside Brief scope created
-- [ ] No foundational docs modified
+Escalation format per `CLAUDE.md` section "ESCALATION PROCEDURE".
 
 ---
 
-## 6. WHAT IS DEFERRED TO LATER WAVES
+# WHAT COMES NEXT
 
-For clarity, here is what is NOT in Wave 0:
+After Wave 0 complete and pushed:
 
-| Wave | Deferred work |
-|---|---|
-| Wave 1 | Implement `GraphIndex` class — load from files, build indexes |
-| Wave 2 | Implement `loader.py` and `validator.py` — file parsing, schema enforcement |
-| Wave 3 | Implement MCP server with 6 read tools |
-| Wave 4 | Implement CLI commands (`gobp init`, `gobp validate`, etc.) |
-| Wave 5 | Implement 3 write tools and 2 import tools |
-| Wave 6 | CLI advanced features |
-| Wave 7 | Documentation, install guides, error handling polish |
-| Wave 8 | MIHOS integration test, lessons extraction |
+| Wave | Title | Effort |
+|---|---|---|
+| Wave 1 | Core engine — GraphIndex class | ~3-4 hours |
+| Wave 2 | File loader + validator | ~3-4 hours |
+| Wave 3 | MCP server + 6 read tools | ~4-6 hours |
+| Wave 4 | CLI commands (init, validate, etc.) | ~2-3 hours |
+| Wave 5 | Write tools + import tools | ~3-4 hours |
+| Wave 6 | Advanced features | ~2-3 hours |
+| Wave 7 | Documentation polish | ~2 hours |
+| Wave 8 | MIHOS integration test | ~3-4 hours |
 
-Do not start any of these in Wave 0.
-
----
-
-## 7. IF YOU GET STUCK
-
-Use the format from `.cursorrules` "Asking the CTO" section. Include:
-- Wave 0 Task <N>
-- What you tried
-- What error you got
-- Specific question
-
-Common issues anticipated:
-- `pip install` fails due to network — try again, or document and ask CTO
-- `pytest` not found — make sure venv is activated
-- `Set-ExecutionPolicy` needed for venv activation on Windows — that's normal
-- `gobp` import fails — check `pyproject.toml` package discovery section
+Wave 1-8 Briefs will be written by CTO Chat in separate sessions.
 
 ---
 
-## 8. SIGN-OFF
-
-When all tasks complete, all tests pass, everything pushed:
-
-1. Update this Brief file: change `Status: READY FOR EXECUTION` to `Status: COMPLETED`
-2. Add a line: `Completed: 2026-04-14 by Cursor`
-3. Commit and push the Brief update
-4. Notify CTO Chat in the next conversation: "Wave 0 complete"
-
----
-
-*Wave 0 Brief v0.1*
+*Wave 0 Brief v0.2*
 *Author: CTO Chat (Claude Opus 4.6)*
 *Date: 2026-04-14*
-*Total estimated effort: 1.5-2 hours*
+*For: Cursor (dev) + Claude CLI (audit) in 3-tier pipeline*
 
 ◈

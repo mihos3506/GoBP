@@ -57,6 +57,11 @@ def _load_index(project_root: Path) -> GraphIndex:
     return index
 
 
+# Tools that mutate the graph and require an index reload on success.
+_WRITE_TOOLS: frozenset[str] = frozenset(
+    {"node_upsert", "decision_lock", "session_log", "import_commit"}
+)
+
 # Global server instance and index (loaded on startup)
 server: Server = Server("gobp")
 _index: GraphIndex | None = None
@@ -267,7 +272,7 @@ async def list_tools() -> list[types.Tool]:
 
 @server.call_tool()
 async def call_tool(name: str, arguments: dict[str, Any]) -> list[types.TextContent]:
-    """Route tool calls to handlers in tools_read module."""
+    """Route incoming tool calls to the appropriate handler module."""
     global _index, _project_root
 
     if _index is None or _project_root is None:
@@ -296,10 +301,9 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[types.TextCont
     else:
         try:
             result = handler(_index, _project_root, arguments)
-            if name in ("node_upsert", "decision_lock", "session_log", "import_commit"):
-                if isinstance(result, dict) and result.get("ok"):
-                    _index = _load_index(_project_root)
-                    logger.info(f"Index reloaded after {name}")
+            if name in _WRITE_TOOLS and isinstance(result, dict) and result.get("ok"):
+                _index = _load_index(_project_root)
+                logger.info(f"Index reloaded after {name}")
         except Exception as e:
             logger.exception(f"Tool '{name}' raised exception")
             result = {"ok": False, "error": str(e), "tool": name}

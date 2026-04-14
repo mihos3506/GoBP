@@ -10,6 +10,15 @@ from typing import Any
 import yaml
 
 
+def package_schema_dir() -> Path:
+    """Return the GoBP package schema directory.
+
+    Returns:
+        Absolute path to ``gobp/schema/`` inside the installed package.
+    """
+    return Path(__file__).parent.parent / "schema"
+
+
 def parse_frontmatter(content: str) -> tuple[dict[str, Any], str]:
     """Split markdown content into YAML frontmatter and body.
 
