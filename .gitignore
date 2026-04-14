@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+*.egg-info/
+dist/
+build/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# GoBP-specific (will be added in Wave 0)
+.gobp/index.sqlite
+.gobp/*.log
+.gobp/proposals/*.pending.yaml
+
+# Environment
+.env
+.env.local
