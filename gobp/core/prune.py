@@ -85,7 +85,7 @@ def run_prune(
     for candidate in candidates:
         node_id = candidate["id"]
         # Node file: nodes/{node_id_slug}.md (replace : with -)
-        node_slug = node_id.replace(":", "-")
+        node_slug = node_id.replace(":", "_")
         node_file = nodes_dir / f"{node_slug}.md"
 
         if node_file.exists():

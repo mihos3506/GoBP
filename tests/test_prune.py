@@ -28,7 +28,7 @@ def _make_root(tmp_path: Path) -> Path:
 
 
 def _write_node(root: Path, node: dict) -> None:
-    node_id = node["id"].replace(":", "-")
+    node_id = node["id"].replace(":", "_")
     path = root / ".gobp" / "nodes" / f"{node_id}.md"
     fm = yaml.dump(node, allow_unicode=True, default_flow_style=False)
     path.write_text(f"---\n{fm}---\n", encoding="utf-8")
