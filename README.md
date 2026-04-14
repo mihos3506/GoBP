@@ -200,8 +200,9 @@ GoBP v1 tool surface is now complete. Available via MCP:
 
 **Maintenance (1):**
 - `validate` — full graph schema + reference check
+- `lessons_extract` — proposes lesson candidates from graph/session patterns
 
-All 13 tools documented in `docs/MCP_TOOLS.md`.
+All 14 tools documented in `docs/MCP_TOOLS.md`.
 
 ### AI Usage Pattern
 

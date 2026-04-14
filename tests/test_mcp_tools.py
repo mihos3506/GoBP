@@ -325,8 +325,8 @@ def test_doc_sections_non_document_node(index: GraphIndex, populated_root: Path)
     assert out["ok"] is False
 
 
-def test_mcp_server_registers_all_13_tools():
-    """Smoke test: MCP server must list all 13 tools (7 read + 6 write/import/validate)."""
+def test_mcp_server_registers_all_14_tools():
+    """Smoke test: MCP server must list all 14 tools (7 read + 6 write/import/validate + lessons_extract)."""
     from gobp.mcp import server as srv
     import asyncio
 
@@ -347,7 +347,8 @@ def test_mcp_server_registers_all_13_tools():
         "import_proposal",
         "import_commit",
         "validate",
+        "lessons_extract",
     }
 
     assert set(tool_names) == expected, f"Got {tool_names}, expected {expected}"
-    assert len(tools) == 13
+    assert len(tools) == 14
