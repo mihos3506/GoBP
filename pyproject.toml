@@ -1,0 +1,44 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "gobp"
+version = "0.1.0"
+description = "Graph of Brainstorm Project — long-term memory for AI agents"
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [
+    { name = "GoBP Authors" }
+]
+keywords = ["mcp", "knowledge-graph", "ai-memory", "ai-agents"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Operating System :: OS Independent",
+]
+
+dependencies = [
+    "mcp>=0.9.0",
+    "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-asyncio>=0.21",
+]
+
+[project.scripts]
+gobp = "gobp.cli.__main__:main"
+
+[tool.setuptools.packages.find]
+include = ["gobp*"]
+exclude = ["tests*", "examples*"]
+
+[tool.setuptools.package-data]
+gobp = ["schema/*.yaml", "templates/*.md"]
