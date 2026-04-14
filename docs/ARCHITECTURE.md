@@ -1,907 +1,431 @@
-# ◈ GoBP ARCHITECTURE
+# FOUNDATIONAL DOCS UPDATES — 2026-04-14
 
-**File:** `D:\GoBP\docs\ARCHITECTURE.md`
-**Version:** v0.1
-**Status:** draft, awaiting CEO approval
-**Depends on:** VISION.md (must read first)
-**Audience:** AI agents implementing GoBP + AI agents extending GoBP per project
+These are additions to existing foundational docs. CEO (or Cursor) pastes each section into the corresponding file at the indicated location.
 
 ---
 
-## 0. HOW TO READ THIS DOC
+# UPDATE 1 — MCP_TOOLS.md
 
-ARCHITECTURE describes **how GoBP is built**. VISION describes **why**.
+**File:** `docs/MCP_TOOLS.md`
+**Action:** Add new tool spec section
+**Location:** Near the top of the tools list, before `gobp_find()`. This is the **first tool AI should call** when connecting to a new GoBP instance.
 
-- If you are Cursor implementing GoBP code → read this fully
-- If you are Claude Desktop orchestrating GoBP work → read sections 1, 2, 3, 8
-- If you are an AI extending GoBP for a project → read sections 2, 4, 7
-
-Every decision in this doc traces back to a principle in VISION. If you find a contradiction, VISION wins.
+**Section to add:**
 
 ---
 
-## 1. SYSTEM OVERVIEW
+## Tool: `gobp_overview`
 
-GoBP is a layered system with clear separation:
+**Purpose:** Orientation tool for AI clients connecting to a GoBP instance for the first time. Returns project metadata, data scope, main topics, and suggested next queries. This is the only tool that requires no prior knowledge of IDs, types, or project structure.
 
-```
-┌─────────────────────────────────────────────────────────┐
-│  AI Agents (Cursor, Claude CLI, Claude Desktop, Qodo)   │
-│  Speak: MCP protocol (JSON-RPC over stdio)              │
-└────────────────────┬────────────────────────────────────┘
-                     │ MCP tool calls
-                     ▼
-┌─────────────────────────────────────────────────────────┐
-│  MCP Server (gobp/mcp/server.py)                        │
-│  - Tool registration                                    │
-│  - Input validation                                     │
-│  - Dispatch to core                                     │
-│  - Output serialization                                 │
-└────────────────────┬────────────────────────────────────┘
-                     │ Python function calls
-                     ▼
-┌─────────────────────────────────────────────────────────┐
-│  Core Engine (gobp/core/)                               │
-│  - graph.py   : GraphIndex (in-memory)                  │
-│  - loader.py  : YAML/MD file loader                     │
-│  - validator.py: Schema enforcement                     │
-│  - mutator.py : Write operations with history           │
-└────────────────────┬────────────────────────────────────┘
-                     │ File I/O
-                     ▼
-┌─────────────────────────────────────────────────────────┐
-│  File Storage (project's .gobp/ folder)                 │
-│  - nodes/    : node markdown files with YAML front-matter│
-│  - edges/    : edge definitions                         │
-│  - history/  : append-only log                          │
-│  - schema/   : schema extension (project-specific)      │
-└─────────────────────────────────────────────────────────┘
-```
+**Priority:** Call this first when starting a session or connecting for the first time.
 
-**Key architectural decisions:**
-- Files are source of truth (P3 in VISION)
-- Core is file-based, no database
-- MCP server is a thin adapter over core
-- AI never touches files directly — always via MCP
-- Humans can inspect files but don't edit them normally
-
----
-
-## 2. NODE TYPES (6 core types)
-
-Every piece of knowledge in GoBP is a node. There are 6 core types. More types can be added per project via schema extensions.
-
-### 2.1 Node (generic container)
-
-The most flexible type. Used for anything that doesn't fit the specialized types.
-
-**Purpose:** Represent entities, features, tools, concepts, engines, components — anything that is a "thing" in the project.
-
-**Required fields:**
-- `id` — stable unique identifier (e.g. `node:feat_login`, `node:tool_mcp_server`)
-- `type` — schema type (e.g. `Feature`, `Tool`, `Entity`, `Component`)
-- `name` — human-readable label (e.g. "Login", "MCP Server")
-- `status` — lifecycle state (`DRAFT`, `ACTIVE`, `DEPRECATED`, `ARCHIVED`)
-- `created` — ISO timestamp
-- `updated` — ISO timestamp (last mutation)
-
-**Optional fields:**
-- `description` — short prose
-- `tags` — list of strings for grouping
-- `subtype` — project-specific categorization
-- Any custom field per schema extension
-
-**Example file** (`nodes/node_feat_login.md`):
-```yaml
----
-id: node:feat_login
-type: Feature
-subtype: auth
-name: Login
-status: ACTIVE
-created: 2026-04-14T10:00:00
-updated: 2026-04-14T14:30:00
-description: Email OTP authentication for returning users
-tags: [auth, phase1]
----
-
-## Context
-Returning user enters email, receives OTP code, enters code, session starts.
-
-## Notes
-- Phase 1 scope (Hội An MVP)
-- Guest users can browse without login
-- Soft-delete pattern: no hard account deletion
-```
-
-**Key rules:**
-- `id` never changes after creation — even if `name` changes (BKP → GoBP rename case)
-- `type` + `subtype` help AI filter queries
-- Prose content in markdown body is for human debugging, AI reads front-matter primarily
-
-### 2.2 Idea
-
-Unstructured brainstorm, captured raw from conversation. Not yet decided, not yet verified.
-
-**Purpose:** Preserve founder's original words and AI's interpretation separately, to prevent drift.
-
-**Required fields:**
-- `id` — e.g. `idea:i001`
-- `type` — always `Idea`
-- `raw_quote` — verbatim text from founder (exact words, do not paraphrase)
-- `interpretation` — AI's understanding (clearly separate from raw_quote)
-- `subject` — what this idea is about (e.g. `auth:login.method`, `ui:onboarding`)
-- `maturity` — lifecycle: `RAW`, `REFINED`, `DISCUSSED`, `LOCKED`, `DEPRECATED`
-- `confidence` — AI's confidence in interpretation: `low`, `medium`, `high`
-- `session_id` — which session captured this
-- `created` — timestamp
-
-**Optional fields:**
-- `supersedes` — previous idea this replaces (link)
-- `context_notes` — surrounding conversation context
-- `ceo_verified` — has founder explicitly confirmed interpretation?
-
-**Example file** (`nodes/idea_i042.md`):
-```yaml
----
-id: idea:i042
-type: Idea
-subject: auth:login.method
-raw_quote: "Thôi dùng OTP email đi"
-interpretation: Founder changes auth method from Face ID to Email OTP
-maturity: REFINED
-confidence: high
-session_id: session:2026-04-14_afternoon
-created: 2026-04-14T14:30:00
-supersedes: idea:i041
-ceo_verified: true
----
-
-## Context
-Previously idea:i041 proposed Face ID. CTO Chat noted Face ID is device-dependent
-and may not work on older phones. Founder responded with this change.
-
-## Related
-- idea:i041 (Face ID, superseded)
-- Considered but not mentioned: SMS OTP (rejected by CTO due to VN spam)
-```
-
-**Key rules:**
-- `raw_quote` is frozen — never edited. If founder says something new, create new Idea that `supersedes` this one.
-- `interpretation` can be corrected if AI got it wrong, but with history log entry.
-- Ideas flow upward: `RAW` → `REFINED` → `DISCUSSED` → `LOCKED` → matured into Decision.
-
-### 2.3 Decision
-
-Locked knowledge. Founder has confirmed. AI treats as authoritative.
-
-**Purpose:** Capture what has been decided, with rationale and alternatives, so future AI sessions don't re-litigate.
-
-**Required fields:**
-- `id` — e.g. `dec:d001`
-- `type` — always `Decision`
-- `topic` — what the decision is about (e.g. `auth:login.method`)
-- `what` — the decision in 1-2 sentences (e.g. "Use Email OTP")
-- `why` — rationale (e.g. "Face ID device-dependent, SMS spam in VN")
-- `status` — `LOCKED`, `SUPERSEDED`, `WITHDRAWN`
-- `locked_at` — timestamp when founder confirmed
-- `locked_by` — who confirmed (usually "CEO" + AI witness)
-
-**Optional fields:**
-- `alternatives_considered` — list of rejected options with reasons
-- `risks` — what could go wrong
-- `blocks` — what this decision enables or blocks
-- `supersedes` — previous decision this replaces
-- `related_ideas` — ideas that led to this decision
-
-**Example file** (`nodes/dec_d015.md`):
-```yaml
----
-id: dec:d015
-type: Decision
-topic: auth:login.method
-what: Use Email OTP for login authentication
-why: Face ID is device-dependent and fails on older phones. SMS is unreliable in VN due to spam filters.
-status: LOCKED
-locked_at: 2026-04-14T14:35:00
-locked_by: [CEO, CTO-Chat-Claude-Opus-4.6]
-alternatives_considered:
-  - Face ID (rejected: device dependency)
-  - SMS OTP (rejected: VN spam filter issues)
-  - Magic link (rejected: email deliverability)
-  - Password (rejected: onboarding friction)
-risks:
-  - Email provider outage blocks all logins
-  - OTP email delays due to ESP issues
-blocks:
-  - Phase 1 feature register flow
-related_ideas: [idea:i041, idea:i042]
----
-
-## Context
-Decided during conversation on 2026-04-14 afternoon session. Founder initially 
-proposed Face ID, CTO Chat raised device dependency concern, founder pivoted to 
-Email OTP after considering SMS spam issue in VN market.
-
-## Implementation notes
-- Rate limit: 5 attempts per minute per IP
-- OTP valid for 10 minutes
-- 6-digit numeric code
-```
-
-**Key rules:**
-- Decisions are LOCKED until explicitly SUPERSEDED or WITHDRAWN
-- AI must query decisions at task start to avoid re-asking founder
-- Superseding a decision requires new Decision node + `supersedes` edge, old one marked SUPERSEDED
-- Every Decision should trace back to Idea(s) when possible — preserve origin
-
-### 2.4 Session
-
-A record of one AI working session. Enables cross-session continuity.
-
-**Purpose:** Allow new AI sessions to load "where we left off" without re-explaining.
-
-**Required fields:**
-- `id` — e.g. `session:2026-04-14_afternoon`
-- `type` — always `Session`
-- `actor` — which AI (e.g. "Claude Opus 4.6 via Desktop", "Cursor 2.6.21", "Qodo")
-- `started_at` — ISO timestamp
-- `ended_at` — ISO timestamp (null if in progress)
-- `goal` — what this session aimed to accomplish
-- `outcome` — what actually happened
-- `status` — `IN_PROGRESS`, `COMPLETED`, `INTERRUPTED`, `FAILED`
-
-**Optional fields:**
-- `nodes_touched` — list of node IDs created/modified during session
-- `decisions_locked` — list of Decision IDs locked during session
-- `pending` — what was not finished (for next session to pick up)
-- `tokens_used` — rough estimate
-- `human_present` — was founder actively engaged?
-- `handoff_notes` — specific context for next session
-
-**Example file** (`nodes/session_2026-04-14_pm.md`):
-```yaml
----
-id: session:2026-04-14_pm
-type: Session
-actor: Claude Opus 4.6 Desktop
-started_at: 2026-04-14T14:00:00
-ended_at: 2026-04-14T18:30:00
-goal: Write GoBP foundational docs (VISION, ARCHITECTURE, INPUT_MODEL)
-outcome: Shipped VISION.md v0.1 and ARCHITECTURE.md v0.1. INPUT_MODEL pending.
-status: IN_PROGRESS
-nodes_touched: []
-decisions_locked:
-  - dec:d020 (GoBP rename from BKP)
-  - dec:d021 (License deferred)
-  - dec:d022 (6 core node types)
-pending:
-  - INPUT_MODEL.md
-  - IMPORT_MODEL.md
-  - Wave 0 Brief for Cursor
-tokens_used: ~200000
-human_present: true
-handoff_notes: |
-  CEO chose "build from pain, don't overthink product". 
-  Document type stays (CEO requirement for import mechanism).
-  Next step: INPUT_MODEL.md explaining AI writes, human speaks.
----
-```
-
-**Key rules:**
-- Sessions auto-created by AI at start, closed at end
-- Each AI session is independent — multiple AI can have concurrent sessions
-- `pending` is critical — new AI reads this to know what to continue
-- Session ID format: `session:YYYY-MM-DD_<slug>` for sortability
-
-### 2.5 Document
-
-A pointer to an external document file with metadata. Does NOT duplicate content.
-
-**Purpose:** Let AI know what documents exist in the project without loading them fully. Enable "follow reference to specific section" pattern.
-
-**Required fields:**
-- `id` — e.g. `doc:DOC-07`
-- `type` — always `Document`
-- `name` — document title
-- `source_path` — relative path to file (e.g. `mihos-shared/docs/DOC-07_core_user_flows.md`)
-- `content_hash` — SHA-256 of file content (detect changes)
-- `registered_at` — when GoBP first learned about this doc
-- `last_verified` — last time GoBP confirmed file still exists
-
-**Optional fields:**
-- `sections` — list of section headings with line ranges
-- `tags` — topic tags
-- `owned_by` — which project role owns this doc
-- `phase` — project phase this doc belongs to
-
-**Example file** (`nodes/doc_DOC-07.md`):
-```yaml
----
-id: doc:DOC-07
-type: Document
-name: Core User Flows
-source_path: mihos-shared/docs/DOC-07_core_user_flows.md
-content_hash: sha256:abc123def456...
-registered_at: 2026-04-14T10:00:00
-last_verified: 2026-04-14T15:00:00
-sections:
-  - heading: "F1 Register"
-    lines: [15, 89]
-    tags: [auth, onboarding]
-  - heading: "F2 Login"
-    lines: [90, 156]
-    tags: [auth]
-  - heading: "F3 Mi Hốt"
-    lines: [157, 278]
-    tags: [core, heritage]
-tags: [core_flows, phase1]
-phase: 1
----
-
-## Purpose
-Authoritative specification for user-facing flows in MIHOS.
-CTO Chat and Cursor should reference specific sections, not load full doc.
-
-## Related nodes
-Referenced by: feat:register, feat:login, feat:mi_hot, flow:F1, flow:F2, flow:F3
-```
-
-**Key rules:**
-- GoBP never copies document content. Always just a pointer.
-- If source file changes (hash mismatch), GoBP flags the Document node as `stale` — AI should re-verify references
-- Sections list enables precise "read DOC-07 §F2 lines 90-156" queries
-- AI uses Document as map, reads actual file only when specific detail needed
-
-### 2.6 Lesson
-
-Something learned from experience that should be preserved across sessions.
-
-**Purpose:** Accumulate knowledge about failure modes, patterns, gotchas, so future AI sessions don't repeat same mistakes.
-
-**Required fields:**
-- `id` — e.g. `lesson:ll001`
-- `type` — always `Lesson`
-- `title` — short headline (e.g. "Query before create — always")
-- `trigger` — what situation this lesson applies to
-- `what_happened` — the mistake or pattern observed
-- `why_it_matters` — impact
-- `mitigation` — how to avoid in future
-- `severity` — `low`, `medium`, `high`, `critical`
-- `captured_in_session` — which session learned this
-
-**Optional fields:**
-- `related_nodes` — nodes where this lesson applies
-- `related_ideas` — ideas that led to lesson
-- `verified_count` — how many times this lesson has been confirmed
-- `last_applied` — when was this lesson last relevant
-
-**Example file** (`nodes/lesson_ll023.md`):
-```yaml
----
-id: lesson:ll023
-type: Lesson
-title: Query project_knowledge before proposing new frameworks
-trigger: User calls me CTO of a project I've worked on before
-what_happened: |
-  Session 2026-04-14 morning: I reflexively shipped M7 framework (74 files) 
-  without querying project_knowledge first. Discovered mid-session that 
-  workflow v2 already existed covering ~80% of what I shipped. Had to scrap
-  most of it. Wasted ~300K tokens.
-why_it_matters: |
-  Reflexive creation without discovery violates the core Discovery > Creation
-  principle and wastes enormous token budget. Also damages CEO trust when 
-  they see the same mistake they corrected before.
-mitigation: |
-  Skill v3 Protocol 0 now mandates 3 queries at session start:
-  1. governance search
-  2. existing tools search
-  3. latest session journal search
-  Before proposing ANY framework, check what exists.
-severity: critical
-captured_in_session: session:2026-04-14_morning
-verified_count: 2  # Same lesson appeared in 2026-04-12 session too
-last_applied: 2026-04-14T18:00:00
----
-
-## Context
-This is the MIHOS failure that led to creating skill v3 and then GoBP itself.
-GoBP exists because journal-based lessons weren't preventing repeats.
-Structured lessons in a queryable store are the next iteration.
-
-## Anti-pattern to recognize
-- CEO says "you are the CTO"
-- AI thinks "I must ship framework"
-- AI skips project_knowledge_search
-- Framework is a duplicate of existing work
-```
-
-**Key rules:**
-- Lessons are accumulated over time, not purged
-- High-severity lessons should be queried at session start as part of Protocol 0
-- `verified_count` increments when same lesson observed again — high count = systemic issue
-- Lessons can link to each other (e.g. "this lesson is a specific case of another lesson")
-
----
-
-## 3. EDGE TYPES (5 core types)
-
-Edges connect nodes. Each edge has a type that defines semantic meaning.
-
-### 3.1 relates_to
-
-Generic "these two things are connected somehow". Use when more specific edge doesn't apply.
-
-**Usage:**
-- `feat:login` relates_to `feat:register`
-- `idea:i042` relates_to `idea:i043` (both in same brainstorm session)
-- `dec:d015` relates_to `feat:login`
-
-**Rules:**
-- Undirected (conceptually bidirectional, stored as single edge)
-- Weakest semantic — prefer specific edge types when possible
-- Many-to-many allowed
-
-### 3.2 supersedes
-
-New version replaces old version. Preserves history.
-
-**Usage:**
-- `idea:i042` supersedes `idea:i041` (OTP idea replaces Face ID idea)
-- `dec:d020` supersedes `dec:d012` (name GoBP replaces name BKP)
-- `node:tool_gobp` supersedes `node:tool_bkp` (tool renamed)
-
-**Rules:**
-- Directed: new → old
-- Creates a chain (can supersede something that already supersedes something)
-- Old node is NOT deleted — marked `status: SUPERSEDED`
-- AI queries default to current (non-superseded) unless `--history` flag
-- Allows rename, refactor, evolution without losing trace
-
-### 3.3 implements
-
-Idea or spec has been turned into reality.
-
-**Usage:**
-- `dec:d015` implements_in `node:feat_login` (decision shows up in feature)
-- `node:feat_login` implements `flow:F2` (feature implements user flow)
-- `node:tool_jwt_signer` implements `dec:d018` (tool realizes decision)
-
-**Rules:**
-- Directed: concrete → abstract (implementation → spec)
-- Creates traceability: every built thing traces to its spec
-- When querying "what implements X?", returns all nodes that realize X
-
-### 3.4 discovered_in
-
-Links a node to the session where it was created or first identified.
-
-**Usage:**
-- `idea:i042` discovered_in `session:2026-04-14_pm`
-- `lesson:ll023` discovered_in `session:2026-04-14_morning`
-- `dec:d015` discovered_in `session:2026-04-14_pm`
-
-**Rules:**
-- Directed: node → session
-- Every node should have at least one discovered_in edge
-- Enables "what did we learn/decide in session X?" queries
-- Creates temporal layer on top of semantic graph
-
-### 3.5 references
-
-A node points to a document section for detail.
-
-**Usage:**
-- `feat:register` references `doc:DOC-07#F1`
-- `dec:d015` references `doc:DOC-02#auth_invariants`
-- `node:tool_mcp_server` references `doc:MCP_TOOLS.md#find`
-
-**Rules:**
-- Directed: node → document section
-- Used to avoid duplicating document content in GoBP
-- AI follows reference only when specific detail needed
-- Reference format: `doc:<DOC_ID>#<section_slug>` or `doc:<DOC_ID>:<line_range>`
-
----
-
-## 4. PROJECT FILE STRUCTURE
-
-Inside a GoBP-enabled project, the knowledge lives in a `.gobp/` folder at project root:
-
-```
-<project-root>/
-├── .gobp/                          ← GoBP data for this project
-│   ├── config.yaml                 ← project-specific config
-│   ├── schema/
-│   │   └── extensions.yaml         ← project-specific node types
-│   │
-│   ├── nodes/                      ← all nodes, one file per node
-│   │   ├── node_feat_login.md
-│   │   ├── node_feat_register.md
-│   │   ├── idea_i001.md
-│   │   ├── idea_i042.md
-│   │   ├── dec_d001.md
-│   │   ├── dec_d015.md
-│   │   ├── session_2026-04-14_am.md
-│   │   ├── session_2026-04-14_pm.md
-│   │   ├── doc_DOC-07.md
-│   │   ├── doc_DOC-13.md
-│   │   ├── lesson_ll001.md
-│   │   └── lesson_ll023.md
-│   │
-│   ├── edges/                      ← edges stored separately for efficiency
-│   │   └── edges.yaml              ← single file with all edges (or split by date)
-│   │
-│   ├── history/                    ← append-only log
-│   │   ├── 2026-04-12.jsonl
-│   │   ├── 2026-04-13.jsonl
-│   │   └── 2026-04-14.jsonl
-│   │
-│   ├── index.sqlite                ← derived index (auto-rebuilt)
-│   └── .gobp-version               ← GoBP version that created this
-│
-├── src/                            ← project's actual code (not GoBP)
-├── docs/                           ← project's actual docs (referenced by GoBP)
-└── ...                             ← rest of project
-```
-
-**Key decisions:**
-- `.gobp/` is at project root, like `.git/`
-- One markdown file per node for git-friendliness and easy human inspection
-- Single `edges.yaml` for edges (edges are lighter than nodes)
-- History as JSONL (one event per line, append-only)
-- SQLite index is derived — can always rebuild from markdown + edges
-- `.gobp/` should be committed to git (it IS the project memory)
-
-**Naming convention for node files:**
-- `<type_prefix>_<id_without_prefix>.md`
-- e.g. `node:feat_login` → `node_feat_login.md`
-- e.g. `dec:d015` → `dec_d015.md`
-- e.g. `session:2026-04-14_pm` → `session_2026-04-14_pm.md`
-
----
-
-## 5. MCP SERVER DESIGN
-
-### 5.1 Server lifecycle
-
-MCP server is a long-running Python process started by AI agents via their config.
-
-**Startup sequence:**
-1. Read `.gobp/config.yaml` (project root detection)
-2. Load all node files from `.gobp/nodes/` into memory
-3. Load `.gobp/edges/edges.yaml`
-4. Build in-memory indexes:
-   - `nodes_by_id`
-   - `nodes_by_type`
-   - `outgoing[node_id]` → list of edges
-   - `incoming[node_id]` → list of edges
-5. Verify schema consistency
-6. Start JSON-RPC loop over stdio
-7. Log: `[gobp] Loaded N nodes, M edges. Ready.`
-
-**Cold start target:** < 500ms for 1K nodes.
-
-**File change detection:**
-- Option A (v1): Full reload on tool call if file mtime changed
-- Option B (v2): File watcher for live updates
-- v1 chooses simplicity: reload on demand
-
-### 5.2 Tool dispatch pattern
+### Signature
 
 ```python
-@server.call_tool()
-async def call_tool(name: str, arguments: dict) -> list[TextContent]:
-    try:
-        if name == "find":
-            result = index.find(arguments.get("query", ""))
-        elif name == "context":
-            result = index.context(arguments.get("node_id", ""))
-        # ... dispatch to core methods
-        else:
-            result = {"error": f"Unknown tool: {name}"}
-    except Exception as e:
-        result = {"error": str(e), "tool": name}
-    
-    return [TextContent(type="text", text=json.dumps(result, ensure_ascii=False))]
+gobp_overview() -> dict
 ```
 
-Pattern inherited from MIHOS M1 `mcp_server.py`. Keep simple, explicit dispatch.
+No input parameters.
 
-### 5.3 Tool output size enforcement
+### Output schema
 
-Every read tool has a token budget:
-
-| Tool | Target size | Hard max |
-|---|---|---|
-| `find` | 200 tokens | 500 |
-| `signature` | 100-300 tokens | 500 |
-| `context` | 300-800 tokens | 1500 |
-| `decisions_for` | 400-1000 tokens | 2000 |
-| `session_recent` | 500-1500 tokens | 3000 |
-| `doc_sections` | 200-500 tokens | 1000 |
-
-Implementation: before returning, estimate token count (rough char_count/4). If over target, truncate with `"...<N more results>"` hint.
-
-### 5.4 Tools inventory (12 for v1)
-
-**Read tools (6):**
-
-1. `find(query)` — fuzzy search by id, name, substring
-2. `signature(node_id)` — quick summary of 1 node
-3. `context(node_id)` — node + outgoing + incoming + decisions applying
-4. `session_recent(n=3)` — latest N sessions for continuity
-5. `decisions_for(node_id_or_topic)` — locked decisions for a topic
-6. `doc_sections(doc_id)` — list sections of a Document node
-
-**Write tools (3):**
-
-7. `node_upsert(type, name, ...)` — create or update a node (handles rename via supersedes)
-8. `decision_lock(topic, what, why, alternatives, related_ideas)` — lock a decision
-9. `session_log(session_id, what_happened, pending)` — end-of-session log
-
-**Import tools (2):**
-
-10. `import_proposal(source_path, proposed_nodes, proposed_edges)` — AI proposes batch import from existing doc
-11. `import_commit(proposal_id)` — CEO approved, commit the batch
-
-**Maintenance tool (1):**
-
-12. `validate()` — run schema check on entire graph, return issues list
-
-These 12 are the v1 API surface. Additions in v2 require CEO approval per AUTHORITY_MATRIX pattern.
-
----
-
-## 6. CORE ENGINE DESIGN
-
-### 6.1 Module layout
-
-```
-gobp/
-├── __init__.py
-├── core/
-│   ├── __init__.py
-│   ├── graph.py          ← GraphIndex class
-│   ├── loader.py         ← Load nodes + edges from files
-│   ├── validator.py      ← Schema validation
-│   ├── mutator.py        ← Write operations
-│   └── history.py        ← Append-only log
-├── schema/
-│   ├── __init__.py
-│   ├── core_nodes.yaml   ← 6 core node type definitions
-│   ├── core_edges.yaml   ← 5 core edge type definitions
-│   └── extensions.py     ← Load project-specific extensions
-├── mcp/
-│   ├── __init__.py
-│   ├── server.py         ← MCP server entry point
-│   └── tools/
-│       ├── __init__.py
-│       ├── read.py       ← 6 read tools
-│       ├── write.py      ← 3 write tools
-│       ├── import_.py    ← 2 import tools
-│       └── maintain.py   ← 1 maintenance tool
-└── cli/
-    ├── __init__.py
-    ├── __main__.py       ← `gobp` command entry
-    └── commands.py       ← init, validate, rebuild commands
+```json
+{
+  "project": {
+    "name": "string",
+    "description": "string",
+    "gobp_version": "string",
+    "schema_version": "string"
+  },
+  "stats": {
+    "total_nodes": "int",
+    "total_edges": "int",
+    "nodes_by_type": {
+      "Node": "int",
+      "Idea": "int",
+      "Decision": "int",
+      "Session": "int",
+      "Document": "int",
+      "Lesson": "int"
+    },
+    "edges_by_type": {
+      "relates_to": "int",
+      "supersedes": "int",
+      "implements": "int",
+      "discovered_in": "int",
+      "references": "int"
+    }
+  },
+  "main_topics": ["string"],
+  "recent_decisions": [
+    {
+      "id": "string",
+      "topic": "string",
+      "what": "string (truncated to 100 chars)",
+      "locked_at": "timestamp"
+    }
+  ],
+  "recent_sessions": [
+    {
+      "id": "string",
+      "goal": "string (truncated to 100 chars)",
+      "status": "string",
+      "started_at": "timestamp"
+    }
+  ],
+  "suggested_next_queries": [
+    "gobp_find('<your keyword>') to search nodes by keyword",
+    "gobp_list_types() to see full type breakdown",
+    "gobp_decisions_for('<topic>') to find locked decisions on a topic"
+  ]
+}
 ```
 
-**Module count: 12 Python files total for v1.** Manageable.
+### Fields explained
 
-### 6.2 GraphIndex class (core data structure)
+- **`project.name`** — Name of the project (from first Document node named "charter" or "project" or from config)
+- **`project.description`** — Short description (from Charter node or project metadata)
+- **`project.gobp_version`** — GoBP package version
+- **`project.schema_version`** — Schema version (1.0 for v1)
+- **`stats.total_nodes`** — Total count of all nodes in `.gobp/nodes/`
+- **`stats.total_edges`** — Total count of all edges in `.gobp/edges/`
+- **`stats.nodes_by_type`** — Count per node type
+- **`stats.edges_by_type`** — Count per edge type
+- **`main_topics`** — Top 5-10 topics by frequency across Decision nodes (extracted from `topic` field)
+- **`recent_decisions`** — 5 most recent Decision nodes (by `locked_at` desc), truncated
+- **`recent_sessions`** — 3 most recent Session nodes (by `started_at` desc), truncated
+- **`suggested_next_queries`** — Hard-coded hints for AI to know what tools exist
 
-```python
-class GraphIndex:
-    """In-memory index over GoBP project knowledge."""
-    
-    def __init__(self, project_root: Path):
-        self.project_root = project_root
-        self.gobp_dir = project_root / ".gobp"
-        
-        # Indexes
-        self.nodes_by_id: dict[str, dict] = {}
-        self.nodes_by_type: dict[str, list[dict]] = defaultdict(list)
-        self.outgoing: dict[str, list[dict]] = defaultdict(list)
-        self.incoming: dict[str, list[dict]] = defaultdict(list)
-        
-        # Load
-        self._load_nodes()
-        self._load_edges()
-        self._build_indexes()
-    
-    def find(self, query: str) -> list[dict]:
-        """Fuzzy search, returns minimal match info."""
-        ...
-    
-    def context(self, node_id: str) -> dict:
-        """Node + edges + applicable decisions."""
-        ...
-    
-    def upsert_node(self, node_data: dict) -> str:
-        """Create or update. Returns node_id."""
-        ...
-    
-    # ... etc
+### Token budget
+
+- Target: 500-1000 tokens
+- Hard max: 1500 tokens
+- If output exceeds max, truncate `recent_decisions` and `recent_sessions` first, then `main_topics`
+
+### Example usage flow
+
+```
+# AI connects to GoBP for the first time in a session
+AI -> gobp_overview()
+AI receives: {
+  project: {name: "MIHOS", description: "Heritage-Tech Proof of Presence", ...},
+  stats: {total_nodes: 89, total_edges: 156, nodes_by_type: {...}, ...},
+  main_topics: ["Proof of Presence", "Dissolving UI", "Circular Economy", ...],
+  recent_decisions: [{id: "dec:d042", topic: "traveller_id from JWT only", ...}, ...],
+  ...
+  suggested_next_queries: [
+    "gobp_find('...') to search",
+    "gobp_decisions_for('...')",
+    ...
+  ]
+}
+
+# AI now knows project scope. It can ask targeted questions.
+AI -> gobp_find("register flow")
+AI receives: [{id: "node:user_register", ...}, ...]
+
+# AI has IDs now. It can dive deeper.
+AI -> gobp_context(id="node:user_register")
+AI receives: related nodes, decisions, lessons
 ```
 
-Class design matches MIHOS M1 pattern (proven to work with MCP SDK).
+### Implementation notes (for Wave 3)
 
-### 6.3 History log
+- Pulls `project.name` and `description` from a special Document node with `id=doc:charter` if exists, otherwise from GoBP package metadata
+- `main_topics` computed by: collect all `topic` field values from Decision nodes, count frequency, return top 5-10
+- `recent_decisions` and `recent_sessions` sorted by timestamp, limited, fields truncated to fit token budget
+- `suggested_next_queries` is a static list in the tool implementation (not computed)
+- All counts read from live GraphIndex at call time (no caching)
 
-Every mutation appends to `.gobp/history/YYYY-MM-DD.jsonl`:
+### Why this tool is critical
 
-```jsonl
-{"ts":"2026-04-14T14:30:00","op":"node_create","actor":"Claude-Desktop","id":"idea:i042","payload":{...}}
-{"ts":"2026-04-14T14:35:00","op":"decision_lock","actor":"Claude-Desktop","id":"dec:d015","payload":{...}}
-{"ts":"2026-04-14T15:00:00","op":"edge_add","actor":"Cursor","id":"edge:e001","payload":{"from":"feat:login","to":"dec:d015","type":"implements"}}
+Without `gobp_overview()`, an AI connecting to a new GoBP instance has no way to know:
+- What project this is about
+- What topics are covered
+- What data exists to query
+- What tools to call next
+
+This violates the **Discovery > Creation** principle. AI would either:
+- Guess node IDs (fail)
+- Call `gobp_find()` with random keywords (inefficient)
+- Give up and ask the human (defeats the purpose)
+
+`gobp_overview()` is the "welcome mat" that enables self-service discovery.
+
+### Also applies to
+
+Ensure these other tools have a **keyword-based** query option (not ID-only):
+
+- **`gobp_find(query, type?, limit?)`** — always keyword-first (already designed this way)
+- **`gobp_decisions_for(topic)`** — takes topic string, not ID
+- **`gobp_session_recent(limit, since?)`** — no ID needed
+- **`gobp_doc_sections(doc_name_or_id, section?)`** — accept name OR id
+
+Only these tools require ID:
+- **`gobp_context(id)`** — needs node ID for deep dive (justified, called after `find`)
+- **`gobp_signature(id)`** — needs node ID (justified, called after `find`)
+
+**Rule:** No tool should be callable only with ID. Every tool must have a path from zero knowledge (keyword, topic, type) to useful output.
+
+---
+
+# UPDATE 2 — ARCHITECTURE.md
+
+**File:** `docs/ARCHITECTURE.md`
+**Action:** Add new section on multi-project architecture
+**Location:** After the existing section on `.gobp/` folder structure, before scaling limits section.
+
+**Section to add:**
+
+---
+
+## Multi-Project Architecture
+
+GoBP supports multiple projects on the same machine. The design separates **code (package)** from **data (project folder)** to enable clean isolation.
+
+### Architecture principle
+
+```
+GoBP package (installed once)
+        │
+        │ runs as subprocess per client connection
+        │
+        ▼
+GoBP MCP server instance (per project)
+        │
+        │ reads/writes
+        │
+        ▼
+Project .gobp/ folder (per project)
 ```
 
-One event per line, append-only, never modified. Enables:
-- Audit trail
-- Time-travel queries
-- Recovery from corruption
-- Debugging AI misbehavior
+**One install, many projects, many instances.**
 
----
+### Per-project instances (Pattern A — v1 default)
 
-## 7. SCHEMA EXTENSIONS (per-project)
+Each project has its own `.gobp/` data folder. Each MCP client config spawns its own MCP server subprocess pointing at that project's data.
 
-Core schema defines 6 node types. Projects add custom types via `schema/extensions.yaml`:
+**Folder layout:**
 
-```yaml
-# Example: MIHOS schema extension
-extends: core-v1
+```
+# GoBP package installed globally
+~/.pyenv/versions/3.12/lib/python3.12/site-packages/gobp/  (or similar)
+  # (code, schemas, templates)
 
-node_types:
-  Feature:
-    parent: Node
-    required_fields: [subtype, phase]
-    constraints:
-      - phase in [1, 2, 3, 4]
-      - subtype matches "^(auth|ui|core|economy)$"
-  
-  Engine:
-    parent: Node
-    required_fields: [technology, layer]
-    constraints:
-      - layer in [1, 2, 3, 4, 5, 6]
-  
-  Invariant:
-    parent: Node
-    required_fields: [severity, rule_text]
-    constraints:
-      - severity in [hard, soft, warning]
+# Project A
+D:\project-a\
+  ├── .gobp\
+  │   ├── nodes\
+  │   │   └── *.md
+  │   ├── edges\
+  │   │   └── *.yaml
+  │   ├── history\
+  │   │   └── YYYY-MM-DD.jsonl
+  │   └── index.sqlite  (deferred to v2)
+  └── .cursor\
+      └── mcp.json       # spawns instance #1, points at D:\project-a\.gobp\
 
-edge_types:
-  enforces:
-    from: Invariant
-    to: [Feature, Engine]
-    cardinality: many_to_many
+# Project B
+D:\project-b\
+  ├── .gobp\
+  │   └── ...            # independent data
+  └── .cursor\
+      └── mcp.json       # spawns instance #2, points at D:\project-b\.gobp\
 ```
 
-**Rules:**
-- Extensions can only add types, not remove or modify core types
-- Constraint violations block writes
-- GoBP core ignores unknown custom fields (forward-compatible)
+**Config example (Cursor, Pattern A):**
+
+```json
+{
+  "mcpServers": {
+    "gobp": {
+      "command": "python",
+      "args": ["-m", "gobp.mcp.server"],
+      "cwd": "D:\\project-a",
+      "env": {
+        "GOBP_PROJECT_ROOT": "D:\\project-a"
+      }
+    }
+  }
+}
+```
+
+The `GOBP_PROJECT_ROOT` env var tells the MCP server where to find `.gobp/` data. The package code is shared, the data is isolated.
+
+### Properties of Pattern A
+
+**Pros:**
+- Clean separation — Project A decisions never leak to Project B
+- Privacy by default — no cross-project data exposure
+- Simple mental model — one folder per project, like git
+- Independent failure — corruption in A doesn't affect B
+- Concurrent safe — multiple clients per project OK, different projects fully independent
+
+**Cons:**
+- No cross-project memory — Lessons from A don't auto-apply to B
+- Shared concepts must be duplicated (or imported) per project
+- AI working across projects needs separate queries per project
+
+**This is the v1 default.** Simpler, privacy-preserving, no scoping complexity.
+
+### Shared workspace (Pattern B — v2 consideration, NOT in v1)
+
+A future pattern could enable cross-project memory by using a single shared data folder with project scoping.
+
+```
+C:\Users\CEO\gobp-shared\
+  ├── nodes\
+  │   ├── mihos\*.md
+  │   ├── project-b\*.md
+  │   └── _global\*.md       # concepts/lessons applicable to all projects
+  └── edges\
+      └── relations.yaml
+```
+
+Each client connects with a `project_scope` filter:
+
+```json
+{
+  "mcpServers": {
+    "gobp": {
+      "command": "python",
+      "args": ["-m", "gobp.mcp.server"],
+      "env": {
+        "GOBP_PROJECT_ROOT": "C:\\Users\\CEO\\gobp-shared",
+        "GOBP_PROJECT_SCOPE": "mihos"
+      }
+    }
+  }
+}
+```
+
+MCP server filters all queries by `project_scope`. Queries see current project + `_global/` folder.
+
+**Why deferred to v2:**
+- Requires scoping logic in every tool
+- Privacy leakage risk if scope filter has bug
+- Write concurrency across projects is tricky
+- Adds complexity without clear v1 benefit
+- Pattern A sufficient for CEO's current use case (1-2 projects)
+
+### Middle ground — Shared lessons (optional v1.5)
+
+A compromise between A and B: each project uses Pattern A for main data, but shares a read-only `_lessons/` collection.
+
+```
+~/.gobp-lessons/                      # global, read-only
+  └── *.md                            # generic lessons applicable everywhere
+
+D:\project-a\.gobp\lessons\           # local lessons specific to project A
+D:\project-b\.gobp\lessons\           # local lessons specific to project B
+```
+
+On startup, each project's MCP server loads:
+1. Its own `.gobp/` data (full access)
+2. `~/.gobp-lessons/` as read-only Lesson nodes
+
+Result: cross-project lessons visible, but not other project's decisions/ideas/sessions.
+
+This is the **recommended upgrade path** after v1, if cross-project lessons become valuable.
+
+### What a new AI client sees
+
+When an MCP client (Cursor, Claude Desktop, etc.) connects to a project's GoBP instance:
+
+1. **MCP handshake** — client discovers available tools (via MCP protocol)
+2. **First tool call** — client calls `gobp_overview()` to understand project scope
+3. **Discovery** — client calls `gobp_find()`, `gobp_decisions_for()`, etc., using keywords (no IDs needed)
+4. **Deep dive** — client uses IDs from search results for `gobp_context()`, `gobp_signature()`
+
+This flow works identically for any MCP-capable client. The client does not need to know anything about the project beforehand.
+
+### Which pattern is running?
+
+The MCP server reports which pattern it's in via `gobp_overview()`:
+
+```json
+{
+  "project": {
+    "name": "MIHOS",
+    "pattern": "per_project",  // or "shared_workspace"
+    ...
+  }
+}
+```
+
+For v1, this is always `"per_project"`.
+
+### Resource usage
+
+Each MCP server instance:
+- One Python subprocess
+- Loads all nodes + edges into memory dicts
+- Memory footprint: ~50-200 MB for 1K-10K nodes
+- Startup time: 300ms-1s depending on node count
+- Lifetime: same as MCP client (spawned on client open, killed on client close)
+
+Running 3-5 projects simultaneously is fine on a modern dev machine. Each is isolated.
+
+### Client-side concurrency
+
+Multiple MCP clients connecting to the **same project** at the same time:
+- Each client spawns its own server subprocess
+- Each subprocess reads same files from disk
+- Each subprocess has its own in-memory index
+- Writes go through mutator (Wave 5) with file locking + 1-second debounce
+- Last-write-wins for concurrent edits
+
+Cursor + Claude Desktop both open on `D:\project-a\` → 2 independent subprocess instances, both seeing same data on disk, no coordination needed between subprocesses (they don't talk to each other).
 
 ---
 
-## 8. VALIDATION RULES
+# PLACEMENT GUIDANCE
 
-Core GoBP enforces:
+## For MCP_TOOLS.md
 
-### 8.1 Structural rules
-- Every node has unique `id`
-- Every node has `type`, `name`, `status`, `created`, `updated`
-- Every edge has valid `from` and `to` node IDs
-- `supersedes` chain has no cycles
-- No orphan edges (both endpoints must exist)
+Insert the `gobp_overview` section:
+- **Before** the existing `gobp_find()` section
+- **As the first tool** in the tool list
+- **Add a note** at the top of the file: "When an AI client connects for the first time, it should call `gobp_overview()` first to understand project scope."
 
-### 8.2 Subgraph rules
-- Ideas subgraph: cycles allowed (brainstorm can contradict itself)
-- Decisions subgraph: no cycles in `supersedes` chain
-- Sessions subgraph: append-only, no deletion
+## For ARCHITECTURE.md
 
-### 8.3 Referential integrity
-- `Document` node `source_path` must resolve to actual file
-- `content_hash` must match file content (or flag `stale`)
-- `references` edge must point to valid Document section
-
-### 8.4 Soft rules (warnings, not blocks)
-- Node without `discovered_in` edge to any session
-- Decision without `related_ideas` (every decision should trace back)
-- Idea with `maturity: LOCKED` should have linked Decision
-
-Validator runs on:
-- Every write (via mutator)
-- `gobp validate` command (full check)
-- MCP tool `validate()` (on demand)
+Insert the "Multi-Project Architecture" section:
+- **After** the section describing `.gobp/` folder structure (sections on nodes/, edges/, history/)
+- **Before** the scaling limits section
+- **Add a cross-reference** in the intro: "See 'Multi-Project Architecture' section for multi-project support."
 
 ---
 
-## 9. OPEN QUESTIONS — RESOLVED FROM VISION
+# COMMIT MESSAGE
 
-VISION listed 8 open questions. Here's the resolution:
+After paste + verify:
 
-1. **Node types — 6 enough?** → Yes, v1. Extensions handle project specifics.
-2. **Edge types — 5 enough?** → Yes, v1. Same as above.
-3. **File layout?** → Section 4 above.
-4. **MCP server lifecycle?** → Long-running daemon, per-session via MCP config.
-5. **Conflict resolution?** → Last-write-wins with 1-second debounce. Single-project-owner assumption.
-6. **Import mechanism?** → Section 10 below, detailed in INPUT_MODEL.md + IMPORT_MODEL.md.
-7. **Backup/restore?** → Git (`.gobp/` is committed). No separate backup system in v1.
-8. **Schema migration?** → Core schema versioned. Migration scripts per version bump.
+```
+Update foundational docs: gobp_overview tool + multi-project section
 
----
+- docs/MCP_TOOLS.md: add gobp_overview() tool spec
+  - First tool AI should call when connecting
+  - Returns project metadata, stats, main topics, recent activity
+  - Enables discovery without knowing node IDs
+  - Clarifies: no tool should be ID-only (search-by-keyword required)
 
-## 10. IMPORT MECHANISM OVERVIEW
+- docs/ARCHITECTURE.md: add "Multi-Project Architecture" section
+  - Pattern A (per-project, v1 default): each project has own .gobp/
+  - Pattern B (shared workspace, v2): deferred
+  - Middle ground (v1.5): shared lessons folder
+  - Clarifies client concurrency and resource usage
 
-Full detail in `IMPORT_MODEL.md` (next doc to write). Summary:
-
-**3 project state paths:**
-- **Greenfield** → `gobp init --empty` → 0 nodes, start from conversation
-- **In-progress** → `gobp init --from-docs docs/` → scan existing docs, propose initial structure
-- **Legacy** → `gobp init --from-docs-and-code <path>` → scan docs + basic code structure
-
-**AI-assisted import flow:**
-1. AI reads existing doc with context of GoBP schema
-2. AI proposes batch: nodes to create + edges to connect
-3. Founder reviews proposal (via conversation with AI)
-4. Founder approves → `import_commit()` executes batch atomically
-
-**MIHOS is the in-progress test case:** 31 DOCs → Document nodes + Feature nodes + ~100 edges proposed, founder approves in batches.
+Addresses 2 design gaps found during Wave 1 review:
+1. AI didn't have a way to discover IDs on first connection
+2. Multi-project isolation pattern was unclear
+```
 
 ---
 
-## 11. PERFORMANCE TARGETS
-
-| Metric | Target | Hard limit |
-|---|---|---|
-| Cold start (1K nodes) | 300ms | 500ms |
-| `find()` query | 20ms | 50ms |
-| `context()` query | 30ms | 100ms |
-| `node_upsert()` write | 50ms | 200ms |
-| Full rebuild index | 2s | 5s |
-| Memory footprint (1K nodes) | 20MB | 50MB |
-| Memory footprint (10K nodes) | 150MB | 500MB |
-
-Benchmark runs as part of v1 ship criteria.
-
----
-
-## 12. SCALING LIMITS (v1)
-
-GoBP v1 is designed for:
-- 1 project per GoBP instance
-- 1 project owner (single human)
-- Unlimited AI agents (within MCP client limits)
-- 100-10,000 nodes
-- 300-30,000 edges
-- Single machine, no network
-
-Beyond these limits → v2 considerations (not in scope for v1):
-- Multi-project global search
-- Team collaboration with auth
-- Remote MCP server
-- Distributed graph
-- Real-time sync
-
----
-
-## 13. REFERENCES
-
-- VISION.md — why GoBP exists
-- INPUT_MODEL.md — how AI captures from conversation (next doc)
-- IMPORT_MODEL.md — how existing docs become GoBP nodes (next doc)
-- MCP Protocol — https://modelcontextprotocol.io
-- mcp_server.py M1 (MIHOS) — reference implementation pattern
-
----
-
-*Written: 2026-04-14*
-*Author: CTO Chat (Claude Opus 4.6) with CEO*
-*Status: v0.1 draft, awaiting CEO review*
-*Next: INPUT_MODEL.md*
+*Foundational docs update package*
+*For: Wave 3 preparation*
+*Author: CTO Chat 2026-04-14*
 
 ◈
