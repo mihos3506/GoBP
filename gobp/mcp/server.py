@@ -28,7 +28,10 @@ from mcp.server import Server
 from mcp.server.stdio import stdio_server
 
 from gobp.core.graph import GraphIndex
+from gobp.mcp.tools import import_ as tools_import
+from gobp.mcp.tools import maintain as tools_maintain
 from gobp.mcp.tools import read as tools_read
+from gobp.mcp.tools import write as tools_write
 
 
 logger = logging.getLogger("gobp.mcp.server")
@@ -145,6 +148,120 @@ async def list_tools() -> list[types.Tool]:
                 "required": ["doc_id"],
             },
         ),
+        types.Tool(
+            name="node_upsert",
+            description="Create or update a node. Requires active session_id. Handles rename via supersedes pattern.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "type": {"type": "string"},
+                    "id": {"type": "string"},
+                    "name": {"type": "string"},
+                    "fields": {"type": "object"},
+                    "session_id": {"type": "string"},
+                },
+                "required": ["type", "name", "fields", "session_id"],
+            },
+        ),
+        types.Tool(
+            name="decision_lock",
+            description="Lock a decision with full verification. AI MUST verify with founder before calling.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "topic": {"type": "string"},
+                    "what": {"type": "string"},
+                    "why": {"type": "string"},
+                    "alternatives_considered": {"type": "array"},
+                    "risks": {"type": "array"},
+                    "related_ideas": {"type": "array"},
+                    "session_id": {"type": "string"},
+                    "locked_by": {"type": "array"},
+                },
+                "required": ["topic", "what", "why", "session_id", "locked_by"],
+            },
+        ),
+        types.Tool(
+            name="session_log",
+            description="Start, update, or end a session.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "action": {"type": "string", "enum": ["start", "update", "end"]},
+                    "session_id": {"type": "string"},
+                    "actor": {"type": "string"},
+                    "goal": {"type": "string"},
+                    "outcome": {"type": "string"},
+                    "pending": {"type": "array"},
+                    "nodes_touched": {"type": "array"},
+                    "decisions_locked": {"type": "array"},
+                    "handoff_notes": {"type": "string"},
+                },
+                "required": ["action"],
+            },
+        ),
+        types.Tool(
+            name="import_proposal",
+            description="AI proposes a batch import from an existing file. Founder reviews before commit.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "source_path": {"type": "string"},
+                    "proposal_type": {"type": "string", "enum": ["doc", "code", "spec"]},
+                    "ai_notes": {"type": "string"},
+                    "proposed_document": {"type": "object"},
+                    "proposed_nodes": {"type": "array"},
+                    "proposed_edges": {"type": "array"},
+                    "confidence": {"type": "string", "enum": ["low", "medium", "high"]},
+                    "session_id": {"type": "string"},
+                },
+                "required": [
+                    "source_path",
+                    "proposal_type",
+                    "ai_notes",
+                    "proposed_nodes",
+                    "proposed_edges",
+                    "confidence",
+                    "session_id",
+                ],
+            },
+        ),
+        types.Tool(
+            name="import_commit",
+            description="Commit an approved import proposal atomically.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "proposal_id": {"type": "string"},
+                    "accept": {"type": "string", "enum": ["all", "partial", "reject"]},
+                    "accepted_node_ids": {"type": "array"},
+                    "accepted_edge_ids": {"type": "array"},
+                    "overrides": {"type": "object"},
+                    "session_id": {"type": "string"},
+                },
+                "required": ["proposal_id", "accept", "session_id"],
+            },
+        ),
+        types.Tool(
+            name="validate",
+            description="Run full schema and constraint check on the entire graph.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "scope": {
+                        "type": "string",
+                        "enum": ["all", "nodes", "edges", "references"],
+                        "default": "all",
+                    },
+                    "severity_filter": {
+                        "type": "string",
+                        "enum": ["all", "hard", "warning"],
+                        "default": "all",
+                    },
+                },
+                "required": [],
+            },
+        ),
     ]
 
 
@@ -165,6 +282,12 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[types.TextCont
         "session_recent": tools_read.session_recent,
         "decisions_for": tools_read.decisions_for,
         "doc_sections": tools_read.doc_sections,
+        "node_upsert": tools_write.node_upsert,
+        "decision_lock": tools_write.decision_lock,
+        "session_log": tools_write.session_log,
+        "import_proposal": tools_import.import_proposal,
+        "import_commit": tools_import.import_commit,
+        "validate": tools_maintain.validate,
     }
 
     handler = dispatch.get(name)
@@ -173,6 +296,10 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[types.TextCont
     else:
         try:
             result = handler(_index, _project_root, arguments)
+            if name in ("node_upsert", "decision_lock", "session_log", "import_commit"):
+                if isinstance(result, dict) and result.get("ok"):
+                    _index = _load_index(_project_root)
+                    logger.info(f"Index reloaded after {name}")
         except Exception as e:
             logger.exception(f"Tool '{name}' raised exception")
             result = {"ok": False, "error": str(e), "tool": name}
