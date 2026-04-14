@@ -241,3 +241,136 @@ def delete_node(
     )
 
     return node_file
+
+
+def create_edge(
+    gobp_root: Path,
+    edge: dict[str, Any],
+    schema: dict[str, Any],
+    edge_file_name: str = "relations.yaml",
+    actor: str = "unknown",
+) -> Path:
+    """Append a new edge to an edge YAML file.
+
+    Edge files contain a YAML list. This function appends one edge
+    to the specified file (creating the file if it doesn't exist).
+
+    Args:
+        gobp_root: Project root.
+        edge: Edge data dict (must have 'from', 'to', 'type').
+        schema: Edges schema.
+        edge_file_name: Filename within .gobp/edges/. Default "relations.yaml".
+        actor: Who is creating.
+
+    Returns:
+        Path to the edge file.
+
+    Raises:
+        ValueError: If edge validation fails.
+    """
+    result = validate_edge(edge, schema)
+    if not result.ok:
+        raise ValueError(f"Edge validation failed: {result.errors}")
+
+    edges_dir = gobp_root / ".gobp" / "edges"
+    edges_dir.mkdir(parents=True, exist_ok=True)
+
+    edge_file = edges_dir / edge_file_name
+
+    # Read existing edges (if file exists)
+    existing_edges: list[dict[str, Any]] = []
+    if edge_file.exists():
+        content = edge_file.read_text(encoding="utf-8")
+        loaded = yaml.safe_load(content)
+        if isinstance(loaded, list):
+            existing_edges = loaded
+
+    # Append new edge
+    existing_edges.append(edge)
+
+    # Write back atomically
+    new_content = yaml.safe_dump(existing_edges, default_flow_style=False, sort_keys=False)
+    _atomic_write(edge_file, new_content)
+
+    append_event(
+        gobp_root=gobp_root,
+        event_type="edge.created",
+        payload={
+            "from": edge.get("from"),
+            "to": edge.get("to"),
+            "type": edge.get("type"),
+            "file": str(edge_file),
+        },
+        actor=actor,
+    )
+
+    return edge_file
+
+
+def delete_edge(
+    gobp_root: Path,
+    from_id: str,
+    to_id: str,
+    edge_type: str,
+    edge_file_name: str = "relations.yaml",
+    actor: str = "unknown",
+) -> int:
+    """Remove all edges matching (from, to, type) from an edge file.
+
+    Hard delete for edges (unlike nodes which are soft-deleted).
+    Edges are cheap to recreate from graph context; keeping them as
+    tombstones adds complexity without much benefit.
+
+    Args:
+        gobp_root: Project root.
+        from_id: Edge source node ID.
+        to_id: Edge target node ID.
+        edge_type: Edge type (e.g., "relates_to").
+        edge_file_name: Filename within .gobp/edges/.
+        actor: Who is deleting.
+
+    Returns:
+        Count of edges deleted.
+
+    Raises:
+        FileNotFoundError: If edge file does not exist.
+    """
+    edge_file = gobp_root / ".gobp" / "edges" / edge_file_name
+
+    if not edge_file.exists():
+        raise FileNotFoundError(f"Edge file not found: {edge_file}")
+
+    content = edge_file.read_text(encoding="utf-8")
+    loaded = yaml.safe_load(content)
+    if not isinstance(loaded, list):
+        loaded = []
+
+    # Filter out matching edges
+    initial_count = len(loaded)
+    remaining = [
+        e for e in loaded
+        if not (
+            e.get("from") == from_id
+            and e.get("to") == to_id
+            and e.get("type") == edge_type
+        )
+    ]
+    deleted_count = initial_count - len(remaining)
+
+    if deleted_count > 0:
+        new_content = yaml.safe_dump(remaining, default_flow_style=False, sort_keys=False)
+        _atomic_write(edge_file, new_content)
+
+        append_event(
+            gobp_root=gobp_root,
+            event_type="edge.deleted",
+            payload={
+                "from": from_id,
+                "to": to_id,
+                "type": edge_type,
+                "count": deleted_count,
+            },
+            actor=actor,
+        )
+
+    return deleted_count
