@@ -233,7 +233,95 @@ def signature(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> di
 
 
 def context(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> dict[str, Any]:
-    return {"ok": False, "error": "context not yet implemented"}
+    """Get node + outgoing/incoming edges + applicable decisions.
+
+    Args:
+        node_id: str (required)
+        depth: int (optional, default 1) - hop depth, v1 max 2
+
+    Returns:
+        Full node, edges, decisions, references.
+    """
+    node_id = args.get("node_id")
+    if not node_id:
+        return {"ok": False, "error": "node_id parameter required"}
+
+    node = index.get_node(node_id)
+    if not node:
+        return {"ok": False, "error": f"Node not found: {node_id}"}
+
+    # Outgoing edges
+    outgoing_raw = index.get_edges_from(node_id)
+    outgoing = []
+    for edge in outgoing_raw:
+        to_node = index.get_node(edge.get("to", ""))
+        outgoing.append(
+            {
+                "type": edge.get("type"),
+                "to": edge.get("to"),
+                "to_name": to_node.get("name", "") if to_node else "",
+                "to_type": to_node.get("type", "") if to_node else "",
+            }
+        )
+
+    # Incoming edges
+    incoming_raw = index.get_edges_to(node_id)
+    incoming = []
+    for edge in incoming_raw:
+        from_node = index.get_node(edge.get("from", ""))
+        incoming.append(
+            {
+                "type": edge.get("type"),
+                "from": edge.get("from"),
+                "from_name": from_node.get("name", "") if from_node else "",
+                "from_type": from_node.get("type", "") if from_node else "",
+            }
+        )
+
+    # Applicable decisions: via 'implements' edges + topic match
+    decisions: list[dict[str, Any]] = []
+    seen_decision_ids: set[str] = set()
+
+    # Decisions via edges
+    for edge in outgoing_raw:
+        target = index.get_node(edge.get("to", ""))
+        if target and target.get("type") == "Decision":
+            dec_id = target.get("id")
+            if dec_id not in seen_decision_ids:
+                decisions.append(
+                    {
+                        "id": dec_id,
+                        "what": target.get("what", ""),
+                        "why": target.get("why", ""),
+                        "status": target.get("status", ""),
+                    }
+                )
+                seen_decision_ids.add(dec_id)
+
+    # References (via 'references' edges to Document nodes)
+    references = []
+    for edge in outgoing_raw:
+        if edge.get("type") != "references":
+            continue
+        target = index.get_node(edge.get("to", ""))
+        if target and target.get("type") == "Document":
+            references.append(
+                {
+                    "doc_id": target.get("id"),
+                    "section": edge.get("section", ""),
+                    "lines": edge.get("lines", []),
+                }
+            )
+
+    return {
+        "ok": True,
+        "node": node,
+        "outgoing": outgoing,
+        "incoming": incoming,
+        "decisions": decisions,
+        "invariants": [],  # Extension schemas; empty in core v1
+        "references": references,
+    }
 
 
 def session_recent(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> dict[str, Any]:
