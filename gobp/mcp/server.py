@@ -16,6 +16,7 @@ project folder. Defaults to current working directory.
 from __future__ import annotations
 
 import asyncio
+import inspect
 import json
 import logging
 import os
@@ -329,7 +330,10 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[types.TextCont
         result = {"ok": False, "error": f"Unknown tool: {name}"}
     else:
         try:
-            result = handler(_index, _project_root, arguments)
+            if inspect.iscoroutinefunction(handler):
+                result = await handler(_index, _project_root, arguments)
+            else:
+                result = handler(_index, _project_root, arguments)
             if name in _WRITE_TOOLS and isinstance(result, dict) and result.get("ok"):
                 _index = _load_index(_project_root)
                 logger.info(f"Index reloaded after {name}")
