@@ -1,0 +1,110 @@
+# GoBP Core Edge Types
+# Reference: docs/SCHEMA.md section 3
+# Schema version: 1.0
+
+schema_version: "1.0"
+schema_name: "gobp_core"
+
+edge_types:
+
+  relates_to:
+    description: "Generic connection between two nodes"
+    directional: false
+    cardinality: "many_to_many"
+    allowed_node_types: ["all"]
+
+    required:
+      from:
+        type: "node_ref"
+      to:
+        type: "node_ref"
+      type:
+        type: "str"
+        enum_values: ["relates_to"]
+
+    optional:
+      reason:
+        type: "str"
+
+  supersedes:
+    description: "New version replaces old version"
+    directional: true
+    cardinality: "one_to_one"
+    allowed_node_types: ["Idea", "Decision", "Node"]
+
+    required:
+      from:
+        type: "node_ref"
+      to:
+        type: "node_ref"
+      type:
+        type: "str"
+        enum_values: ["supersedes"]
+
+    optional:
+      reason:
+        type: "str"
+      superseded_at:
+        type: "timestamp"
+
+  implements:
+    description: "Concrete implementation of abstract spec"
+    directional: true
+    cardinality: "many_to_many"
+    allowed_node_types: ["Node->Decision", "Node->Node"]
+
+    required:
+      from:
+        type: "node_ref"
+      to:
+        type: "node_ref"
+      type:
+        type: "str"
+        enum_values: ["implements"]
+
+    optional:
+      partial:
+        type: "bool"
+        default: false
+      notes:
+        type: "str"
+
+  discovered_in:
+    description: "Node was created in this session"
+    directional: true
+    cardinality: "many_to_one"
+    allowed_node_types: ["all->Session"]
+
+    required:
+      from:
+        type: "node_ref"
+      to:
+        type: "node_ref"
+      type:
+        type: "str"
+        enum_values: ["discovered_in"]
+
+    optional:
+      position_in_session:
+        type: "int"
+
+  references:
+    description: "Node points to document section for detail"
+    directional: true
+    cardinality: "many_to_many"
+    allowed_node_types: ["all->Document"]
+
+    required:
+      from:
+        type: "node_ref"
+      to:
+        type: "node_ref"
+      type:
+        type: "str"
+        enum_values: ["references"]
+
+    optional:
+      section:
+        type: "str"
+      lines:
+        type: "list[int]"
