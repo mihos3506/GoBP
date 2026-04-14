@@ -325,11 +325,117 @@ def context(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> dict
 
 
 def session_recent(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> dict[str, Any]:
-    return {"ok": False, "error": "session_recent not yet implemented"}
+    """Get the latest N sessions for continuity.
+
+    Args:
+        n: int (optional, default 3, max 10)
+        before: str (optional) - ISO timestamp filter
+        actor: str (optional) - filter by actor
+    """
+    n = min(int(args.get("n", 3)), 10)
+    before = args.get("before")
+    actor_filter = args.get("actor")
+
+    sessions = index.nodes_by_type("Session")
+
+    # Filter by actor
+    if actor_filter:
+        sessions = [s for s in sessions if s.get("actor") == actor_filter]
+
+    # Filter by before timestamp
+    if before:
+        sessions = [s for s in sessions if s.get("started_at", "") < before]
+
+    # Sort by started_at descending
+    sessions.sort(key=lambda s: s.get("started_at", ""), reverse=True)
+    sessions = sessions[:n]
+
+    session_list = [
+        {
+            "id": s.get("id"),
+            "actor": s.get("actor", ""),
+            "started_at": s.get("started_at"),
+            "ended_at": s.get("ended_at"),
+            "goal": s.get("goal", ""),
+            "outcome": s.get("outcome", ""),
+            "status": s.get("status", ""),
+            "pending": s.get("pending", []),
+            "handoff_notes": s.get("handoff_notes", ""),
+        }
+        for s in sessions
+    ]
+
+    return {
+        "ok": True,
+        "sessions": session_list,
+        "count": len(session_list),
+    }
 
 
 def decisions_for(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> dict[str, Any]:
-    return {"ok": False, "error": "decisions_for not yet implemented"}
+    """Get locked decisions for a topic or node.
+
+    Args:
+        topic: str (optional) - topic filter
+        node_id: str (optional) - get decisions related to this node
+        status: str (optional, default LOCKED) - LOCKED | SUPERSEDED | WITHDRAWN | ALL
+
+    One of topic or node_id must be provided.
+    """
+    topic = args.get("topic")
+    node_id = args.get("node_id")
+    status_filter = args.get("status", "LOCKED")
+
+    if not topic and not node_id:
+        return {"ok": False, "error": "Either 'topic' or 'node_id' must be provided"}
+
+    all_decisions = index.nodes_by_type("Decision")
+
+    # Status filter
+    if status_filter != "ALL":
+        all_decisions = [d for d in all_decisions if d.get("status") == status_filter]
+
+    # Topic filter
+    if topic:
+        matching = [d for d in all_decisions if d.get("topic") == topic]
+    else:
+        # node_id filter: decisions that have an edge pointing to/from this node
+        matching = []
+        seen: set[str] = set()
+        # Decisions where this node is referenced via edges
+        for edge in index.all_edges():
+            if edge.get("type") not in ("implements", "relates_to"):
+                continue
+            dec_id = None
+            if edge.get("from") == node_id:
+                dec_id = edge.get("to")
+            elif edge.get("to") == node_id:
+                dec_id = edge.get("from")
+            if dec_id and dec_id not in seen:
+                dec = index.get_node(dec_id)
+                if dec and dec.get("type") == "Decision":
+                    if status_filter == "ALL" or dec.get("status") == status_filter:
+                        matching.append(dec)
+                        seen.add(dec_id)
+
+    decisions_out = [
+        {
+            "id": d.get("id"),
+            "topic": d.get("topic", ""),
+            "what": d.get("what", ""),
+            "why": d.get("why", ""),
+            "status": d.get("status", ""),
+            "locked_at": d.get("locked_at"),
+            "alternatives_considered": d.get("alternatives_considered", []),
+        }
+        for d in matching
+    ]
+
+    return {
+        "ok": True,
+        "decisions": decisions_out,
+        "count": len(decisions_out),
+    }
 
 
 def doc_sections(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> dict[str, Any]:
