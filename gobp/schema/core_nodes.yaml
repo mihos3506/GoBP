@@ -1,0 +1,272 @@
+# GoBP Core Node Types
+# Reference: docs/SCHEMA.md section 2
+# Schema version: 1.0
+
+schema_version: "1.0"
+schema_name: "gobp_core"
+
+node_types:
+
+  Node:
+    description: "Generic container for any entity, feature, tool, concept"
+    id_prefix: "node"
+    parent: null
+
+    required:
+      id:
+        type: "str"
+        pattern: "^node:[a-z][a-z0-9_]*$"
+      type:
+        type: "str"
+      name:
+        type: "str"
+      status:
+        type: "enum"
+        enum_values: ["DRAFT", "ACTIVE", "DEPRECATED", "ARCHIVED"]
+      created:
+        type: "timestamp"
+      updated:
+        type: "timestamp"
+
+    optional:
+      subtype:
+        type: "str"
+      description:
+        type: "str"
+      tags:
+        type: "list[str]"
+        default: []
+      custom_fields:
+        type: "dict"
+        default: {}
+
+    constraints:
+      - "created <= updated"
+
+  Idea:
+    description: "Unstructured brainstorm captured from conversation"
+    id_prefix: "idea"
+    parent: null
+
+    required:
+      id:
+        type: "str"
+        pattern: "^idea:i[0-9]{3,}$"
+      type:
+        type: "str"
+        enum_values: ["Idea"]
+      raw_quote:
+        type: "str"
+      interpretation:
+        type: "str"
+      subject:
+        type: "str"
+      maturity:
+        type: "enum"
+        enum_values: ["RAW", "REFINED", "DISCUSSED", "LOCKED", "DEPRECATED"]
+      confidence:
+        type: "enum"
+        enum_values: ["low", "medium", "high"]
+      session_id:
+        type: "node_ref"
+      created:
+        type: "timestamp"
+      updated:
+        type: "timestamp"
+
+    optional:
+      supersedes:
+        type: "node_ref"
+      context_notes:
+        type: "str"
+      ceo_verified:
+        type: "bool"
+        default: false
+      status:
+        type: "enum"
+        enum_values: ["ACTIVE", "SUPERSEDED"]
+        default: "ACTIVE"
+
+  Decision:
+    description: "Locked authoritative knowledge"
+    id_prefix: "dec"
+    parent: null
+
+    required:
+      id:
+        type: "str"
+        pattern: "^dec:d[0-9]{3,}$"
+      type:
+        type: "str"
+        enum_values: ["Decision"]
+      topic:
+        type: "str"
+      what:
+        type: "str"
+      why:
+        type: "str"
+      status:
+        type: "enum"
+        enum_values: ["LOCKED", "SUPERSEDED", "WITHDRAWN"]
+      locked_at:
+        type: "timestamp"
+      locked_by:
+        type: "list[str]"
+      session_id:
+        type: "node_ref"
+      created:
+        type: "timestamp"
+      updated:
+        type: "timestamp"
+
+    optional:
+      alternatives_considered:
+        type: "list[dict]"
+        default: []
+      risks:
+        type: "list[str]"
+      blocks:
+        type: "list[node_ref]"
+      supersedes:
+        type: "node_ref"
+      related_ideas:
+        type: "list[node_ref]"
+
+  Session:
+    description: "Record of one AI working session"
+    id_prefix: "session"
+    parent: null
+
+    required:
+      id:
+        type: "str"
+        pattern: "^session:[0-9]{4}-[0-9]{2}-[0-9]{2}.*$"
+      type:
+        type: "str"
+        enum_values: ["Session"]
+      actor:
+        type: "str"
+      started_at:
+        type: "timestamp"
+      goal:
+        type: "str"
+      status:
+        type: "enum"
+        enum_values: ["IN_PROGRESS", "COMPLETED", "INTERRUPTED", "FAILED"]
+      created:
+        type: "timestamp"
+      updated:
+        type: "timestamp"
+
+    optional:
+      ended_at:
+        type: "timestamp"
+      outcome:
+        type: "str"
+      nodes_touched:
+        type: "list[node_ref]"
+        default: []
+      decisions_locked:
+        type: "list[node_ref]"
+        default: []
+      pending:
+        type: "list[str]"
+        default: []
+      tokens_used:
+        type: "int"
+      human_present:
+        type: "bool"
+      handoff_notes:
+        type: "str"
+
+  Document:
+    description: "Pointer to external doc file with metadata"
+    id_prefix: "doc"
+    parent: null
+
+    required:
+      id:
+        type: "str"
+        pattern: "^doc:.+$"
+      type:
+        type: "str"
+        enum_values: ["Document"]
+      name:
+        type: "str"
+      source_path:
+        type: "str"
+      content_hash:
+        type: "str"
+        pattern: "^sha256:[a-f0-9]{64}$"
+      registered_at:
+        type: "timestamp"
+      last_verified:
+        type: "timestamp"
+      created:
+        type: "timestamp"
+      updated:
+        type: "timestamp"
+
+    optional:
+      sections:
+        type: "list[dict]"
+        default: []
+      tags:
+        type: "list[str]"
+        default: []
+      owned_by:
+        type: "str"
+      phase:
+        type: "int"
+      status:
+        type: "enum"
+        enum_values: ["ACTIVE", "STALE", "MISSING", "DEPRECATED"]
+        default: "ACTIVE"
+
+  Lesson:
+    description: "Something learned from experience"
+    id_prefix: "lesson"
+    parent: null
+
+    required:
+      id:
+        type: "str"
+        pattern: "^lesson:ll[0-9]{3,}$"
+      type:
+        type: "str"
+        enum_values: ["Lesson"]
+      title:
+        type: "str"
+      trigger:
+        type: "str"
+      what_happened:
+        type: "str"
+      why_it_matters:
+        type: "str"
+      mitigation:
+        type: "str"
+      severity:
+        type: "enum"
+        enum_values: ["low", "medium", "high", "critical"]
+      captured_in_session:
+        type: "node_ref"
+      created:
+        type: "timestamp"
+      updated:
+        type: "timestamp"
+
+    optional:
+      related_nodes:
+        type: "list[node_ref]"
+        default: []
+      related_ideas:
+        type: "list[node_ref]"
+        default: []
+      verified_count:
+        type: "int"
+        default: 1
+      last_applied:
+        type: "timestamp"
+      tags:
+        type: "list[str]"
+        default: []
