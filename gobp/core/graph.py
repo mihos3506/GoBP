@@ -104,3 +104,74 @@ class GraphIndex:
     def __len__(self) -> int:
         """Return total node count."""
         return len(self._nodes)
+
+    def get_node(self, node_id: str) -> dict[str, Any] | None:
+        """Get a node by ID.
+
+        Args:
+            node_id: Node ID (e.g., "node:user_login").
+
+        Returns:
+            Node dict or None if not found.
+        """
+        return self._nodes.get(node_id)
+
+    def all_nodes(self) -> list[dict[str, Any]]:
+        """Return all nodes as a list.
+
+        Returns:
+            List of node dicts (copies not shared with index).
+        """
+        return list(self._nodes.values())
+
+    def all_edges(self) -> list[dict[str, Any]]:
+        """Return all edges as a list.
+
+        Returns:
+            List of edge dicts.
+        """
+        return list(self._edges)
+
+    def nodes_by_type(self, type_name: str) -> list[dict[str, Any]]:
+        """Return all nodes of a given type.
+
+        Args:
+            type_name: Node type (e.g., "Idea", "Decision").
+
+        Returns:
+            List of nodes matching type. Empty list if none.
+        """
+        return [n for n in self._nodes.values() if n.get("type") == type_name]
+
+    def get_edges_from(self, node_id: str) -> list[dict[str, Any]]:
+        """Get all edges where `from` is the given node ID.
+
+        Args:
+            node_id: Source node ID.
+
+        Returns:
+            List of edges.
+        """
+        return [e for e in self._edges if e.get("from") == node_id]
+
+    def get_edges_to(self, node_id: str) -> list[dict[str, Any]]:
+        """Get all edges where `to` is the given node ID.
+
+        Args:
+            node_id: Target node ID.
+
+        Returns:
+            List of edges.
+        """
+        return [e for e in self._edges if e.get("to") == node_id]
+
+    def get_edges_by_type(self, edge_type: str) -> list[dict[str, Any]]:
+        """Get all edges of a given type.
+
+        Args:
+            edge_type: Edge type (e.g., "supersedes", "implements").
+
+        Returns:
+            List of edges matching type.
+        """
+        return [e for e in self._edges if e.get("type") == edge_type]
