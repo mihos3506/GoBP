@@ -32,15 +32,9 @@ def populated_root(tmp_path: Path) -> Path:
 
     nodes_dir = root / ".gobp" / "nodes"
     edges_dir = root / ".gobp" / "edges"
-    docs_dir = root / "docs"
     nodes_dir.mkdir(parents=True, exist_ok=True)
     edges_dir.mkdir(parents=True, exist_ok=True)
-    docs_dir.mkdir(parents=True, exist_ok=True)
-
-    doc_content = "# System Overview\n\n## Constraints\n\n### Limits\n"
-    doc_path = docs_dir / "spec.md"
-    doc_path.write_text(doc_content, encoding="utf-8")
-    doc_hash = hashlib.sha256(doc_content.encode("utf-8")).hexdigest()
+    doc_hash = hashlib.sha256("charter".encode("utf-8")).hexdigest()
 
     _write_node(
         nodes_dir / "charter.md",
@@ -52,6 +46,10 @@ def populated_root(tmp_path: Path) -> Path:
             "content_hash": f"sha256:{doc_hash}",
             "registered_at": "2026-04-14T00:00:00Z",
             "last_verified": "2026-04-14T00:00:00Z",
+            "sections": [
+                {"heading": "Introduction", "lines": [1, 20], "tags": ["intro"]},
+                {"heading": "Goals", "lines": [21, 50], "tags": ["goals"]},
+            ],
             "created": "2026-04-14T00:00:00Z",
             "updated": "2026-04-14T00:00:00Z",
         },
@@ -315,10 +313,13 @@ def test_doc_sections_requires_doc_id(index: GraphIndex, populated_root: Path) -
 def test_doc_sections_happy_path(index: GraphIndex, populated_root: Path) -> None:
     out = tools_read.doc_sections(index, populated_root, {"doc_id": "doc:charter"})
     assert out["ok"] is True
-    assert out["count"] == 3
+    assert out["document"]["id"] == "doc:charter"
+    assert out["document"]["name"] == "GoBP Charter"
+    assert out["sections"][0]["heading"] == "Introduction"
+    assert out["sections"][0]["lines"] == [1, 20]
+    assert out["sections"][0]["tags"] == ["intro"]
 
 
-def test_doc_sections_query_filter(index: GraphIndex, populated_root: Path) -> None:
-    out = tools_read.doc_sections(index, populated_root, {"doc_id": "doc:charter", "query": "Constraints"})
-    assert out["ok"] is True
-    assert out["count"] == 1
+def test_doc_sections_non_document_node(index: GraphIndex, populated_root: Path) -> None:
+    out = tools_read.doc_sections(index, populated_root, {"doc_id": "node:feature_login"})
+    assert out["ok"] is False

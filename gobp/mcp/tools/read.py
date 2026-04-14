@@ -9,7 +9,6 @@ from pathlib import Path
 from typing import Any
 
 import gobp
-import re
 
 from gobp.core.graph import GraphIndex
 
@@ -440,68 +439,32 @@ def decisions_for(index: GraphIndex, project_root: Path, args: dict[str, Any]) -
 
 
 def doc_sections(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> dict[str, Any]:
-    """Return section anchors/headings from a Document node's source file.
+    """List sections of a Document node without loading content.
 
     Args:
         doc_id: str (required)
-        query: str (optional) - substring filter over heading text
     """
     doc_id = args.get("doc_id")
-    query = args.get("query", "")
-
     if not doc_id:
         return {"ok": False, "error": "doc_id parameter required"}
 
     doc = index.get_node(doc_id)
     if not doc:
         return {"ok": False, "error": f"Document not found: {doc_id}"}
+
     if doc.get("type") != "Document":
-        return {"ok": False, "error": f"Node is not a Document: {doc_id}"}
+        return {"ok": False, "error": f"Node {doc_id} is not a Document (type={doc.get('type')})"}
 
-    source_path = doc.get("source_path")
-    if not source_path:
-        return {"ok": False, "error": f"Document missing source_path: {doc_id}"}
-
-    full_path = (project_root / source_path).resolve()
-    if not full_path.exists():
-        return {"ok": False, "error": f"Document source file not found: {source_path}"}
-
-    content = full_path.read_text(encoding="utf-8")
-    lines = content.splitlines()
-
-    sections: list[dict[str, Any]] = []
-    query_lower = query.lower() if isinstance(query, str) else ""
-
-    for i, line in enumerate(lines, start=1):
-        stripped = line.strip()
-        if not stripped.startswith("#"):
-            continue
-
-        m = re.match(r"^(#{1,6})\s+(.+?)\s*$", stripped)
-        if not m:
-            continue
-
-        level = len(m.group(1))
-        heading = m.group(2).strip()
-        anchor = heading.lower()
-        anchor = re.sub(r"[^\w\s-]", "", anchor)
-        anchor = re.sub(r"\s+", "-", anchor).strip("-")
-
-        if query_lower and query_lower not in heading.lower():
-            continue
-
-        sections.append(
-            {
-                "heading": heading,
-                "level": level,
-                "anchor": anchor,
-                "line_start": i,
-            }
-        )
+    sections = doc.get("sections", [])
 
     return {
         "ok": True,
-        "doc_id": doc_id,
+        "document": {
+            "id": doc.get("id"),
+            "name": doc.get("name", ""),
+            "source_path": doc.get("source_path", ""),
+            "last_verified": doc.get("last_verified"),
+        },
         "sections": sections,
         "count": len(sections),
     }
