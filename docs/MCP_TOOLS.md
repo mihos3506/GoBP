@@ -24,15 +24,16 @@ If a tool is not in this doc, it doesn't exist in GoBP v1.
 
 ## 1. TOOL INVENTORY
 
-GoBP v1 exposes exactly **12 tools** over MCP. Grouped by purpose:
+GoBP v1 exposes exactly **13 tools** over MCP. Grouped by purpose:
 
-### Read tools (6)
-1. `find` — search by name/id/substring
-2. `signature` — minimal node summary
-3. `context` — node + relations + applicable decisions
-4. `session_recent` — latest N sessions
-5. `decisions_for` — locked decisions for a topic
-6. `doc_sections` — sections of a Document node
+### Read tools (7)
+1. `gobp_overview` — orientation tool, first call for new AI connections
+2. `find` — search by name/id/substring
+3. `signature` — minimal node summary
+4. `context` — node + relations + applicable decisions
+5. `session_recent` — latest N sessions
+6. `decisions_for` — locked decisions for a topic
+7. `doc_sections` — sections of a Document node
 
 ### Write tools (3)
 7. `node_upsert` — create or update a node
@@ -108,7 +109,109 @@ Note: MCP SDK wraps results in `content` array with `type: text`. Tool payloads 
 
 ## 3. READ TOOLS
 
-### 3.1 find
+### 3.1 gobp_overview
+
+**Purpose:** Orientation tool for AI clients connecting to a GoBP instance. Returns project metadata, stats, main topics, and suggested next queries. **First tool AI should call** when connecting - requires no prior knowledge of IDs.
+
+**Input:** No parameters.
+
+**Output:**
+```yaml
+ok: boolean
+project:
+  name: string
+  description: string
+  gobp_version: string
+  schema_version: string
+  pattern: string  # "per_project" | "shared_workspace"
+stats:
+  total_nodes: integer
+  total_edges: integer
+  nodes_by_type: dict[string, int]
+  edges_by_type: dict[string, int]
+main_topics: list[string]  # top 10 by Decision frequency
+recent_decisions:
+  type: list
+  items:
+    id: string
+    topic: string
+    what: string  # truncated to 100 chars
+    locked_at: timestamp
+recent_sessions:
+  type: list
+  items:
+    id: string
+    goal: string  # truncated to 100 chars
+    status: string
+    started_at: timestamp
+suggested_next_queries: list[string]
+```
+
+**Token budget:** Target 500-1000 tokens, max 1500.
+
+**Example call:**
+```json
+{"name": "gobp_overview", "arguments": {}}
+```
+
+**Example response:**
+```json
+{
+  "ok": true,
+  "project": {
+    "name": "MIHOS",
+    "description": "Heritage-Tech Proof of Presence platform",
+    "gobp_version": "0.1.0",
+    "schema_version": "1.0",
+    "pattern": "per_project"
+  },
+  "stats": {
+    "total_nodes": 89,
+    "total_edges": 156,
+    "nodes_by_type": {"Node": 45, "Idea": 23, "Decision": 12, "Session": 5, "Document": 3, "Lesson": 1},
+    "edges_by_type": {"relates_to": 67, "implements": 30, "references": 25, "supersedes": 8, "discovered_in": 26}
+  },
+  "main_topics": ["auth:login.method", "trust:gate.policy", "ui:dissolving.timing"],
+  "recent_decisions": [
+    {
+      "id": "dec:d042",
+      "topic": "auth:login.method",
+      "what": "Use Email OTP for login authentication",
+      "locked_at": "2026-04-14T14:35:00"
+    }
+  ],
+  "recent_sessions": [
+    {
+      "id": "session:2026-04-14_pm",
+      "goal": "Write GoBP Wave 3 Brief",
+      "status": "IN_PROGRESS",
+      "started_at": "2026-04-14T14:00:00"
+    }
+  ],
+  "suggested_next_queries": [
+    "find(query='<keyword>') to search nodes by keyword",
+    "decisions_for(topic='<topic>') to find locked decisions",
+    "session_recent(n=3) to see recent session history"
+  ]
+}
+```
+
+**Implementation notes:**
+- `project.name` and `description` pulled from Document node `doc:charter` if exists, else from first Document node, else GoBP package metadata
+- `main_topics` computed from Decision nodes' `topic` field, sorted by frequency descending
+- `recent_decisions` limited to 5, sorted by `locked_at` descending
+- `recent_sessions` limited to 3, sorted by `started_at` descending
+- `suggested_next_queries` is a static list (hints for AI to know what tools exist)
+- All counts read live from GraphIndex at call time (no caching)
+
+**Rule:** No read tool should be callable only with ID. Every tool must have a path from zero knowledge (keyword, topic, type) to useful output. Only `signature` and `context` require ID, and they are called after `find` or `gobp_overview` returns IDs.
+
+**Errors:**
+- No errors expected under normal operation. If GraphIndex has load errors, they are reported in server logs but `gobp_overview` still returns best-effort data.
+
+---
+
+### 3.2 find
 
 **Purpose:** Fuzzy search nodes by id, exact name, or substring match.
 
@@ -169,7 +272,7 @@ truncated: boolean  # true if more results exist beyond limit
 2. Exact name match (case-insensitive) → collect all
 3. Substring match in id or name → collect up to limit
 
-### 3.2 signature
+### 3.3 signature
 
 **Purpose:** Get minimal spec of a single node. Fast summary, small payload.
 
@@ -221,7 +324,7 @@ node:
 **Errors:**
 - Node not found → `{"ok": false, "error": "Node not found: dec:d999"}`
 
-### 3.3 context
+### 3.4 context
 
 **Purpose:** Full context bundle for a node. Includes outgoing + incoming edges + applicable decisions. Use before starting a task.
 
@@ -314,7 +417,7 @@ references:
 **Errors:**
 - Node not found → `{"ok": false, "error": "Node not found"}`
 
-### 3.4 session_recent
+### 3.5 session_recent
 
 **Purpose:** Get latest N sessions for continuity. AI calls at session start to see "what happened recently".
 
@@ -392,7 +495,7 @@ count: integer
 }
 ```
 
-### 3.5 decisions_for
+### 3.6 decisions_for
 
 **Purpose:** Get locked decisions for a topic or node. Use when starting a task to know what's already decided.
 
@@ -460,7 +563,7 @@ count: integer
 }
 ```
 
-### 3.6 doc_sections
+### 3.7 doc_sections
 
 **Purpose:** List sections of a Document node without loading content.
 
@@ -1124,6 +1227,7 @@ def protocol_0(gobp, user_context):
 
 | Tool | Target latency | Max latency | Target tokens | Max tokens |
 |---|---|---|---|---|
+| gobp_overview | 30ms | 100ms | 800 | 1500 |
 | find | 20ms | 50ms | 200 | 500 |
 | signature | 10ms | 30ms | 200 | 500 |
 | context | 30ms | 100ms | 500 | 1500 |
@@ -1157,6 +1261,15 @@ server = Server("gobp")
 async def list_tools() -> list[types.Tool]:
     return [
         types.Tool(
+            name="gobp_overview",
+            description="Orientation tool. Returns project metadata, stats, topics, recent activity. Call first.",
+            inputSchema={
+                "type": "object",
+                "properties": {},
+                "required": []
+            }
+        ),
+        types.Tool(
             name="find",
             description="Fuzzy search GoBP nodes by id, name, or keyword",
             inputSchema={
@@ -1183,6 +1296,7 @@ async def list_tools() -> list[types.Tool]:
 @server.call_tool()
 async def call_tool(name: str, arguments: dict) -> list[types.TextContent]:
     dispatch = {
+        "gobp_overview": tools_read.gobp_overview,
         "find": tools_read.find,
         "signature": tools_read.signature,
         "context": tools_read.context,
