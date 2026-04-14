@@ -308,4 +308,104 @@ def decision_lock(index: GraphIndex, project_root: Path, args: dict[str, Any]) -
 
 
 def session_log(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> dict[str, Any]:
-    return {"ok": False, "error": "session_log not yet implemented"}
+    """Start, update, or end a session.
+
+    Input: action (start|update|end), session_id, actor, goal, outcome, pending, ...
+    Output: ok, session_id
+    """
+    action = args.get("action")
+    if action not in ("start", "update", "end"):
+        return {"ok": False, "error": "action must be 'start', 'update', or 'end'"}
+
+    try:
+        schema_path = Path(__file__).parent.parent.parent / "schema" / "core_nodes.yaml"
+        schema = load_schema(schema_path)
+    except Exception as e:
+        return {"ok": False, "error": f"Failed to load schema: {e}"}
+
+    now = datetime.now(timezone.utc).isoformat()
+
+    if action == "start":
+        actor = args.get("actor")
+        goal = args.get("goal")
+        if not actor:
+            return {"ok": False, "error": "actor required for start"}
+        if not goal:
+            return {"ok": False, "error": "goal required for start"}
+
+        # Generate session ID: session:YYYY-MM-DD_slug
+        date_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        # Slug from first word of goal
+        slug_base = "".join(c if c.isalnum() else "_" for c in goal.lower())[:20].strip("_")
+        if not slug_base:
+            slug_base = "session"
+
+        # Check for existing sessions today with same slug, append number if needed
+        base_id = f"session:{date_str}_{slug_base}"
+        session_id = base_id
+        counter = 1
+        while index.get_node(session_id):
+            counter += 1
+            session_id = f"{base_id}{counter}"
+
+        session_node = {
+            "id": session_id,
+            "type": "Session",
+            "name": goal[:80],
+            "actor": actor,
+            "started_at": now,
+            "goal": goal,
+            "status": "IN_PROGRESS",
+            "created": now,
+            "updated": now,
+        }
+
+        result = validate_node(session_node, schema)
+        if not result.ok:
+            return {"ok": False, "errors": result.errors}
+
+        try:
+            create_node(project_root, session_node, schema, actor="session_log")
+        except Exception as e:
+            return {"ok": False, "error": f"Write failed: {e}"}
+
+        return {"ok": True, "session_id": session_id}
+
+    # action == update or end
+    session_id = args.get("session_id")
+    if not session_id:
+        return {"ok": False, "error": "session_id required for update/end"}
+
+    existing = index.get_node(session_id)
+    if not existing:
+        return {"ok": False, "error": f"Session not found: {session_id}"}
+
+    # Build updated session
+    updated = dict(existing)
+    updated["updated"] = now
+
+    if action == "end":
+        outcome = args.get("outcome")
+        if not outcome:
+            return {"ok": False, "error": "outcome required for end action"}
+        updated["ended_at"] = now
+        updated["outcome"] = outcome
+        updated["status"] = "COMPLETED"
+        if "pending" in args:
+            updated["pending"] = args["pending"]
+
+    # Update optional fields for both update and end
+    for field in ["nodes_touched", "decisions_locked", "handoff_notes"]:
+        if field in args:
+            updated[field] = args[field]
+
+    result = validate_node(updated, schema)
+    if not result.ok:
+        return {"ok": False, "errors": result.errors}
+
+    try:
+        update_node(project_root, updated, schema, actor="session_log")
+    except Exception as e:
+        return {"ok": False, "error": f"Write failed: {e}"}
+
+    return {"ok": True, "session_id": session_id}
