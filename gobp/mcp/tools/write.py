@@ -113,6 +113,7 @@ def node_upsert(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> 
         "status": fields.get("status", "ACTIVE"),
         "created": now,
         "updated": now,
+        "session_id": session_id,
     }
     # Merge fields (fields override defaults where applicable)
     for k, v in fields.items():
@@ -121,6 +122,7 @@ def node_upsert(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> 
     node["id"] = node_id
     node["type"] = node_type
     node["name"] = name
+    node["session_id"] = session_id
 
     # Load schema
     try:
