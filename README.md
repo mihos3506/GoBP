@@ -176,6 +176,44 @@ pytest tests/test_smoke.py -v
 
 After Wave 0, the package is importable but has no functionality yet. Functionality begins in Wave 1.
 
+## ✨ What Works After Wave 5
+
+GoBP v1 tool surface is now complete. Available via MCP:
+
+**Read tools (7):**
+- `gobp_overview` — project orientation
+- `find` — search nodes
+- `signature` — minimal node summary
+- `context` — node + relations + decisions
+- `session_recent` — recent sessions
+- `decisions_for` — decisions by topic or node
+- `doc_sections` — document sections
+
+**Write tools (3):**
+- `node_upsert` — create/update any node type
+- `decision_lock` — lock a Decision with verification
+- `session_log` — start/update/end session
+
+**Import tools (2):**
+- `import_proposal` — AI proposes batch import (pending)
+- `import_commit` — commit approved proposal atomically
+
+**Maintenance (1):**
+- `validate` — full graph schema + reference check
+
+All 13 tools documented in `docs/MCP_TOOLS.md`.
+
+### AI Usage Pattern
+
+1. AI connects → calls `gobp_overview()` to orient
+2. AI searches with `find()`, reads with `context()`
+3. AI starts session with `session_log(action='start')`
+4. Founder brainstorms → AI calls `node_upsert(type='Idea', ...)`
+5. Founder confirms → AI verifies → `decision_lock(...)` with `locked_by=[CEO, AI]`
+6. Session ends → `session_log(action='end', outcome=...)`
+
+See `docs/INPUT_MODEL.md` for detailed usage patterns.
+
 ## 🔌 Connect an AI Client (MCP)
 
 GoBP exposes data to AI clients via Model Context Protocol (MCP). Any MCP-capable client can connect.
