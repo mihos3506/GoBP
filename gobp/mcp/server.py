@@ -28,6 +28,7 @@ from mcp.server import Server
 from mcp.server.stdio import stdio_server
 
 from gobp.core.graph import GraphIndex
+from gobp.mcp.tools import advanced as tools_advanced
 from gobp.mcp.tools import import_ as tools_import
 from gobp.mcp.tools import maintain as tools_maintain
 from gobp.mcp.tools import read as tools_read
@@ -267,6 +268,33 @@ async def list_tools() -> list[types.Tool]:
                 "required": [],
             },
         ),
+        types.Tool(
+            name="lessons_extract",
+            description=(
+                "Scan project graph and session history for lesson candidates. "
+                "Identifies 4 patterns: failed sessions (P1), recurring uncertainty (P2), "
+                "premature decisions (P3), orphan nodes (P4). "
+                "Returns proposals only — does not create Lesson nodes. "
+                "Use node_upsert to create confirmed lessons."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "max_candidates": {
+                        "type": "integer",
+                        "default": 20,
+                        "description": "Max candidates to return (hard cap: 50)",
+                    },
+                    "patterns": {
+                        "type": "array",
+                        "items": {"type": "string", "enum": ["P1", "P2", "P3", "P4"]},
+                        "default": ["P1", "P2", "P3", "P4"],
+                        "description": "Which patterns to scan (default: all)",
+                    },
+                },
+                "required": [],
+            },
+        ),
     ]
 
 
@@ -293,6 +321,7 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[types.TextCont
         "import_proposal": tools_import.import_proposal,
         "import_commit": tools_import.import_commit,
         "validate": tools_maintain.validate,
+        "lessons_extract": tools_advanced.lessons_extract,
     }
 
     handler = dispatch.get(name)
