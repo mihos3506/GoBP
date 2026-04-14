@@ -140,6 +140,44 @@ No reading required. Just talk to your AI agent. If your AI has GoBP MCP access,
 
 ---
 
+## 🛠️ Installation (Development)
+
+### Prerequisites
+- Python 3.10 or higher
+- Git
+- A virtual environment tool (venv ships with Python)
+
+### Setup
+
+```bash
+git clone https://github.com/mihos3506/GoBP.git
+cd GoBP
+
+# Create and activate virtual environment
+python -m venv venv
+
+# Windows
+.\venv\Scripts\Activate.ps1
+
+# macOS/Linux
+source venv/bin/activate
+
+# Install in editable mode with dev dependencies
+pip install -e .
+pip install -r requirements-dev.txt
+
+# Verify
+python -c "import gobp; print(gobp.__version__)"
+# Should print: 0.1.0
+
+# Run smoke tests
+pytest tests/test_smoke.py -v
+```
+
+After Wave 0, the package is importable but has no functionality yet. Functionality begins in Wave 1.
+
+---
+
 ## 📐 Core Concepts in 60 Seconds
 
 ### Node
