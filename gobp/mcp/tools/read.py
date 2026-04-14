@@ -197,7 +197,39 @@ def find(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> dict[st
 
 
 def signature(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> dict[str, Any]:
-    return {"ok": False, "error": "signature not yet implemented"}
+    """Get minimal node summary.
+
+    Args:
+        node_id: str (required)
+
+    Returns:
+        Basic node fields without edges or decisions.
+    """
+    node_id = args.get("node_id")
+    if not node_id:
+        return {"ok": False, "error": "node_id parameter required"}
+
+    node = index.get_node(node_id)
+    if not node:
+        return {"ok": False, "error": f"Node not found: {node_id}"}
+
+    # Copy key fields
+    signature_fields = {
+        "id": node.get("id"),
+        "type": node.get("type"),
+        "name": node.get("name", ""),
+        "status": node.get("status", ""),
+    }
+
+    # Add common optional fields if present
+    for field in ["subtype", "description", "tags", "topic", "what", "why", "goal"]:
+        if field in node:
+            signature_fields[field] = node[field]
+
+    return {
+        "ok": True,
+        "signature": signature_fields,
+    }
 
 
 def context(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> dict[str, Any]:
