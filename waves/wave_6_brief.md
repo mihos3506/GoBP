@@ -43,18 +43,90 @@ Both are maintenance operations. Adding them as MCP tools would require careful 
 
 ---
 
+## CURSOR EXECUTION RULES (READ FIRST — NON-NEGOTIABLE)
+
+### R1 — Sequential execution
+Execute Task 1 → Task 2 → ... → Task 10 in order. Do NOT skip, reorder, or parallelize. Do NOT stop between tasks unless a blocker rule triggers.
+
+### R2 — Discovery before creation
+Before creating ANY file, use explorer subagent to check if it already exists. If found, read it first, then decide whether to modify or replace.
+
+### R3 — 1 task = 1 commit
+After each task's tests pass → commit immediately. Message must match the exact commit message in the Brief. Do not batch multiple tasks into one commit.
+
+### R4 — MCP_TOOLS.md is supreme authority
+If ANY code in this Brief conflicts with `docs/MCP_TOOLS.md` (tool signatures, input/output schemas, field names, error format):
+- `docs/MCP_TOOLS.md` WINS
+- STOP immediately
+- Report the exact conflict: "Brief says X, MCP_TOOLS.md §N.N says Y"
+- Wait for CTO resolution. Do NOT substitute your own interpretation.
+
+### R5 — Document disagreement = STOP and suggest
+If you believe a foundational doc (`docs/SCHEMA.md`, `docs/ARCHITECTURE.md`, `docs/MCP_TOOLS.md`) contains an error or inconsistency:
+- STOP
+- Do NOT silently work around it
+- Report: "I believe docs/X.md §N may have an issue: [your observation]. Recommend CTO review before I proceed."
+- Wait for instruction.
+
+### R6 — 3 retries = STOP and report
+If a test fails and you cannot fix it after 3 attempts:
+- STOP
+- Do NOT continue to the next task
+- File a stop report (see format below)
+- Wait for CEO to relay to CTO Chat
+
+### R7 — No scope creep
+Implement EXACTLY the functions/classes/tools specified. No extra methods, no convenience wrappers, no "symmetric" additions. Private `_` helpers are OK. Public API must match Brief exactly.
+
+### R8 — Brief code blocks are authoritative
+If you disagree with a code block in this Brief, STOP and escalate. Do not substitute your own implementation silently. This rule exists because of Wave 3 Task 7 (F17 failure mode).
+
+---
+
+## STOP REPORT FORMAT
+
+Use this exact format when any blocker rule triggers:
+
+```
+STOP — Wave 6 Task <N>
+
+Rule triggered: R<N> — <rule name>
+
+Completed so far: Tasks 1–<N-1> (committed)
+Current task: Task <N> — <title>
+
+What I was doing: <description>
+What went wrong: <exact error or conflict>
+What I tried: <list of attempts if R6>
+Why I cannot proceed: <reason>
+
+Conflict details (if R4 or R5):
+  Brief says: <quote>
+  Doc says: <quote from docs/X.md §N.N>
+
+Current git state:
+  Staged: <list>
+  Unstaged: <list>
+
+What I need from CEO/CTO: <specific question>
+```
+
+---
+
 ## AUTHORITATIVE SOURCE
 
 **`docs/SCHEMA.md` §2.6 (Lesson node) is source of truth for Lesson schema.**
-**`docs/MCP_TOOLS.md` is source of truth for tool registration pattern.**
+**`docs/MCP_TOOLS.md` is source of truth for ALL tool signatures, input/output, error format.**
 
 Cross-reference map:
-- `docs/SCHEMA.md §2.6` → Task 2 (Lesson node fields)
-- `docs/MCP_TOOLS.md §11` (tool registration pattern) → Task 7
-- `docs/ARCHITECTURE.md` (file-first, atomic writes) → Task 3, 4, 5
+- `docs/SCHEMA.md §2.6` → Task 1 (Lesson node fields in lessons.py)
+- `docs/MCP_TOOLS.md §11` (tool registration pattern) → Task 5
+- `docs/ARCHITECTURE.md` (file-first, atomic writes) → Tasks 2, 3
+- `gobp/mcp/tools/write.py` (tool handler pattern) → Task 4
+- `gobp/mcp/server.py` (dispatch pattern) → Task 5
 
-Cursor MUST re-read these sections BEFORE implementing each task.
-If Brief conflicts with docs → docs wins, Cursor escalates.
+Cursor MUST re-read the mapped doc section BEFORE implementing each task.
+If Brief conflicts with docs → **docs win, Cursor STOPS and escalates (R4).**
 
 ---
 
@@ -62,7 +134,7 @@ If Brief conflicts with docs → docs wins, Cursor escalates.
 
 Implement EXACTLY what this Brief specifies. No additional MCP tools, no CLI wrappers, no "while I'm at it" extras.
 
-Brief code blocks are authoritative. If you think there is a better approach, STOP and escalate. Do not substitute.
+Brief code blocks are authoritative. If you think there is a better approach, STOP and escalate (R8). Do not substitute.
 
 Private `_` helpers inside modules are OK.
 
@@ -91,14 +163,32 @@ If any check fails, STOP and escalate before proceeding.
 
 ---
 
-## REQUIRED READING
+## REQUIRED READING — WAVE START (before Task 1)
 
-At wave start, Cursor reads:
-1. `.cursorrules` (sequential execution rules)
-2. `docs/SCHEMA.md` §2.6 (Lesson node)
-3. `docs/MCP_TOOLS.md` §11 (tool registration pattern)
-4. `gobp/mcp/tools/write.py` (pattern to follow for new tool)
-5. `gobp/mcp/server.py` (how to register a new tool)
+Cursor MUST read ALL of these before writing any code:
+
+| # | File | Why |
+|---|---|---|
+| 1 | `.cursorrules` | Execution rules, stop conditions, commit format |
+| 2 | `docs/SCHEMA.md` | Full schema — especially §2.6 Lesson node |
+| 3 | `docs/MCP_TOOLS.md` | All tool specs — §11 registration pattern |
+| 4 | `docs/ARCHITECTURE.md` | File-first design, atomic writes, folder structure |
+| 5 | `gobp/mcp/server.py` | How tools are registered and dispatched |
+| 6 | `gobp/mcp/tools/write.py` | Pattern for tool handler implementation |
+| 7 | `gobp/core/graph.py` | GraphIndex API used in lessons/prune |
+| 8 | `gobp/core/history.py` | append_event API used in prune |
+
+**Per-task reading** (re-read before each task):
+
+| Task | Must re-read before starting |
+|---|---|
+| Task 1 (lessons.py) | `docs/SCHEMA.md §2.6`, `gobp/core/graph.py` |
+| Task 2 (migrate.py) | `docs/ARCHITECTURE.md` |
+| Task 3 (prune.py) | `docs/ARCHITECTURE.md`, `gobp/core/history.py` |
+| Task 4 (advanced.py) | `docs/MCP_TOOLS.md §11`, `gobp/mcp/tools/write.py` |
+| Task 5 (server.py) | `gobp/mcp/server.py` current state, `docs/MCP_TOOLS.md §11` |
+| Tasks 6–9 (tests) | The module being tested |
+| Task 10 (README) | `README.md` current state |
 
 ---
 
@@ -1767,11 +1857,95 @@ git log --oneline | Select-Object -First 10
 
 # ESCALATION TRIGGERS
 
-Stop and escalate if:
-- Existing 137 tests break after any task
-- `lessons_extract` tool not appearing in `list_tools()` output
-- `shutil.move` fails on Windows (path separator issue)
-- `GraphIndex.load_from_disk` API differs from what Brief assumes
+Stop and escalate (use STOP REPORT FORMAT) if:
+- Existing 137 tests break after any task (R6)
+- Any Brief code conflicts with `docs/MCP_TOOLS.md` (R4)
+- Any foundational doc appears to have an error (R5)
+- `shutil.move` fails on Windows — report exact error
+- `GraphIndex.load_from_disk` API differs from what Brief assumes — report diff
+- Same test fails after 3 fix attempts (R6)
+
+---
+
+# CEO DISPATCH INSTRUCTIONS
+
+## STEP 1 — Upload Brief to repo
+
+```powershell
+cd D:\GoBP
+copy <download_path>\wave_6_brief.md waves\wave_6_brief.md
+git add waves\wave_6_brief.md
+git commit -m "Add Wave 6 Brief"
+```
+
+## STEP 2 — Dispatch Cursor (paste exactly as-is)
+
+```
+Read each of these files in full before writing any code:
+1. .cursorrules
+2. docs/SCHEMA.md
+3. docs/MCP_TOOLS.md
+4. docs/ARCHITECTURE.md
+5. gobp/mcp/server.py
+6. gobp/mcp/tools/write.py
+7. gobp/core/graph.py
+8. gobp/core/history.py
+9. waves/wave_6_brief.md
+
+Then execute ALL 10 tasks in waves/wave_6_brief.md sequentially.
+Rules:
+- Do NOT stop between tasks unless a blocker rule triggers (R1–R8 in Brief)
+- Use explorer subagent before creating any new file
+- Re-read the per-task docs listed in REQUIRED READING before each task
+- If Brief code conflicts with docs/MCP_TOOLS.md → docs win, STOP and report (R4)
+- If you believe a doc has an error → STOP and report your suggestion (R5)
+- If a test fails 3 times → STOP and report (R6)
+- 1 task = 1 commit, message must match Brief exactly
+- Report full wave summary only after Task 10 is committed
+```
+
+Sau đó **không làm gì thêm** — chờ Cursor báo xong toàn bộ wave.
+
+## STEP 3 — Verify before audit
+
+```powershell
+cd D:\GoBP
+D:/GoBP/venv/Scripts/python.exe -m pytest tests/ -v
+# Expected: 167 tests passing
+
+git log --oneline | Select-Object -First 12
+# Expected: 10 Wave 6 commits + 1 Brief commit + previous
+```
+
+## STEP 4 — Dispatch Claude CLI (audit)
+
+Mở terminal mới tại `D:\GoBP\`, chạy:
+
+```powershell
+cd D:\GoBP
+claude
+```
+
+Paste vào Claude CLI:
+
+```
+Read CLAUDE.md in full.
+Then audit Wave 6. Brief is at waves/wave_6_brief.md.
+Audit all 10 tasks sequentially. Stop on first failure — do not continue past failure.
+Use FAIL REPORT FORMAT from CLAUDE.md when stopping.
+After all tasks pass, output WAVE 6 AUDIT COMPLETE report.
+```
+
+Chờ Claude CLI báo `WAVE 6 AUDIT COMPLETE`. Nếu có FAIL report → relay nguyên văn sang CTO Chat (tab này).
+
+## STEP 5 — Push to GitHub
+
+Chỉ sau khi Claude CLI báo audit complete:
+
+```powershell
+cd D:\GoBP
+git push origin main
+```
 
 ---
 
@@ -1783,7 +1957,7 @@ After Wave 6 pushed:
 
 ---
 
-*Wave 6 Brief v0.1*
+*Wave 6 Brief v0.2*
 *Author: CTO Chat (Claude Sonnet 4.6)*
 *Date: 2026-04-15*
 
