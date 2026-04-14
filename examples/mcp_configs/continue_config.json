@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "gobp": {
+      "command": "python",
+      "args": ["-m", "gobp.mcp.server"],
+      "env": {
+        "GOBP_PROJECT_ROOT": "D:\\GoBP"
+      }
+    }
+  }
+}

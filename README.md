@@ -176,6 +176,41 @@ pytest tests/test_smoke.py -v
 
 After Wave 0, the package is importable but has no functionality yet. Functionality begins in Wave 1.
 
+## 🔌 Connect an AI Client (MCP)
+
+GoBP exposes data to AI clients via Model Context Protocol (MCP). Any MCP-capable client can connect.
+
+### Quick setup for Cursor IDE
+
+Create `.cursor/mcp.json` in your project:
+
+```json
+{
+  "mcpServers": {
+    "gobp": {
+      "command": "python",
+      "args": ["-m", "gobp.mcp.server"],
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "GOBP_PROJECT_ROOT": "${workspaceFolder}"
+      }
+    }
+  }
+}
+```
+
+Restart Cursor. The AI can now call GoBP tools like `gobp_overview`, `find`, `context`.
+
+### Other clients
+
+See `examples/mcp_configs/` for example configurations for:
+- Cursor IDE
+- Claude Desktop
+- Claude Code CLI
+- Continue.dev
+
+See `docs/MCP_TOOLS.md` for the complete list of available tools.
+
 ---
 
 ## 📐 Core Concepts in 60 Seconds
