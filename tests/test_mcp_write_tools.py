@@ -253,3 +253,17 @@ def test_session_log_invalid_action(populated_root):
         {"action": "invalid"},
     )
     assert result["ok"] is False
+
+
+def test_session_log_update(populated_root):
+    index = _load_index(populated_root)
+    result = tools_write.session_log(
+        index,
+        populated_root,
+        {
+            "action": "update",
+            "session_id": "session:2026-04-14_test",
+            "handoff_notes": "Continue with import tasks",
+        },
+    )
+    assert result["ok"] is True
