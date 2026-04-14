@@ -126,3 +126,118 @@ def create_node(
     )
 
     return node_file
+
+
+def update_node(
+    gobp_root: Path,
+    node: dict[str, Any],
+    schema: dict[str, Any],
+    actor: str = "unknown",
+) -> Path:
+    """Update an existing node file.
+
+    Overwrites the existing node file with new data. Validates first.
+    Logs update event to history with the new data (old data lives
+    in history as previous create/update events).
+
+    Args:
+        gobp_root: Project root.
+        node: Full node dict (not partial - includes all fields).
+        schema: Nodes schema.
+        actor: Who is updating.
+
+    Returns:
+        Path to the updated file.
+
+    Raises:
+        ValueError: If validation fails or node lacks 'id'.
+        FileNotFoundError: If node file does not exist (use create_node).
+    """
+    result = validate_node(node, schema)
+    if not result.ok:
+        raise ValueError(f"Node validation failed: {result.errors}")
+
+    node_id = node.get("id")
+    if not node_id:
+        raise ValueError("Node missing 'id' field")
+
+    safe_name = node_id.replace(":", "_").replace("/", "_")
+    node_file = gobp_root / ".gobp" / "nodes" / f"{safe_name}.md"
+
+    if not node_file.exists():
+        raise FileNotFoundError(
+            f"Node file does not exist: {node_file}. Use create_node instead."
+        )
+
+    frontmatter_yaml = yaml.safe_dump(node, default_flow_style=False, sort_keys=False)
+    content = f"---\n{frontmatter_yaml}---\n\n(Updated node file.)\n"
+
+    _atomic_write(node_file, content)
+
+    append_event(
+        gobp_root=gobp_root,
+        event_type="node.updated",
+        payload={"id": node_id, "type": node.get("type"), "file": str(node_file)},
+        actor=actor,
+    )
+
+    return node_file
+
+
+def delete_node(
+    gobp_root: Path,
+    node_id: str,
+    actor: str = "unknown",
+) -> Path:
+    """Soft-delete a node by marking status as ARCHIVED.
+
+    Does NOT remove the file from disk. Instead reads the existing
+    file, sets status field to "ARCHIVED", and writes back. Keeps the
+    file history intact for audit.
+
+    Args:
+        gobp_root: Project root.
+        node_id: Node ID to delete.
+        actor: Who is deleting.
+
+    Returns:
+        Path to the archived node file.
+
+    Raises:
+        FileNotFoundError: If node file does not exist.
+        ValueError: If node file is malformed.
+    """
+    safe_name = node_id.replace(":", "_").replace("/", "_")
+    node_file = gobp_root / ".gobp" / "nodes" / f"{safe_name}.md"
+
+    if not node_file.exists():
+        raise FileNotFoundError(f"Node file not found: {node_file}")
+
+    # Read current content
+    content = node_file.read_text(encoding="utf-8")
+
+    # Parse frontmatter to get current node data
+    from gobp.core.loader import parse_frontmatter
+
+    frontmatter, body = parse_frontmatter(content)
+
+    if not frontmatter:
+        raise ValueError(f"Node file has no frontmatter: {node_file}")
+
+    # Mark as archived
+    frontmatter["status"] = "ARCHIVED"
+
+    # Rewrite
+    frontmatter_yaml = yaml.safe_dump(frontmatter, default_flow_style=False, sort_keys=False)
+    new_content = f"---\n{frontmatter_yaml}---\n\n{body}"
+
+    _atomic_write(node_file, new_content)
+
+    append_event(
+        gobp_root=gobp_root,
+        event_type="node.archived",
+        payload={"id": node_id, "file": str(node_file)},
+        actor=actor,
+    )
+
+    return node_file
