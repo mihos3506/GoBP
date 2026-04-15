@@ -119,3 +119,90 @@ def test_unknown_path_returns_404(viewer_server) -> None:
         assert False, "Should have raised"
     except urllib.error.HTTPError as e:
         assert e.code == 404
+
+
+# -- Multi-project server tests -------------------------------------------------
+
+@pytest.fixture
+def multi_viewer_server(tmp_path: Path):
+    """Start multi-project viewer server."""
+    import json as _json
+    from http.server import HTTPServer
+
+    from gobp.viewer.server import make_multi_handler
+
+    root1 = tmp_path / "proj1"
+    root2 = tmp_path / "proj2"
+    root1.mkdir()
+    root2.mkdir()
+    init_project(root1, project_name="Project1", force=True)
+    init_project(root2, project_name="Project2", force=True)
+
+    projects = [
+        {"name": "Project1", "root": str(root1)},
+        {"name": "Project2", "root": str(root2)},
+    ]
+    projects_path = tmp_path / "projects.json"
+    projects_path.write_text(_json.dumps(projects), encoding="utf-8")
+
+    viewer_dir = Path(__file__).parent.parent / "gobp" / "viewer"
+    projs = _json.loads(projects_path.read_text(encoding="utf-8"))
+    handler = make_multi_handler(projs, viewer_dir)
+
+    server = HTTPServer(("localhost", 0), handler)
+    port = server.server_address[1]
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    time.sleep(0.1)
+
+    yield port, str(root1), str(root2)
+    server.shutdown()
+
+
+def test_api_projects_returns_list(multi_viewer_server) -> None:
+    """GET /api/projects returns list of projects."""
+    import urllib.request
+
+    port, _, _ = multi_viewer_server
+    with urllib.request.urlopen(f"http://localhost:{port}/api/projects") as resp:
+        data = json.loads(resp.read())
+        assert isinstance(data, list)
+        assert len(data) == 2
+        assert data[0]["name"] == "Project1"
+
+
+def test_api_graph_with_root_param(multi_viewer_server) -> None:
+    """GET /api/graph?root=PATH returns correct project graph."""
+    import urllib.request
+    from urllib.parse import quote
+
+    port, root1, _ = multi_viewer_server
+    url1 = f"http://localhost:{port}/api/graph?root={quote(root1)}"
+    with urllib.request.urlopen(url1) as resp:
+        data = json.loads(resp.read())
+        assert data["meta"]["node_count"] == 17
+        assert data["meta"]["project_name"] == "Project1"
+
+
+def test_edges_have_both_formats(multi_viewer_server) -> None:
+    """Edges have source/target AND from/to."""
+    import urllib.request
+    from urllib.parse import quote
+
+    port, root1, _ = multi_viewer_server
+    url = f"http://localhost:{port}/api/graph?root={quote(root1)}"
+    with urllib.request.urlopen(url) as resp:
+        data = json.loads(resp.read())
+        for link in data.get("links", []):
+            assert "source" in link
+            assert "target" in link
+            assert "from" in link
+            assert "to" in link
+
+
+def test_launcher_find_projects_json() -> None:
+    """find_projects_json() finds projects.json in expected locations."""
+    from gobp.viewer.launcher import find_projects_json
+
+    result = find_projects_json()
+    assert result is None or result.exists()
