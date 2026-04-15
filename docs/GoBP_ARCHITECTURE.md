@@ -52,9 +52,9 @@ GoBP is a layered system with clear separation:
 ┌─────────────────────────────────────────────────────────┐
 │  File Storage (project's .gobp/ folder)                 │
 │  - nodes/    : node markdown files with YAML front-matter│
-│  - edges/    : edge definitions                         │
-│  - history/  : append-only log                          │
-│  - schema/   : schema extension (project-specific)      │
+│  - edges/    : edge YAML files                            │
+│  - history/  : append-only log                            │
+│  - archive/  : pruned nodes (after prune)               │
 └─────────────────────────────────────────────────────────┘
 ```
 
@@ -67,9 +67,9 @@ GoBP is a layered system with clear separation:
 
 ---
 
-## 2. NODE TYPES (6 core types)
+## 2. NODE TYPES (9 core types)
 
-Every piece of knowledge in GoBP is a node. There are 6 core types. More types can be added per project via schema extensions.
+Every piece of knowledge in GoBP is a node. There are 9 core types in schema v2. More types can be added per project via schema extensions.
 
 ### 2.1 Node (generic container)
 
@@ -424,7 +424,7 @@ Structured lessons in a queryable store are the next iteration.
 
 ---
 
-## 3. EDGE TYPES (5 core types)
+## 3. EDGE TYPES (7 core types)
 
 Edges connect nodes. Each edge has a type that defines semantic meaning.
 
@@ -511,46 +511,54 @@ Inside a GoBP-enabled project, the knowledge lives in a `.gobp/` folder at proje
 ```
 <project-root>/
 ├── .gobp/                          ← GoBP data for this project
-│   ├── config.yaml                 ← project-specific config
-│   ├── schema/
-│   │   └── extensions.yaml         ← project-specific node types
+│   ├── config.yaml                 ← project config, schema version, multi-user placeholders
 │   │
-│   ├── nodes/                      ← all nodes, one file per node
+│   ├── nodes/                      ← all nodes, one markdown file per node
 │   │   ├── node_feat_login.md
-│   │   ├── node_feat_register.md
 │   │   ├── idea_i001.md
-│   │   ├── idea_i042.md
 │   │   ├── dec_d001.md
-│   │   ├── dec_d015.md
-│   │   ├── session_2026-04-14_am.md
 │   │   ├── session_2026-04-14_pm.md
 │   │   ├── doc_DOC-07.md
-│   │   ├── doc_DOC-13.md
 │   │   ├── lesson_ll001.md
-│   │   └── lesson_ll023.md
+│   │   ├── testkind_unit.md        ← seeded on init (16 TestKind)
+│   │   ├── concept_test_taxonomy.md ← seeded on init (1 Concept)
+│   │   └── tc_login_unit_001.md
 │   │
-│   ├── edges/                      ← edges stored separately for efficiency
-│   │   └── edges.yaml              ← single file with all edges (or split by date)
+│   ├── edges/                      ← edges, one YAML file per edge or group
+│   │   └── *.yaml
 │   │
-│   ├── history/                    ← append-only log
+│   ├── history/                    ← append-only event log
 │   │   ├── 2026-04-12.jsonl
-│   │   ├── 2026-04-13.jsonl
 │   │   └── 2026-04-14.jsonl
 │   │
-│   ├── index.sqlite                ← derived index (auto-rebuilt)
-│   └── .gobp-version               ← GoBP version that created this
+│   └── archive/                    ← pruned nodes (created by gobp prune)
+│       └── YYYY-MM-DD/
+│
+├── gobp/                           ← schema files (copied from package on init)
+│   └── schema/
+│       ├── core_nodes.yaml         ← 9 core node type definitions (schema v2)
+│       └── core_edges.yaml         ← 7 core edge type definitions (schema v2)
 │
 ├── src/                            ← project's actual code (not GoBP)
 ├── docs/                           ← project's actual docs (referenced by GoBP)
-└── ...                             ← rest of project
+└── ...
 ```
+
+**Note:** `gobp/schema/` is at project root (not inside `.gobp/`) because
+`GraphIndex.load_from_disk()` expects schemas at `{project_root}/gobp/schema/`.
+This is by design — schema files are part of the GoBP package contract,
+not project-specific data.
 
 **Key decisions:**
 - `.gobp/` is at project root, like `.git/`
 - One markdown file per node for git-friendliness and easy human inspection
-- Single `edges.yaml` for edges (edges are lighter than nodes)
+- Edges live as YAML files under `.gobp/edges/` (typically one file per edge or small groups), not a mandatory single `edges.yaml`
 - History as JSONL (one event per line, append-only)
-- SQLite index is derived — can always rebuild from markdown + edges
+- `archive/` holds pruned node files after `gobp prune`; optional until prune runs
+- Core schema v2 defines **9 node types** and **7 edge types** (see `gobp/schema/*.yaml` and `docs/SCHEMA.md`)
+- `config.yaml` holds `schema_version`, `gobp_version`, and multi-user placeholders — there is no separate `.gobp-version` file
+- **Persistent SQLite index** is deferred to Wave 9A — not present in v1 layout
+- `gobp/schema/` at **project root** is required for `GraphIndex.load_from_disk()` (schemas copied on `gobp init`)
 - `.gobp/` should be committed to git (it IS the project memory)
 
 **Naming convention for node files:**
@@ -570,7 +578,7 @@ MCP server is a long-running Python process started by AI agents via their confi
 **Startup sequence:**
 1. Read `.gobp/config.yaml` (project root detection)
 2. Load all node files from `.gobp/nodes/` into memory
-3. Load `.gobp/edges/edges.yaml`
+3. Load all edge YAML files from `.gobp/edges/` (each file is a YAML list of edges)
 4. Build in-memory indexes:
    - `nodes_by_id`
    - `nodes_by_type`
@@ -669,8 +677,8 @@ gobp/
 │   └── history.py        ← Append-only log
 ├── schema/
 │   ├── __init__.py
-│   ├── core_nodes.yaml   ← 6 core node type definitions
-│   ├── core_edges.yaml   ← 5 core edge type definitions
+│   ├── core_nodes.yaml   ← 9 core node type definitions (schema v2)
+│   ├── core_edges.yaml   ← 7 core edge type definitions (schema v2)
 │   └── extensions.py     ← Load project-specific extensions
 ├── mcp/
 │   ├── __init__.py
