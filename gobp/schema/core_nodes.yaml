@@ -44,6 +44,14 @@ node_types:
       custom_fields:
         type: "dict"
         default: {}
+      code_refs:
+        type: "list[dict]"
+        default: []
+        description: "Code files implementing or related to this node"
+      invariants:
+        type: "list[str]"
+        default: []
+        description: "Hard constraints that must always be true for this node"
 
     constraints:
       - "created <= updated"
@@ -96,6 +104,14 @@ node_types:
         type: "enum"
         enum_values: ["ACTIVE", "SUPERSEDED"]
         default: "ACTIVE"
+      code_refs:
+        type: "list[dict]"
+        default: []
+        description: "Code files implementing or related to this node"
+      invariants:
+        type: "list[str]"
+        default: []
+        description: "Hard constraints that must always be true for this node"
 
   Decision:
     description: "Locked authoritative knowledge"
@@ -146,6 +162,14 @@ node_types:
         type: "node_ref"
       related_ideas:
         type: "list[node_ref]"
+      code_refs:
+        type: "list[dict]"
+        default: []
+        description: "Code files implementing or related to this node"
+      invariants:
+        type: "list[str]"
+        default: []
+        description: "Hard constraints that must always be true for this node"
 
   Session:
     description: "Record of one AI working session"
@@ -242,6 +266,14 @@ node_types:
         type: "enum"
         enum_values: ["ACTIVE", "STALE", "MISSING", "DEPRECATED"]
         default: "ACTIVE"
+      code_refs:
+        type: "list[dict]"
+        default: []
+        description: "Code files implementing or related to this node"
+      invariants:
+        type: "list[str]"
+        default: []
+        description: "Hard constraints that must always be true for this node"
 
   Lesson:
     description: "Something learned from experience"
