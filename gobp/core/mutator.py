@@ -337,6 +337,18 @@ def create_edge(
         if isinstance(loaded, list):
             existing_edges = loaded
 
+    from_id = edge.get("from", "")
+    to_id = edge.get("to", "")
+    edge_type = edge.get("type", "")
+    for existing in existing_edges:
+        if (
+            existing.get("from") == from_id
+            and existing.get("to") == to_id
+            and existing.get("type") == edge_type
+        ):
+            # Idempotent behavior: do not append duplicate edge triple.
+            return edge_file
+
     existing_edges.append(edge)
 
     new_content = yaml.safe_dump(
@@ -364,6 +376,51 @@ def create_edge(
     )
 
     return edge_file
+
+
+def deduplicate_edges(gobp_root: Path) -> dict[str, Any]:
+    """Remove duplicate edge triples from all YAML edge files."""
+    from gobp.core.loader import load_edge_file
+
+    edges_dir = gobp_root / ".gobp" / "edges"
+    if not edges_dir.exists():
+        return {"ok": True, "files_processed": 0, "duplicates_removed": 0, "total_edges": 0}
+
+    files_processed = 0
+    total_duplicates = 0
+    total_edges = 0
+
+    for edge_file in edges_dir.glob("**/*.yaml"):
+        try:
+            edges = load_edge_file(edge_file)
+            seen: set[tuple[str, str, str]] = set()
+            deduped: list[dict[str, Any]] = []
+
+            for e in edges:
+                triple = (e.get("from", ""), e.get("type", ""), e.get("to", ""))
+                if triple in seen:
+                    total_duplicates += 1
+                else:
+                    seen.add(triple)
+                    deduped.append(e)
+
+            if len(deduped) < len(edges):
+                edge_file.write_text(
+                    yaml.safe_dump(deduped, allow_unicode=True, default_flow_style=False),
+                    encoding="utf-8",
+                )
+
+            files_processed += 1
+            total_edges += len(deduped)
+        except Exception:
+            continue
+
+    return {
+        "ok": True,
+        "files_processed": files_processed,
+        "duplicates_removed": total_duplicates,
+        "total_edges": total_edges,
+    }
 
 
 def delete_edge(

@@ -748,6 +748,18 @@ async def dispatch(
         elif action == "extract":
             result = await lessons_extract(index, project_root, {})
 
+        elif action == "dedupe":
+            scope = params.get("action_filter") or params.get("scope", "edges")
+            if scope in ("edges", "all"):
+                from gobp.core.mutator import deduplicate_edges
+
+                result = deduplicate_edges(project_root)
+            else:
+                result = {
+                    "ok": False,
+                    "error": f"dedupe: scope '{scope}' not supported. Use 'edges' or 'all'.",
+                }
+
         # -- Unknown action ----------------------------------------------------
         else:
             # Fallback: try find
@@ -814,6 +826,7 @@ PROTOCOL_GUIDE = {
         "import: path/to/doc.md session_id='x'": "Propose doc import",
         "commit: imp:proposal-id": "Commit approved proposal",
         "validate: <scope>": "Validate graph (all|nodes|edges)",
+        "dedupe: edges": "Remove duplicate edges from file storage",
         "extract: lessons": "Extract lesson candidates",
     },
     "tip": "Always start with overview: to see project state",
