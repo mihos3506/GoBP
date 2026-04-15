@@ -293,6 +293,42 @@ async def dispatch(
             doc_id = params.get("query") or params.get("doc_id", "")
             result = tools_read.doc_sections(index, project_root, {"doc_id": doc_id})
 
+        elif action == "code":
+            node_id = params.get("query") or params.get("node_id", "")
+            # Handle 'code: node:x path=... description=... language=...' add variant
+            add_ref = None
+            if params.get("path"):
+                add_ref = {
+                    "path": params.get("path", ""),
+                    "description": params.get("description", ""),
+                    "language": params.get("language", ""),
+                }
+            args = {"node_id": node_id}
+            if add_ref:
+                args["add"] = add_ref
+            result = tools_read.code_refs(index, project_root, args)
+
+        elif action == "invariants":
+            node_id = params.get("query") or params.get("node_id", "")
+            result = tools_read.node_invariants(index, project_root, {"node_id": node_id})
+
+        elif action == "tests":
+            node_id = params.get("query") or params.get("node_id", "")
+            status = params.get("status")
+            args = {"node_id": node_id}
+            if status:
+                args["status"] = status
+            result = tools_read.node_tests(index, project_root, args)
+
+        elif action == "related":
+            node_id = params.get("query") or params.get("node_id", "")
+            direction = params.get("direction", "both")
+            edge_type = params.get("edge_type")
+            args = {"node_id": node_id, "direction": direction}
+            if edge_type:
+                args["edge_type"] = edge_type
+            result = tools_read.node_related(index, project_root, args)
+
         # -- Write actions -----------------------------------------------------
         elif action == "create":
             node_type = node_type or params.pop("type", "Node")
@@ -585,6 +621,13 @@ PROTOCOL_GUIDE = {
         "recent: <n>": "Latest N sessions",
         "decisions: <topic>": "Locked decisions for topic",
         "sections: <doc_id>": "Document sections list",
+        "code: <node_id>": "Code files for this node",
+        "code: <node_id> path='x' description='y'": "Add code reference to node",
+        "invariants: <node_id>": "Hard constraints for node",
+        "tests: <node_id>": "Linked TestCase nodes",
+        "tests: <node_id> status='FAILING'": "Filter tests by status",
+        "related: <node_id>": "Neighbor nodes summary",
+        "related: <node_id> direction='outgoing'": "Only outgoing neighbors",
         "create:<NodeType> name='x' session_id='y'": "Create a new node",
         "update: id='x' name='y' session_id='z'": "Update existing node",
         "lock:Decision topic='x' what='y' why='z'": "Lock a decision",
