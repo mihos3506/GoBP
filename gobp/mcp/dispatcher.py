@@ -248,6 +248,9 @@ async def dispatch(
     dispatch_info = {"action": action, "type": node_type, "params": params}
 
     try:
+        def _is_dry_run(value: Any) -> bool:
+            return value in ("true", "1", True)
+
         # -- Read actions ------------------------------------------------------
         if action == "overview":
             result = tools_read.gobp_overview(index, project_root, params)
@@ -372,7 +375,19 @@ async def dispatch(
                 "fields": create_fields,
                 "session_id": params.get("session_id", ""),
             }
-            result = tools_write.node_upsert(index, project_root, args)
+            if _is_dry_run(params.get("dry_run")):
+                existing = index.get_node(node_id) if node_id else None
+                result = {
+                    "ok": True,
+                    "dry_run": True,
+                    "would_action": "updated" if existing else "created",
+                    "node_id": node_id or "(auto-generated)",
+                    "name": args.get("name", ""),
+                    "type": node_type,
+                    "message": "dry_run=true: no changes made",
+                }
+            else:
+                result = tools_write.node_upsert(index, project_root, args)
             if (
                 isinstance(result, dict)
                 and not result.get("ok")
@@ -394,7 +409,19 @@ async def dispatch(
                 "fields": {k: v for k, v in params.items() if k not in ("name", "type")},
                 "session_id": params.get("session_id", ""),
             }
-            result = tools_write.node_upsert(index, project_root, args)
+            if _is_dry_run(params.get("dry_run")):
+                existing = index.get_node(node_id) if node_id else None
+                result = {
+                    "ok": True,
+                    "dry_run": True,
+                    "would_action": "updated" if existing else "created",
+                    "node_id": node_id or "(auto-generated)",
+                    "name": args.get("name", ""),
+                    "type": args.get("type", ""),
+                    "message": "dry_run=true: no changes made",
+                }
+            else:
+                result = tools_write.node_upsert(index, project_root, args)
 
         elif action == "lock":
             locked_by_raw = params.get("locked_by", "CEO,Claude-CLI")
@@ -407,7 +434,17 @@ async def dispatch(
                 "session_id": params.get("session_id", ""),
                 "alternatives_considered": [],
             }
-            result = tools_write.decision_lock(index, project_root, args)
+            if _is_dry_run(params.get("dry_run")):
+                result = {
+                    "ok": True,
+                    "dry_run": True,
+                    "would_action": "created",
+                    "type": "Decision",
+                    "topic": args.get("topic", ""),
+                    "message": "dry_run=true: no changes made",
+                }
+            else:
+                result = tools_write.decision_lock(index, project_root, args)
 
         elif action == "session":
             sub = params.get("query", "start")
@@ -421,7 +458,18 @@ async def dispatch(
             }
             if "session_id" in params:
                 args["session_id"] = params["session_id"]
-            result = tools_write.session_log(index, project_root, args)
+            if _is_dry_run(params.get("dry_run")):
+                existing = index.get_node(args.get("session_id", "")) if args.get("session_id") else None
+                result = {
+                    "ok": True,
+                    "dry_run": True,
+                    "would_action": "updated" if existing else "created",
+                    "action": sub,
+                    "session_id": args.get("session_id", "(auto-generated)"),
+                    "message": "dry_run=true: no changes made",
+                }
+            else:
+                result = tools_write.session_log(index, project_root, args)
 
         elif action == "edge":
             from_id = params.get("from", "")
@@ -637,6 +685,8 @@ PROTOCOL_GUIDE = {
         "related: <node_id>": "Neighbor nodes summary",
         "related: <node_id> direction='outgoing'": "Only outgoing neighbors",
         "create:<NodeType> name='x' session_id='y'": "Create a new node",
+        "create:Node name='x' session_id='y' dry_run=true": "Preview without writing",
+        "upsert:Node dedupe_key='name' name='x' session_id='y'": "Create or update by key",
         "update: id='x' name='y' session_id='z'": "Update existing node",
         "lock:Decision topic='x' what='y' why='z'": "Lock a decision",
         "session:start actor='x' goal='y'": "Start a session",
