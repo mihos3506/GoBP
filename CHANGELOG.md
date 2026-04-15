@@ -19,7 +19,7 @@ Format: [Wave N — Title] with date, what was added/changed/fixed.
 - `find()`: new `type` filter parameter — enables `find(query="login", type="TestCase")`
 - `gobp_overview`: new `concepts[]` and `test_coverage{}` sections
 - Multi-user placeholders in `config.yaml`: owner, collaborators, access_model, project_id (all null, ready for v2)
-- `tests/test_wave4.py`: 22 tests
+- `tests/test_wave4.py`: 21 tests
 
 ### Changed
 - `core_nodes.yaml`: schema_version 1.0 → 2.0, 6 → 9 node types
