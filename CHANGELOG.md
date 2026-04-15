@@ -5,6 +5,42 @@ Format: [Wave N — Title] with date, what was added/changed/fixed.
 
 ---
 
+## [Wave 10C] — PostgreSQL Migration — 2026-04-15
+
+### Why
+MIHOS is a social network — projected 10,000-15,000+ nodes. SQLite hits
+performance limits at scale. PostgreSQL provides unlimited scale, better
+concurrent writes, and pgvector support for semantic search (Wave 9B).
+
+### Changed
+- `gobp/core/db.py` — rewritten for PostgreSQL (identical public API)
+- `gobp/core/db_config.py` — new: connection config from GOBP_DB_URL env var
+- `gobp/core/mutator.py` — unchanged (uses db.py public API)
+- `gobp/core/graph.py` — unchanged (uses db.py public API)
+- `tests/test_db_cache.py` — skip marker when PostgreSQL not available
+- `requirements.txt` — psycopg2-binary>=2.9.0
+- `.gitignore` — .env files
+- `docs/INSTALL.md` — PostgreSQL setup guide
+
+### Architecture
+File-first principle preserved. Markdown files remain source of truth.
+PostgreSQL replaces SQLite as derived index only.
+
+### Fallback
+If GOBP_DB_URL not set -> all db operations are no-ops.
+In-memory GraphIndex still works for all queries.
+
+### Connection
+```
+GOBP_DB_URL=postgresql://postgres:password@localhost/gobp
+GOBP_MIHOS_DB_URL=postgresql://postgres:password@localhost/gobp_mihos
+```
+Passwords with @ must be URL-encoded: @ -> %40
+
+### Total after wave: 1 MCP tool, 253+ tests passing
+
+---
+
 ## [Wave 10B] — Bug Fixes + Priority + Edge Interface + Import Enhancement — 2026-04-15
 
 ### Bugs fixed
