@@ -59,6 +59,17 @@ def cmd_validate(args: argparse.Namespace) -> int:
         )
         return 1
 
+    if args.reindex:
+        print("Rebuilding SQLite index...")
+        try:
+            from gobp.core import db as _db
+
+            index_for_rebuild = GraphIndex.load_from_disk(root)
+            result = _db.rebuild_index(root, index_for_rebuild)
+            print(f"  {result['message']}")
+        except Exception as e:
+            print(f"  Warning: reindex failed: {e}", file=sys.stderr)
+
     print(f"Validating {root}...")
     try:
         index = GraphIndex.load_from_disk(root)
@@ -164,6 +175,11 @@ def main() -> int:
         "--scope",
         choices=["all", "nodes", "edges", "references"],
         default="all",
+    )
+    p_val.add_argument(
+        "--reindex",
+        action="store_true",
+        help="Rebuild SQLite index from scratch before validating",
     )
     p_val.set_defaults(func=cmd_validate)
 
