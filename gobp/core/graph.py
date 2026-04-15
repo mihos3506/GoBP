@@ -10,6 +10,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+from gobp.core import db as _db
 from gobp.core.loader import load_edge_file, load_node_file, load_schema
 from gobp.core.validator import ValidationResult, validate_edge, validate_node
 
@@ -28,6 +29,7 @@ class GraphIndex:
         self._nodes_schema: dict[str, Any] = {}
         self._edges_schema: dict[str, Any] = {}
         self._load_errors: list[str] = []
+        self._gobp_root: Path | None = None
 
     @classmethod
     def load_from_disk(cls, gobp_root: Path) -> GraphIndex:
@@ -51,6 +53,7 @@ class GraphIndex:
             FileNotFoundError: If schema files are missing.
         """
         index = cls()
+        index._gobp_root = gobp_root
 
         package_root = gobp_root / "gobp"
         schema_dir = package_root / "schema"
@@ -60,6 +63,15 @@ class GraphIndex:
         data_dir = gobp_root / ".gobp"
         index._load_nodes(data_dir / "nodes")
         index._load_edges(data_dir / "edges")
+
+        # Build SQLite index if not exists or stale
+        # (always rebuild on load for now — Wave 9A baseline)
+        try:
+            _db.init_schema(gobp_root)
+            _db.rebuild_index(gobp_root, index)
+        except Exception:
+            # SQLite failure is non-fatal — in-memory index still works
+            pass
 
         return index
 
