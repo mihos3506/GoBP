@@ -83,7 +83,7 @@ def init_project(
     for schema_file in ("core_nodes.yaml", "core_edges.yaml"):
         src = package_schema / schema_file
         dst = dest_schema / schema_file
-        if src.exists():
+        if src.exists() and src.resolve() != dst.resolve():
             shutil.copy(src, dst)
             created.append(str(dst.relative_to(project_root)))
 
