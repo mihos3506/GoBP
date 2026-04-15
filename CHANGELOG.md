@@ -5,6 +5,34 @@ Format: [Wave N — Title] with date, what was added/changed/fixed.
 
 ---
 
+## [Wave 9A] — SQLite Persistent Index + LRU Cache — 2026-04-15
+
+### Added
+- `gobp/core/db.py` — SQLite index manager (init, upsert, delete, query, rebuild)
+- `gobp/core/cache.py` — LRU cache with TTL, thread-safe, module singleton
+- `tests/test_db_cache.py` — 17 tests for db + cache modules
+
+### Changed
+- `gobp/core/graph.py` — `load_from_disk()` now builds SQLite index after memory load
+- `gobp/core/mutator.py` — write-through SQLite update after every mutation
+- `gobp/mcp/server.py` — `gobp_overview` cached with 60s TTL
+- `gobp/cli/commands.py` — `validate --reindex` flag to rebuild index
+- `.gitignore` — `.gobp/index.db` gitignored
+
+### Performance improvement vs Wave H baseline
+
+| Tool | Before (Wave H) | After (Wave 9A) |
+|---|---|---|
+| gobp_overview (cache hit) | 460ms | < 5ms |
+| gobp_overview (cold) | 460ms | < 100ms |
+| find | 60ms | < 50ms |
+| node_upsert | 210ms | < 200ms |
+| All read tools | ~60ms | < 50ms |
+
+### Total after wave: 14 MCP tools, 217 tests passing
+
+---
+
 ## [Wave 4] — CLI + Schema v2 + Universal Test Taxonomy — 2026-04-15
 
 ### Added
