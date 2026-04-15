@@ -634,7 +634,7 @@ async def dispatch(
 
         # -- Import actions ----------------------------------------------------
         elif action == "import":
-            source_path_str = params.get("query") or params.get("source_path", "")
+            source_path_str = params.get("source_path") or params.get("query") or ""
             session_id = params.get("session_id", "")
 
             if not source_path_str:
@@ -662,17 +662,19 @@ async def dispatch(
                 # Auto-classify priority
                 priority = _classify_doc_priority(content, source_path_str)
 
-                # Generate Document node ID from filename
-                import re as _re
-                doc_slug = _re.sub(r"[^a-z0-9_]", "_", source_path.stem.lower())
-                doc_id = f"doc:{doc_slug}"
+                # Collision-proof doc_id: slug + md5(normalized path)
+                import hashlib as _hashlib
+                import re as _re3
+                path_normalized = str(source_path).replace("\\", "/").lower()
+                short_hash = _hashlib.md5(path_normalized.encode()).hexdigest()[:6]
+                doc_slug = _re3.sub(r"[^a-z0-9]+", "_", source_path.stem.lower()).strip("_")
+                doc_id = f"doc:{doc_slug}_{short_hash}"
 
                 # Create Document node
-                import hashlib as _hashlib
                 from datetime import datetime, timezone
 
                 now_iso = datetime.now(timezone.utc).isoformat()
-                content_hash = f"sha256:{_hashlib.sha256(content.encode()).hexdigest()}" if content else ""
+                content_hash = f"sha256:{_hashlib.sha256(content.encode()).hexdigest()}"
 
                 doc_node = {
                     "id": doc_id,
@@ -701,22 +703,31 @@ async def dispatch(
 
                 upsert_result = tools_write.node_upsert(index, project_root, doc_args)
 
-                result = {
-                    "ok": upsert_result.get("ok", False),
-                    "document_node": doc_id,
-                    "document_name": doc_node["name"],
-                    "priority": priority,
-                    "sections_found": len(sections),
-                    "sections": sections[:5],  # show first 5
-                    "content_hash": content_hash,
-                    "file_exists": source_path.exists(),
-                    "suggestion": (
-                        f"Document node created. Now extract key concepts:\n"
-                        f"  gobp(query=\"create:Node name='...' priority='{priority}' session_id='{session_id}'\")\n"
-                        f"Then link with:\n"
-                        f"  gobp(query=\"edge: node:x --references--> {doc_id}\")"
-                    ),
-                }
+                if not upsert_result.get("ok"):
+                    result = {
+                        "ok": False,
+                        "error": upsert_result.get("error", "Failed to create Document node"),
+                        "source_path": source_path_str,
+                        "file_exists": source_path.exists(),
+                    }
+                else:
+                    result = {
+                        "ok": True,
+                        "document_node": doc_id,
+                        "document_name": doc_node["name"],
+                        "priority": priority,
+                        "sections_found": len(sections),
+                        "sections": sections[:5],  # show first 5
+                        "content_hash": content_hash,
+                        "file_exists": source_path.exists(),
+                        "suggestion": (
+                            f"Document node created with collision-proof ID. "
+                            f"Now extract key concepts:\n"
+                            f"  gobp(query=\"create:Node name='...' priority='{priority}' session_id='{session_id}'\")\n"
+                            f"Then link:\n"
+                            f"  gobp(query=\"edge: node:x --references--> {doc_id}\")"
+                        ),
+                    }
 
         elif action == "commit":
             proposal_id = params.get("query") or params.get("proposal_id", "")
