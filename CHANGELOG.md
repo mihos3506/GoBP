@@ -26,7 +26,32 @@ Format: [Wave N — Title] with date, what was added/changed/fixed.
 - `core_edges.yaml`: 5 → 7 edge types
 - `migrate.py`: CURRENT_SCHEMA_VERSION 1 → 2, v1→v2 migration step added
 
-### Total after wave: 14 MCP tools, 188 tests passing
+### Total after wave: 14 MCP tools, 200 tests passing
+
+---
+
+## [Performance Baseline] — Pre-Wave 9A — 2026-04-15
+
+Measured on mihos_root fixture (~30 nodes, ~30 edges), Windows 11, Python 3.14.3.
+
+| Tool | Actual (ms) | Target (ms) | Max (ms) | Status |
+|---|---|---|---|---|
+| gobp_overview | 460 | 30 | 100 | over max |
+| node_upsert | 210 | 50 | 200 | over max |
+| session_log | 80 | 30 | 100 | within max |
+| lessons_extract | 70 | N/A | 2000 | within max |
+| decisions_for | 60 | 20 | 50 | over max |
+| context | 60 | 30 | 100 | within max |
+| find | 60 | 20 | 50 | over max |
+| doc_sections | 60 | 10 | 30 | over max |
+| session_recent | 60 | 20 | 50 | over max |
+| signature | 60 | 10 | 30 | over max |
+
+**Root cause:** All queries reload GraphIndex from disk (O(n) file reads) per call.
+With 30 nodes, ~60ms baseline. Projected at 500 nodes: ~1000ms — unusable.
+
+**Fix:** Wave 9A — SQLite persistent index eliminates per-query disk scan.
+Expected post-9A: all tools < 10ms (30-50x improvement).
 
 ---
 
