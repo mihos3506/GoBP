@@ -21,7 +21,17 @@ from typing import Any
 
 import yaml
 
-CURRENT_SCHEMA_VERSION = 1
+CURRENT_SCHEMA_VERSION = 2
+
+
+def _migrate_v1_to_v2(gobp_root: Path) -> None:
+    """Migrate schema v1 → v2.
+
+    v2 adds Concept, TestKind, TestCase node types and covers, of_kind edges.
+    All changes are additive — no existing nodes need modification.
+    Seed nodes are NOT added here (init does that for new projects).
+    """
+    pass  # Additive schema change — no data transformation needed
 
 
 def check_version(gobp_root: Path) -> dict[str, Any]:
@@ -112,8 +122,7 @@ def run_migration(gobp_root: Path) -> dict[str, Any]:
 
     # Migration chain: run each step in order
     migration_steps = {
-        # Example: migrate from v0 to v1
-        # ("v0_to_v1", _migrate_v0_to_v1),
+        "v1_to_v2": _migrate_v1_to_v2,
     }
 
     for step_name, step_fn in migration_steps.items():
