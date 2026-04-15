@@ -5,6 +5,35 @@ Format: [Wave N — Title] with date, what was added/changed/fixed.
 
 ---
 
+## [Wave 10B] — Bug Fixes + Priority + Edge Interface + Import Enhancement — 2026-04-15
+
+### Bugs fixed
+- B1: Session ID truncation — now always 28 chars (session:YYYY-MM-DD_XXXXXX)
+- B2: Unicode encoding — Vietnamese/special chars stored as UTF-8 not escaped bytes
+- B3: import: created 0 nodes — now creates Document node + auto-extracts metadata
+- B4: create: required manual ID — now auto-generates id:XXXXXX
+- B5: No Document nodes — import: always creates Document node
+- B6: Only discovered_in edges — edge: action now creates semantic edges
+
+### Features added
+- F1: priority field (critical/high/medium/low) on all node types
+- F2: _classify_doc_priority(): auto-classifies priority from doc content
+- F3: edge: action — gobp(query="edge: node:a --type--> node:b")
+- F4: gobp_overview priority_summary — see project health at a glance
+
+### Changed
+- gobp/core/mutator.py: _generate_session_id() with UUID hash
+- gobp/core/mutator.py + init.py: allow_unicode=True in all YAML writes
+- gobp/mcp/dispatcher.py: edge + import handlers, auto-ID generation
+- gobp/mcp/tools/read.py: gobp_overview priority_summary
+- gobp/schema/core_nodes.yaml: priority field on 6 node types
+- docs/SCHEMA.md: priority + session ID v2 documented
+- docs/MCP_TOOLS.md: edge action + updated import description
+
+### Total after wave: 1 MCP tool, 258+ tests passing
+
+---
+
 ## [Wave 10A] - gobp() Single Tool + Structured Query Protocol - 2026-04-15
 
 ### Problem solved
