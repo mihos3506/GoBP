@@ -128,6 +128,12 @@ node_type:
       type: dict
       default: {}
       description: Project-specific extension fields
+    
+    priority:
+      type: enum
+      enum_values: [critical, high, medium, low]
+      default: medium
+      description: Importance level.
   
   constraints:
     - created <= updated
@@ -202,6 +208,12 @@ node_type:
       type: enum
       enum_values: [ACTIVE, SUPERSEDED]
       default: ACTIVE
+    
+    priority:
+      type: enum
+      enum_values: [critical, high, medium, low]
+      default: medium
+      description: Importance level.
   
   constraints:
     - len(raw_quote) > 0
@@ -282,6 +294,12 @@ node_type:
     related_ideas:
       type: list[node_ref]
       description: Ideas that led to this decision
+    
+    priority:
+      type: enum
+      enum_values: [critical, high, medium, low]
+      default: medium
+      description: Importance level.
   
   constraints:
     - len(what) > 0
@@ -432,6 +450,12 @@ node_type:
       type: enum
       enum_values: [ACTIVE, STALE, MISSING, DEPRECATED]
       default: ACTIVE
+    
+    priority:
+      type: enum
+      enum_values: [critical, high, medium, low]
+      default: medium
+      description: Importance level.
   
   constraints:
     - content_hash is not null
@@ -508,6 +532,12 @@ node_type:
     tags:
       type: list[str]
       default: []
+    
+    priority:
+      type: enum
+      enum_values: [critical, high, medium, low]
+      default: medium
+      description: Importance level.
   
   constraints:
     - verified_count >= 1
@@ -530,6 +560,7 @@ Stores a defined concept or framework idea for AI orientation. When AI connects 
 - `seed_values` — default values or examples
 - `extensible` — bool, default true
 - `tags` — list of strings
+- `priority` — enum: `critical | high | medium | low` (default: medium). Importance level.
 
 **Example:** `concept:test_taxonomy` — explains GoBP's 3-level test taxonomy so AI understands how to create and link TestKind and TestCase nodes.
 
@@ -988,6 +1019,10 @@ After prefix, the slug must:
 - **Numbered IDs:** GoBP auto-increments per type (next `idea:i043` after `idea:i042`)
 - **Named IDs:** AI or human provides explicit name (e.g. `doc:DOC-07`, `node:feat_login`)
 - **Session IDs:** Format `session:YYYY-MM-DD_slug` where slug is session purpose
+
+### Session ID format (v2)
+`session:YYYY-MM-DD_XXXXXX` where XXXXXX = 6-char UUID hex.
+Always exactly 28 characters. Example: `session:2026-04-15_a3f7c2`
 
 ### 6.5 ID immutability
 

@@ -38,7 +38,9 @@ gobp(query="<action>:<NodeType> <key>='<value>' ...")
 | `lock:Decision topic='x' what='y' why='z'` | Lock decision |
 | `session:start actor='x' goal='y'` | Start session |
 | `session:end outcome='x' handoff='y'` | End session |
-| `import: path/to/doc.md` | Propose import |
+| `edge: node:a --<type>--> node:b` | Create semantic edge |
+| `edge: node:a --implements--> node:b reason='x'` | Edge with reason |
+| `import: path/to/doc.md session_id='x'` | Import doc -> creates Document node + priority |
 | `commit: imp:proposal-id` | Commit proposal |
 | `validate: <scope>` | Validate graph |
 | `extract: lessons` | Extract lesson candidates |
