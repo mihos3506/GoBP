@@ -5,6 +5,40 @@ Format: [Wave N — Title] with date, what was added/changed/fixed.
 
 ---
 
+## [Wave 12] — Launcher + Project Picker + Schema v3 + Better Viewer — 2026-04-15
+
+### Problem solved
+- Viewer required terminal command to start
+- Schema lacked product node types (Engine, Flow, Entity, etc.)
+- Viewer UI was too basic
+
+### Added
+- `GoBP_Viewer.bat` — double-click launcher (Windows)
+- `projects.json` — machine-specific project registry (gitignored)
+- `gobp/viewer/launcher.py` — finds projects.json, starts server, opens browser
+- 9 new node types: Engine, Flow, Entity, Feature, Invariant, Screen,
+  APIEndpoint, Repository, Wave
+- Improved `index.html`: JetBrains Mono, project switcher, status filters,
+  Core/All toggle, SpriteText labels, click-navigate relations
+
+### Changed
+- `gobp/viewer/server.py`: /api/projects endpoint, /api/graph?root=PATH,
+  edges now have source/target AND from/to
+- `gobp/schema/core_nodes.yaml`: 9 → 18 node types
+- `.gitignore`: projects.json + GoBP_Viewer.bat
+
+### Usage
+```
+Double-click GoBP_Viewer.bat
+→ Browser opens at http://localhost:8080
+→ Select project from dropdown
+→ View 3D graph
+```
+
+### Total after wave: 1 MCP tool, 18 node types, 290+ tests
+
+---
+
 ## [Wave 11B] — 3D Graph Viewer — 2026-04-15
 
 ### Added

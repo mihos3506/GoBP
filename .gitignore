@@ -30,3 +30,7 @@ Thumbs.db
 # GoBP derived files
 .gobp/index.db
 .gobp/archive/
+
+# Machine-specific viewer config
+projects.json
+GoBP_Viewer.bat
