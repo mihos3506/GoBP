@@ -25,6 +25,16 @@ _AUTO_ID_CONFIG: dict[str, tuple[str, int]] = {
 }
 
 
+def _get_revision(node_id: str, project_root: Path) -> int:
+    """Get revision count from history log for this node."""
+    try:
+        from gobp.core.history import count_events_for_node
+
+        return count_events_for_node(project_root, node_id)
+    except Exception:
+        return 1
+
+
 def _generate_node_id(node_type: str, index: GraphIndex) -> str:
     """Generate a sequential node ID for auto-numbered types.
 
@@ -157,7 +167,30 @@ def node_upsert(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> 
     except Exception as e:
         warnings.append(f"Failed to create discovered_in edge: {e}")
 
-    return {"ok": True, "node_id": node_id, "created": created, "warnings": warnings}
+    if created:
+        changed_fields = sorted([k for k in node.keys() if k not in ("updated", "session_id")])
+        write_action = "created"
+    else:
+        changed_fields = sorted(
+            [
+                k for k, v in node.items()
+                if existing is not None
+                and existing.get(k) != v
+                and k not in ("updated", "session_id")
+            ]
+        )
+        write_action = "updated" if changed_fields else "skipped"
+
+    return {
+        "ok": True,
+        "node_id": node_id,
+        "created": created,
+        "warnings": warnings,
+        "action": write_action,
+        "changed_fields": changed_fields,
+        "conflicts": [],
+        "revision": _get_revision(node_id, project_root),
+    }
 
 
 def decision_lock(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> dict[str, Any]:
@@ -252,7 +285,17 @@ def decision_lock(index: GraphIndex, project_root: Path, args: dict[str, Any]) -
         else:
             warnings.append(f"related_idea not found: {idea_id}")
 
-    return {"ok": True, "decision_id": decision_id, "warnings": warnings}
+    return {
+        "ok": True,
+        "decision_id": decision_id,
+        "warnings": warnings,
+        "action": "created",
+        "changed_fields": sorted(
+            [k for k in decision.keys() if k not in ("updated", "session_id")]
+        ),
+        "conflicts": [],
+        "revision": _get_revision(decision_id, project_root),
+    }
 
 
 def session_log(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> dict[str, Any]:
@@ -313,7 +356,16 @@ def session_log(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> 
         except Exception as e:
             return {"ok": False, "error": f"Write failed: {e}"}
 
-        return {"ok": True, "session_id": session_id}
+        return {
+            "ok": True,
+            "session_id": session_id,
+            "action": "created",
+            "changed_fields": sorted(
+                [k for k in session_node.keys() if k not in ("updated",)]
+            ),
+            "conflicts": [],
+            "revision": _get_revision(session_id, project_root),
+        }
 
     # action == "update" or "end"
     session_id = args.get("session_id")
@@ -350,4 +402,16 @@ def session_log(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> 
     except Exception as e:
         return {"ok": False, "error": f"Write failed: {e}"}
 
-    return {"ok": True, "session_id": session_id}
+    changed_fields = sorted(
+        [k for k, v in updated.items() if existing.get(k) != v and k not in ("updated",)]
+    )
+    write_action = "updated" if changed_fields else "skipped"
+
+    return {
+        "ok": True,
+        "session_id": session_id,
+        "action": write_action,
+        "changed_fields": changed_fields,
+        "conflicts": [],
+        "revision": _get_revision(session_id, project_root),
+    }
