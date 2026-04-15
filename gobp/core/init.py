@@ -1,4 +1,4 @@
-"""GoBP project initialization.
+﻿"""GoBP project initialization.
 
 Creates .gobp/ folder structure for a new GoBP project.
 Called by `python -m gobp.cli init`.
@@ -65,7 +65,7 @@ def init_project(
         "schema_version": INIT_SCHEMA_VERSION,
         "created_at": datetime.now(timezone.utc).isoformat(),
         "gobp_version": "0.1.0",
-        # Multi-user placeholders — null/inactive in v1, ready for v2 upgrade
+        # Multi-user placeholders â€” null/inactive in v1, ready for v2 upgrade
         "owner": None,
         "collaborators": [],
         "access_model": "open",
@@ -111,7 +111,7 @@ def _seed_universal_nodes(project_root: Path) -> list[str]:
     nodes_dir = project_root / ".gobp" / "nodes"
 
     seeds = [
-        # ── FUNCTIONAL GROUP (6 kinds) ────────────────────────────────────
+        # â”€â”€ FUNCTIONAL GROUP (6 kinds) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         {
             "id": "testkind:unit",
             "type": "TestKind",
@@ -129,9 +129,7 @@ def _seed_universal_nodes(project_root: Path) -> list[str]:
                 "test null/empty input",
                 "test boundary values",
                 "test error handling",
-            ],
-            "platform": None,
-            "extensible": True,
+            ],            "extensible": True,
             "created": now,
             "updated": now,
         },
@@ -151,9 +149,7 @@ def _seed_universal_nodes(project_root: Path) -> list[str]:
                 "test service A calls service B correctly",
                 "test DB read after write",
                 "test API returns correct response shape",
-            ],
-            "platform": None,
-            "extensible": True,
+            ],            "extensible": True,
             "created": now,
             "updated": now,
         },
@@ -173,9 +169,7 @@ def _seed_universal_nodes(project_root: Path) -> list[str]:
                 "test complete registration flow",
                 "test payment flow end-to-end",
                 "test critical user journey",
-            ],
-            "platform": None,
-            "extensible": True,
+            ],            "extensible": True,
             "created": now,
             "updated": now,
         },
@@ -195,9 +189,7 @@ def _seed_universal_nodes(project_root: Path) -> list[str]:
                 "test API response has required fields",
                 "test field types match contract",
                 "test error response format",
-            ],
-            "platform": None,
-            "extensible": True,
+            ],            "extensible": True,
             "created": now,
             "updated": now,
         },
@@ -216,9 +208,7 @@ def _seed_universal_nodes(project_root: Path) -> list[str]:
             "seed_examples": [
                 "re-run all unit tests after refactor",
                 "verify login still works after auth change",
-            ],
-            "platform": None,
-            "extensible": True,
+            ],            "extensible": True,
             "created": now,
             "updated": now,
         },
@@ -237,13 +227,11 @@ def _seed_universal_nodes(project_root: Path) -> list[str]:
             "seed_examples": [
                 "verify feature matches user story",
                 "stakeholder sign-off on flow",
-            ],
-            "platform": None,
-            "extensible": True,
+            ],            "extensible": True,
             "created": now,
             "updated": now,
         },
-        # ── NON-FUNCTIONAL GROUP (3 kinds) ────────────────────────────────
+        # â”€â”€ NON-FUNCTIONAL GROUP (3 kinds) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         {
             "id": "testkind:performance",
             "type": "TestKind",
@@ -260,9 +248,7 @@ def _seed_universal_nodes(project_root: Path) -> list[str]:
                 "test response < 200ms at 100 concurrent users",
                 "test app startup < 2s",
                 "test API throughput under load",
-            ],
-            "platform": None,
-            "extensible": True,
+            ],            "extensible": True,
             "created": now,
             "updated": now,
         },
@@ -283,9 +269,7 @@ def _seed_universal_nodes(project_root: Path) -> list[str]:
                 "test color contrast >= 4.5:1",
                 "test screen reader compatibility",
                 "test keyboard navigation",
-            ],
-            "platform": None,
-            "extensible": True,
+            ],            "extensible": True,
             "created": now,
             "updated": now,
         },
@@ -305,13 +289,11 @@ def _seed_universal_nodes(project_root: Path) -> list[str]:
                 "test on Android 10+",
                 "test on iOS 15+",
                 "test on small screen 320px width",
-            ],
-            "platform": None,
-            "extensible": True,
+            ],            "extensible": True,
             "created": now,
             "updated": now,
         },
-        # ── PROCESS GROUP (2 kinds) ────────────────────────────────────────
+        # â”€â”€ PROCESS GROUP (2 kinds) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         {
             "id": "testkind:smoke",
             "type": "TestKind",
@@ -328,9 +310,7 @@ def _seed_universal_nodes(project_root: Path) -> list[str]:
                 "app launches without crash",
                 "login endpoint responds 200",
                 "home screen loads",
-            ],
-            "platform": None,
-            "extensible": True,
+            ],            "extensible": True,
             "created": now,
             "updated": now,
         },
@@ -350,13 +330,11 @@ def _seed_universal_nodes(project_root: Path) -> list[str]:
                 "explore registration edge cases",
                 "try unexpected user inputs",
                 "explore error states",
-            ],
-            "platform": None,
-            "extensible": True,
+            ],            "extensible": True,
             "created": now,
             "updated": now,
         },
-        # ── SECURITY GROUP (5 sub-kinds) ──────────────────────────────────
+        # â”€â”€ SECURITY GROUP (5 sub-kinds) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         {
             "id": "testkind:security_auth",
             "type": "TestKind",
@@ -375,9 +353,7 @@ def _seed_universal_nodes(project_root: Path) -> list[str]:
                 "test expired token rejected",
                 "test role-based access control",
                 "test brute force lockout after N attempts",
-            ],
-            "platform": None,
-            "extensible": True,
+            ],            "extensible": True,
             "created": now,
             "updated": now,
         },
@@ -399,9 +375,7 @@ def _seed_universal_nodes(project_root: Path) -> list[str]:
                 "test XSS in text input",
                 "test fuzz API with random data",
                 "test oversized input rejected",
-            ],
-            "platform": None,
-            "extensible": True,
+            ],            "extensible": True,
             "created": now,
             "updated": now,
         },
@@ -423,9 +397,7 @@ def _seed_universal_nodes(project_root: Path) -> list[str]:
                 "test TLS 1.2+ enforced",
                 "test certificate pinning prevents MITM",
                 "test no sensitive data in URL params or headers",
-            ],
-            "platform": None,
-            "extensible": True,
+            ],            "extensible": True,
             "created": now,
             "updated": now,
         },
@@ -447,9 +419,7 @@ def _seed_universal_nodes(project_root: Path) -> list[str]:
                 "test PII not stored plaintext",
                 "test GPS coords encrypted before transmitting",
                 "test encryption key not hardcoded in source",
-            ],
-            "platform": None,
-            "extensible": True,
+            ],            "extensible": True,
             "created": now,
             "updated": now,
         },
@@ -471,22 +441,20 @@ def _seed_universal_nodes(project_root: Path) -> list[str]:
                 "test rate limiting after 100 req/min",
                 "test no excessive data exposure in response",
                 "test CORS policy restricts origins",
-            ],
-            "platform": None,
-            "extensible": True,
+            ],            "extensible": True,
             "created": now,
             "updated": now,
         },
-        # ── CONCEPT NODE ──────────────────────────────────────────────────
+        # â”€â”€ CONCEPT NODE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         {
             "id": "concept:test_taxonomy",
             "type": "Concept",
             "name": "Test Taxonomy",
             "definition": (
                 "GoBP organizes software tests into 3 levels: "
-                "Level 1 (universal) — applies to all projects, pre-seeded on init; "
-                "Level 2 (platform) — specific to Flutter, Deno, Web, etc., added by project; "
-                "Level 3 (project) — custom kinds unique to this project. "
+                "Level 1 (universal) â€” applies to all projects, pre-seeded on init; "
+                "Level 2 (platform) â€” specific to Flutter, Deno, Web, etc., added by project; "
+                "Level 3 (project) â€” custom kinds unique to this project. "
                 "TestKind nodes define categories. TestCase nodes are individual test instances."
             ),
             "usage_guide": (
@@ -517,3 +485,5 @@ def _seed_universal_nodes(project_root: Path) -> list[str]:
         created_ids.append(node_id)
 
     return created_ids
+
+
