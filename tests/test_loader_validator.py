@@ -92,8 +92,8 @@ def test_load_core_schemas_actual():
     nodes_schema = load_schema(schema_dir / "core_nodes.yaml")
     edges_schema = load_schema(schema_dir / "core_edges.yaml")
 
-    assert nodes_schema["schema_version"] == "1.0"
-    assert edges_schema["schema_version"] == "1.0"
+    assert nodes_schema["schema_version"] == "2.0"
+    assert edges_schema["schema_version"] == "2.0"
     assert "node_types" in nodes_schema
     assert "edge_types" in edges_schema
 
