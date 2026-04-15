@@ -5,6 +5,25 @@ Format: [Wave N — Title] with date, what was added/changed/fixed.
 
 ---
 
+## [Wave 8] — MIHOS Integration Test — 2026-04-15
+
+### Added
+- `tests/fixtures/mihos_fixture.py` — MIHOS-scale fixture (~30 nodes, ~30 edges)
+- `tests/fixtures/__init__.py`
+- `gobp/schema/extensions/mihos.yaml` — MIHOS schema extension (Imprint + Provider types)
+- `gobp/schema/extensions/__init__.py`
+- `tests/test_performance.py` — 10 latency benchmarks vs MCP_TOOLS.md §10 targets
+- `tests/test_integration.py` — 3 end-to-end session workflow tests
+
+### Verified
+- All 14 MCP tools within max latency targets on MIHOS-scale data (~30 nodes)
+- Full session workflow (orient → capture → lock → close → validate → extract) passes
+- GoBP schema extension pattern demonstrated (mihos.yaml)
+
+### Total after wave: 14 MCP tools, 179 tests passing
+
+---
+
 ## [Wave 6] — Advanced Features — 2026-04-15
 
 ### Added
