@@ -134,7 +134,9 @@ def create_node(
             f"Node file already exists: {node_file}. Use update_node instead."
         )
 
-    frontmatter_yaml = yaml.safe_dump(node, default_flow_style=False, sort_keys=False)
+    frontmatter_yaml = yaml.safe_dump(
+        node, default_flow_style=False, sort_keys=False, allow_unicode=True
+    )
     content = (
         f"---\n{frontmatter_yaml}---\n\n"
         "(Auto-generated node file. Edit the YAML above or add body content below.)\n"
@@ -205,7 +207,9 @@ def update_node(
             f"Node file does not exist: {node_file}. Use create_node instead."
         )
 
-    frontmatter_yaml = yaml.safe_dump(node, default_flow_style=False, sort_keys=False)
+    frontmatter_yaml = yaml.safe_dump(
+        node, default_flow_style=False, sort_keys=False, allow_unicode=True
+    )
     content = f"---\n{frontmatter_yaml}---\n\n(Updated node file.)\n"
 
     _atomic_write(node_file, content)
@@ -269,7 +273,9 @@ def delete_node(
 
     frontmatter["status"] = "ARCHIVED"
 
-    frontmatter_yaml = yaml.safe_dump(frontmatter, default_flow_style=False, sort_keys=False)
+    frontmatter_yaml = yaml.safe_dump(
+        frontmatter, default_flow_style=False, sort_keys=False, allow_unicode=True
+    )
     new_content = f"---\n{frontmatter_yaml}---\n\n{body}"
 
     _atomic_write(node_file, new_content)
@@ -333,7 +339,9 @@ def create_edge(
 
     existing_edges.append(edge)
 
-    new_content = yaml.safe_dump(existing_edges, default_flow_style=False, sort_keys=False)
+    new_content = yaml.safe_dump(
+        existing_edges, default_flow_style=False, sort_keys=False, allow_unicode=True
+    )
     _atomic_write(edge_file, new_content)
 
     try:
@@ -407,7 +415,9 @@ def delete_edge(
     deleted_count = initial_count - len(remaining)
 
     if deleted_count > 0:
-        new_content = yaml.safe_dump(remaining, default_flow_style=False, sort_keys=False)
+        new_content = yaml.safe_dump(
+            remaining, default_flow_style=False, sort_keys=False, allow_unicode=True
+        )
         _atomic_write(edge_file, new_content)
 
         append_event(
