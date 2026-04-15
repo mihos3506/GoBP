@@ -5,6 +5,39 @@ Format: [Wave N — Title] with date, what was added/changed/fixed.
 
 ---
 
+## [Wave 11B] — 3D Graph Viewer — 2026-04-15
+
+### Added
+- `gobp/viewer/` — 3D graph viewer package
+  - `__main__.py` — CLI entry: `python -m gobp.viewer --root PATH`
+  - `server.py` — HTTP server + `/api/graph` endpoint
+  - `index.html` — 3D graph SPA (3d-force-graph, dark theme, ◈ amber accent)
+- `tests/test_viewer.py` — ~9 tests
+
+### Usage
+```bash
+python -m gobp.viewer --root D:\GoBP
+python -m gobp.viewer --root D:\MIHOS-v1 --port 8081
+```
+
+Opens browser at `http://localhost:8080`. Press Ctrl+C to stop.
+
+### Visual design
+- Node size = priority (critical=large, low=tiny)
+- Node color = type (Decision=amber, Node=cyan, Idea=violet, etc.)
+- Edge particles for `implements` relationships
+- Filter panel by node type
+- Search highlights matching nodes
+- Click node → detail panel with gobp() query hint
+- Dark theme: deep space background + amber ◈ accent
+
+### Per-project isolation
+Each `--root` is a separate project graph. Projects never share data.
+
+### Total after wave: 1 MCP tool, 22 actions, 285+ tests
+
+---
+
 ## [Wave 11A] — Lazy Query Actions — 2026-04-15
 
 ### Problem solved
