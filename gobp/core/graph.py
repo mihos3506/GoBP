@@ -68,7 +68,8 @@ class GraphIndex:
         # (always rebuild on load for now — Wave 9A baseline)
         try:
             _db.init_schema(gobp_root)
-            _db.rebuild_index(gobp_root, index)
+            if not _db.index_exists(gobp_root):
+                _db.rebuild_index(gobp_root, index)
         except Exception:
             # SQLite failure is non-fatal — in-memory index still works
             pass
