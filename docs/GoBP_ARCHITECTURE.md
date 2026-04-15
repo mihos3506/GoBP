@@ -274,7 +274,7 @@ nodes_touched: []
 decisions_locked:
   - dec:d020 (GoBP rename from BKP)
   - dec:d021 (License deferred)
-  - dec:d022 (6 core node types)
+  - dec:d022 (9 core node types in schema v2)
 pending:
   - INPUT_MODEL.md
   - IMPORT_MODEL.md
