@@ -108,123 +108,164 @@ def _classify_doc_priority(content: str, path: str) -> str:
 
 # -- Query parser --------------------------------------------------------------
 
+_POSITIONAL_KEY: dict[str, str] = {
+    "find": "query",
+    "get": "node_id",
+    "context": "node_id",
+    "signature": "node_id",
+    "code": "node_id",
+    "invariants": "node_id",
+    "tests": "node_id",
+    "related": "node_id",
+    "sections": "doc_id",
+    "decisions": "topic",
+    "validate": "scope",
+    "stats": "action_filter",
+    "import": "source_path",
+    "commit": "proposal_id",
+    "recent": "n",
+    "edge": "_edge_raw",
+}
+
+
+def _coerce_value(v: str) -> Any:
+    """Coerce string values to appropriate Python types."""
+    if v.lower() == "true":
+        return True
+    if v.lower() == "false":
+        return False
+    if v.lower() in ("null", "none"):
+        return None
+    if v.isdigit():
+        return int(v)
+    return v
+
+
+def _tokenize_rest(rest: str) -> list[str]:
+    """Tokenize rest string while preserving quoted groups."""
+    tokens: list[str] = []
+    current: list[str] = []
+    in_quote = False
+    quote_char = None
+
+    for char in rest:
+        if not in_quote and char in ("'", '"'):
+            in_quote = True
+            quote_char = char
+            current.append(char)
+        elif in_quote and char == quote_char:
+            in_quote = False
+            quote_char = None
+            current.append(char)
+        elif not in_quote and char == " ":
+            if current:
+                tokens.append("".join(current))
+                current = []
+        else:
+            current.append(char)
+
+    if current:
+        tokens.append("".join(current))
+
+    return [t for t in tokens if t]
+
+
+def _parse_edge_rest(rest: str) -> dict[str, Any]:
+    """Parse edge arrow syntax: 'node:a --type--> node:b [key=val]'."""
+    edge_pattern = re.compile(r"^([\w:]+)\s+--(\w+)-->\s+([\w:]+)(.*)?$")
+    m = edge_pattern.match(rest)
+    if m:
+        params: dict[str, Any] = {
+            "from": m.group(1).strip(),
+            "edge_type": m.group(2).strip(),
+            "to": m.group(3).strip(),
+        }
+        extra = m.group(4).strip() if m.group(4) else ""
+        if extra:
+            for km in re.finditer(r"(\w+)='([^']*)'|(\w+)=\"([^\"]*)\"|(\w+)=(\S+)", extra):
+                if km.group(1):
+                    params[km.group(1)] = km.group(2)
+                elif km.group(3):
+                    params[km.group(3)] = km.group(4)
+                elif km.group(5):
+                    params[km.group(5)] = _coerce_value(km.group(6))
+        return params
+    return {"_edge_raw": rest}
+
+
 def parse_query(query: str) -> tuple[str, str, dict[str, Any]]:
-    """Parse query string into (action, node_type, params).
-
-    Format: "<action>:<type> <key>='<value>' ..."
-    or:     "<action>: <bare_value>"
-
-    Returns:
-        (action, node_type, params)
-        action: lowercase action string
-        node_type: node type if specified, else ""
-        params: dict of key=value pairs, or {"query": bare_value}
-    """
+    """Parse query string into (action, node_type, params)."""
     query = query.strip()
     if not query:
         return "overview", "", {}
 
-    # Find action:type separator
     colon_idx = query.find(":")
     if colon_idx == -1:
-        # No colon - treat as find query
         return "find", "", {"query": query}
 
     action_part = query[:colon_idx].strip().lower()
-    rest = query[colon_idx + 1 :].strip()
+    rest = query[colon_idx + 1:].strip()
 
-    # Split action and node_type (e.g. "find:Decision" -> action="find", type="Decision")
-    action_parts = action_part.split(None, 1)
-    action = action_parts[0]
-    node_type = action_parts[1] if len(action_parts) > 1 else ""
+    action_tokens = action_part.split(None, 1)
+    action = action_tokens[0]
+    node_type = action_tokens[1] if len(action_tokens) > 1 else ""
 
     if not rest:
         return action, node_type, {}
 
-    # Typed actions: "create:Idea ..." or "lock:Decision ..."
-    if action in ("create", "lock", "upsert") and node_type == "":
-        first_token, sep, remainder = rest.partition(" ")
-        if first_token and "=" not in first_token:
-            node_type = first_token
-            rest = remainder if sep else ""
-            if not rest:
-                return action, node_type, {}
-
-    # Action subcommand shorthand: "session:start actor=x" -> query=start
-    if action == "session" and node_type == "" and " " in rest:
-        maybe_sub, remainder = rest.split(" ", 1)
-        if "=" not in maybe_sub:
-            node_type = ""
-            rest = remainder
-            base_params: dict[str, Any] = {"query": maybe_sub}
-        else:
-            base_params = {}
-    else:
-        base_params = {}
-
-    # Typed find shorthand: "find:Decision auth" -> type=Decision, query=auth
-    if action == "find" and node_type == "" and " " in rest:
-        maybe_type, remainder = rest.split(" ", 1)
-        if "=" not in maybe_type:
-            node_type = maybe_type
-            return action, node_type, {"query": remainder.strip()}
-
-    # Import shorthand: "import: path/to/file.md session_id='x'"
-    if action == "import" and node_type == "":
-        token_match = re.match(r"^(\S+)\s+(.*)$", rest)
-        if token_match and "=" in token_match.group(2):
-            params = dict(base_params)
-            params["query"] = token_match.group(1)
-            extra = token_match.group(2)
-            for km in re.finditer(r"(\w+)='([^']*)'|(\w+)=\"([^\"]*)\"|(\w+)=(\S+)", extra):
-                if km.group(1) is not None:
-                    params[km.group(1)] = km.group(2)
-                elif km.group(3) is not None:
-                    params[km.group(3)] = km.group(4)
-                elif km.group(5) is not None:
-                    params[km.group(5)] = km.group(6)
-            return action, "", params
-
-    # Parse params: key='value' or key=value or bare value
-    params: dict[str, Any] = dict(base_params)
-
-    # Special case: edge: from_id --type--> to_id
     if action == "edge":
-        edge_pattern = re.compile(
-            r"^([\w:]+)\s+--(\w+)-->\s+([\w:]+)(.*)?$"
-        )
-        m = edge_pattern.match(rest)
-        if m:
-            params["from"] = m.group(1).strip()
-            params["edge_type"] = m.group(2).strip()
-            params["to"] = m.group(3).strip()
-            # Parse remaining key=value pairs
-            extra = m.group(4).strip() if m.group(4) else ""
-            if extra:
-                for km in re.finditer(r"(\w+)='([^']*)'|(\w+)=(\S+)", extra):
-                    if km.group(1):
-                        params[km.group(1)] = km.group(2)
-                    elif km.group(3):
-                        params[km.group(3)] = km.group(4)
-        return action, "", params
+        return action, "", _parse_edge_rest(rest)
 
-    # Try key=value parsing first
-    kv_pattern = re.compile(r"(\w+)='([^']*)'|(\w+)=\"([^\"]*)\"|(\w+)=(\S+)")
-    matches = list(kv_pattern.finditer(rest))
+    params: dict[str, Any] = {}
+    tokens = _tokenize_rest(rest)
 
-    if matches:
-        for m in matches:
-            if m.group(1) is not None:
-                params[m.group(1)] = m.group(2)
-            elif m.group(3) is not None:
-                params[m.group(3)] = m.group(4)
-            elif m.group(5) is not None:
-                params[m.group(5)] = m.group(6)
-    else:
-        # No key=value pairs - bare value
-        params["query"] = rest
+    if action in ("create", "lock", "upsert") and node_type == "" and tokens:
+        first = tokens[0]
+        if "=" not in first:
+            node_type = first.strip("'\"")
+            tokens = tokens[1:]
+
+    if action == "find" and node_type == "" and tokens:
+        first = tokens[0]
+        if "=" not in first and ":" not in first and first[:1].isupper():
+            node_type = first.strip("'\"")
+            tokens = tokens[1:]
+
+    positional_key = _POSITIONAL_KEY.get(action, "query")
+    positional_consumed = False
+
+    for token in tokens:
+        if "=" in token:
+            eq_idx = token.index("=")
+            k = token[:eq_idx].strip()
+            v = token[eq_idx + 1:].strip().strip("'\"")
+            params[k] = _coerce_value(v)
+        elif not positional_consumed:
+            value = token.strip("'\"")
+            params[positional_key] = value
+            if positional_key != "query":
+                # Backward compatibility for existing callers/tests.
+                params["query"] = value
+            positional_consumed = True
 
     return action, node_type, params
+
+
+_a, _t, _p = parse_query("find: login page_size=10")
+assert (_a, _t) == ("find", "")
+assert _p.get("query") == "login" and _p.get("page_size") == 10
+_a, _t, _p = parse_query("find:Decision auth page_size=5")
+assert (_a, _t) == ("find", "Decision")
+assert _p.get("query") == "auth" and _p.get("page_size") == 5
+_a, _t, _p = parse_query("related: node:x direction='outgoing' page_size=10")
+assert (_a, _t) == ("related", "")
+assert _p.get("node_id") == "node:x" and _p.get("direction") == "outgoing" and _p.get("page_size") == 10
+_a, _t, _p = parse_query("tests: node:x page_size=20")
+assert (_a, _t) == ("tests", "")
+assert _p.get("node_id") == "node:x" and _p.get("page_size") == 20
+assert parse_query("session:start actor='cursor' goal='test'")[2]["query"] == "start"
+assert parse_query("create:Node name='Login' priority='critical'")[2]["name"] == "Login"
+assert parse_query("create:Node automated=true")[2]["automated"] is True
 
 
 # -- Dispatch router -----------------------------------------------------------
@@ -268,6 +309,14 @@ async def dispatch(
                 args["type"] = node_type
             if "limit" in params:
                 args["limit"] = int(params["limit"])
+            if "page_size" in params:
+                args["page_size"] = int(params["page_size"])
+            if "cursor" in params:
+                args["cursor"] = params["cursor"]
+            if "sort" in params:
+                args["sort"] = params["sort"]
+            if "direction" in params:
+                args["direction"] = params["direction"]
             result = tools_read.find(index, project_root, args)
 
         elif action in ("get", "context"):
