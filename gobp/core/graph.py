@@ -7,12 +7,13 @@ This class provides fast lookup via Python dicts.
 
 from __future__ import annotations
 
+from collections import defaultdict
 from pathlib import Path
 from typing import Any
 
 from gobp.core import db as _db
 from gobp.core.loader import load_edge_file, load_node_file, load_schema
-from gobp.core.validator import ValidationResult, validate_edge, validate_node
+from gobp.core.validator import validate_edge, validate_node
 
 
 class GraphIndex:
@@ -20,19 +21,31 @@ class GraphIndex:
 
     Loads from .gobp/ folder at startup. Provides read-only query methods.
     Write operations go through mutator.py (Wave 5).
+
+    Internal indexes for O(1) / O(k) lookups:
+      _nodes          : id → node dict
+      _nodes_by_type  : type → list[node dict]
+      _edges          : flat list (source of truth)
+      _edges_from     : node_id → list[edge dict]
+      _edges_to       : node_id → list[edge dict]
+      _edges_by_type  : edge_type → list[edge dict]
     """
 
     def __init__(self) -> None:
         """Initialize empty index."""
         self._nodes: dict[str, dict[str, Any]] = {}
+        self._nodes_by_type_idx: dict[str, list[dict[str, Any]]] = defaultdict(list)
         self._edges: list[dict[str, Any]] = []
+        self._edges_from_idx: dict[str, list[dict[str, Any]]] = defaultdict(list)
+        self._edges_to_idx: dict[str, list[dict[str, Any]]] = defaultdict(list)
+        self._edges_by_type_idx: dict[str, list[dict[str, Any]]] = defaultdict(list)
         self._nodes_schema: dict[str, Any] = {}
         self._edges_schema: dict[str, Any] = {}
         self._load_errors: list[str] = []
         self._gobp_root: Path | None = None
 
     @classmethod
-    def load_from_disk(cls, gobp_root: Path) -> GraphIndex:
+    def load_from_disk(cls, gobp_root: Path) -> "GraphIndex":
         """Load nodes, edges, and schemas from a GoBP project root.
 
         Expected folder structure:
@@ -64,8 +77,7 @@ class GraphIndex:
         index._load_nodes(data_dir / "nodes")
         index._load_edges(data_dir / "edges")
 
-        # Build SQLite index if not exists or stale
-        # (always rebuild on load for now — Wave 9A baseline)
+        # Build SQLite index if not exists
         try:
             _db.init_schema(gobp_root)
             if not _db.index_exists(gobp_root):
@@ -88,10 +100,15 @@ class GraphIndex:
                     node_id = node.get("id")
                     if node_id:
                         self._nodes[node_id] = node
+                        # Build type index
+                        node_type = node.get("type", "Unknown")
+                        self._nodes_by_type_idx[node_type].append(node)
                     else:
                         self._load_errors.append(f"{node_file}: node has no 'id' field")
                 else:
-                    self._load_errors.append(f"{node_file}: validation failed: {result.errors}")
+                    self._load_errors.append(
+                        f"{node_file}: validation failed: {result.errors}"
+                    )
             except (ValueError, FileNotFoundError) as e:
                 self._load_errors.append(f"{node_file}: {e}")
 
@@ -106,6 +123,16 @@ class GraphIndex:
                     result = validate_edge(edge, self._edges_schema)
                     if result.ok:
                         self._edges.append(edge)
+                        # Build edge indexes
+                        from_id = edge.get("from", "")
+                        to_id = edge.get("to", "")
+                        edge_type = edge.get("type", "")
+                        if from_id:
+                            self._edges_from_idx[from_id].append(edge)
+                        if to_id:
+                            self._edges_to_idx[to_id].append(edge)
+                        if edge_type:
+                            self._edges_by_type_idx[edge_type].append(edge)
                     else:
                         self._load_errors.append(
                             f"{edge_file}: edge validation failed: {result.errors}"
@@ -123,10 +150,10 @@ class GraphIndex:
         return len(self._nodes)
 
     def get_node(self, node_id: str) -> dict[str, Any] | None:
-        """Get a node by ID.
+        """Get a node by ID. O(1).
 
         Args:
-            node_id: Node ID (e.g., "node:user_login").
+            node_id: Node ID (e.g., "node:feat_login").
 
         Returns:
             Node dict or None if not found.
@@ -134,15 +161,15 @@ class GraphIndex:
         return self._nodes.get(node_id)
 
     def all_nodes(self) -> list[dict[str, Any]]:
-        """Return all nodes as a list.
+        """Return all nodes as a list. O(n).
 
         Returns:
-            List of node dicts (copies not shared with index).
+            List of node dicts.
         """
         return list(self._nodes.values())
 
     def all_edges(self) -> list[dict[str, Any]]:
-        """Return all edges as a list.
+        """Return all edges as a list. O(n).
 
         Returns:
             List of edge dicts.
@@ -150,7 +177,7 @@ class GraphIndex:
         return list(self._edges)
 
     def nodes_by_type(self, type_name: str) -> list[dict[str, Any]]:
-        """Return all nodes of a given type.
+        """Return all nodes of a given type. O(k) where k = nodes of that type.
 
         Args:
             type_name: Node type (e.g., "Idea", "Decision").
@@ -158,10 +185,10 @@ class GraphIndex:
         Returns:
             List of nodes matching type. Empty list if none.
         """
-        return [n for n in self._nodes.values() if n.get("type") == type_name]
+        return list(self._nodes_by_type_idx.get(type_name, []))
 
     def get_edges_from(self, node_id: str) -> list[dict[str, Any]]:
-        """Get all edges where `from` is the given node ID.
+        """Get all edges where `from` is the given node ID. O(k).
 
         Args:
             node_id: Source node ID.
@@ -169,10 +196,10 @@ class GraphIndex:
         Returns:
             List of edges.
         """
-        return [e for e in self._edges if e.get("from") == node_id]
+        return list(self._edges_from_idx.get(node_id, []))
 
     def get_edges_to(self, node_id: str) -> list[dict[str, Any]]:
-        """Get all edges where `to` is the given node ID.
+        """Get all edges where `to` is the given node ID. O(k).
 
         Args:
             node_id: Target node ID.
@@ -180,10 +207,10 @@ class GraphIndex:
         Returns:
             List of edges.
         """
-        return [e for e in self._edges if e.get("to") == node_id]
+        return list(self._edges_to_idx.get(node_id, []))
 
     def get_edges_by_type(self, edge_type: str) -> list[dict[str, Any]]:
-        """Get all edges of a given type.
+        """Get all edges of a given type. O(k).
 
         Args:
             edge_type: Edge type (e.g., "supersedes", "implements").
@@ -191,4 +218,4 @@ class GraphIndex:
         Returns:
             List of edges matching type.
         """
-        return [e for e in self._edges if e.get("type") == edge_type]
+        return list(self._edges_by_type_idx.get(edge_type, []))
