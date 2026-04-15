@@ -83,6 +83,15 @@ def parse_query(query: str) -> tuple[str, str, dict[str, Any]]:
     if not rest:
         return action, node_type, {}
 
+    # Typed actions: "create:Idea ..." or "lock:Decision ..."
+    if action in ("create", "lock") and node_type == "":
+        first_token, sep, remainder = rest.partition(" ")
+        if first_token and "=" not in first_token:
+            node_type = first_token
+            rest = remainder if sep else ""
+            if not rest:
+                return action, node_type, {}
+
     # Action subcommand shorthand: "session:start actor=x" -> query=start
     if action == "session" and node_type == "" and " " in rest:
         maybe_sub, remainder = rest.split(" ", 1)
