@@ -60,15 +60,23 @@ def cmd_validate(args: argparse.Namespace) -> int:
         return 1
 
     if args.reindex:
-        print("Rebuilding SQLite index...")
-        try:
-            from gobp.core import db as _db
+        from gobp.core.db_config import is_postgres_available
 
-            index_for_rebuild = GraphIndex.load_from_disk(root)
-            result = _db.rebuild_index(root, index_for_rebuild)
-            print(f"  {result['message']}")
-        except Exception as e:
-            print(f"  Warning: reindex failed: {e}", file=sys.stderr)
+        postgres_ready = is_postgres_available(root)
+        if postgres_ready:
+            print("Rebuilding PostgreSQL index...")
+        else:
+            print("Warning: PostgreSQL not available. Index rebuild skipped.")
+            print("Set GOBP_DB_URL environment variable to enable PostgreSQL.")
+        if postgres_ready:
+            try:
+                from gobp.core import db as _db
+
+                index_for_rebuild = GraphIndex.load_from_disk(root)
+                result = _db.rebuild_index(root, index_for_rebuild)
+                print(f"  {result['message']}")
+            except Exception as e:
+                print(f"  Warning: reindex failed: {e}", file=sys.stderr)
 
     print(f"Validating {root}...")
     try:
