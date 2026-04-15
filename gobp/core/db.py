@@ -1,117 +1,122 @@
-"""GoBP SQLite persistent index.
+"""GoBP persistent index — PostgreSQL backend.
 
-Derived index over .gobp/ data for fast queries.
-Source of truth is still markdown/YAML files on disk.
-SQLite is rebuilt from files at any time via rebuild_index().
+Replaces SQLite with PostgreSQL for scale and concurrent access.
+Public API identical to SQLite version — callers unchanged.
 
-Index file: .gobp/index.db (gitignored)
+Connection: reads GOBP_DB_URL environment variable.
+Fallback: if PostgreSQL unavailable, operations are no-ops (in-memory index still works).
 
 Schema:
-  nodes table — searchable node metadata
-  nodes_fts   — FTS5 virtual table for full-text search
-  edges table — edge relationships with indexes
+  nodes  — searchable node metadata with tsvector FTS
+  edges  — edge relationships with indexes
+  meta   — key-value metadata
 """
 
 from __future__ import annotations
 
-import sqlite3
+import logging
 from pathlib import Path
 from typing import Any
 
+logger = logging.getLogger("gobp.db")
+
 DB_FILENAME = "index.db"
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
 
-def _db_path(gobp_root: Path) -> Path:
-    """Return path to SQLite index file."""
-    return gobp_root / ".gobp" / DB_FILENAME
+def _get_conn(gobp_root: Path):
+    """Get PostgreSQL connection for project root.
 
+    Returns psycopg2 connection or None if PostgreSQL not available.
+    """
+    try:
+        import psycopg2
+        from gobp.core.db_config import get_db_url, parse_db_url
 
-def _connect(gobp_root: Path) -> sqlite3.Connection:
-    """Open connection to SQLite index. Creates file if missing."""
-    db_path = _db_path(gobp_root)
-    db_path.parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(str(db_path))
-    conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA journal_mode=WAL")
-    conn.execute("PRAGMA synchronous=NORMAL")
-    return conn
+        url = get_db_url(gobp_root)
+        if not url:
+            return None
+        kwargs = parse_db_url(url)
+        conn = psycopg2.connect(**kwargs)
+        return conn
+    except Exception as e:
+        logger.debug(f"PostgreSQL connection failed: {e}")
+        return None
 
 
 def init_schema(gobp_root: Path) -> None:
-    """Create SQLite schema if not exists. Idempotent."""
-    conn = _connect(gobp_root)
+    """Create PostgreSQL schema if not exists. Idempotent."""
+    conn = _get_conn(gobp_root)
+    if conn is None:
+        return
+
     try:
-        conn.executescript(
-            """
-            CREATE TABLE IF NOT EXISTS nodes (
-                id TEXT PRIMARY KEY,
-                type TEXT NOT NULL,
-                name TEXT NOT NULL DEFAULT '',
-                status TEXT DEFAULT '',
-                topic TEXT DEFAULT '',
-                subject TEXT DEFAULT '',
-                group_field TEXT DEFAULT '',
-                scope TEXT DEFAULT '',
-                created TEXT DEFAULT '',
-                updated TEXT DEFAULT '',
-                fts_content TEXT DEFAULT ''
-            );
-
-            CREATE TABLE IF NOT EXISTS edges (
-                id TEXT PRIMARY KEY,
-                from_id TEXT NOT NULL,
-                to_id TEXT NOT NULL,
-                type TEXT NOT NULL
-            );
-
-            CREATE TABLE IF NOT EXISTS meta (
-                key TEXT PRIMARY KEY,
-                value TEXT
-            );
-
-            CREATE INDEX IF NOT EXISTS idx_nodes_type ON nodes(type);
-            CREATE INDEX IF NOT EXISTS idx_nodes_status ON nodes(status);
-            CREATE INDEX IF NOT EXISTS idx_nodes_topic ON nodes(topic);
-            CREATE INDEX IF NOT EXISTS idx_edges_from ON edges(from_id);
-            CREATE INDEX IF NOT EXISTS idx_edges_to ON edges(to_id);
-            CREATE INDEX IF NOT EXISTS idx_edges_type ON edges(type);
-            """
-        )
-
-        try:
-            conn.execute(
+        with conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS nodes (
+                        id TEXT PRIMARY KEY,
+                        type TEXT NOT NULL,
+                        name TEXT NOT NULL DEFAULT '',
+                        status TEXT DEFAULT '',
+                        topic TEXT DEFAULT '',
+                        subject TEXT DEFAULT '',
+                        group_field TEXT DEFAULT '',
+                        scope TEXT DEFAULT '',
+                        priority TEXT DEFAULT 'medium',
+                        created TEXT DEFAULT '',
+                        updated TEXT DEFAULT '',
+                        fts_content TEXT DEFAULT '',
+                        fts_vector tsvector GENERATED ALWAYS AS (
+                            to_tsvector('english',
+                                coalesce(id,'') || ' ' ||
+                                coalesce(name,'') || ' ' ||
+                                coalesce(topic,'') || ' ' ||
+                                coalesce(subject,'') || ' ' ||
+                                coalesce(fts_content,''))
+                        ) STORED
+                    )
                 """
-                CREATE VIRTUAL TABLE IF NOT EXISTS nodes_fts
-                USING fts5(
-                    id, name, topic, subject, fts_content,
-                    content='nodes', content_rowid='rowid'
                 )
+                cur.execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS edges (
+                        id TEXT PRIMARY KEY,
+                        from_id TEXT NOT NULL,
+                        to_id TEXT NOT NULL,
+                        type TEXT NOT NULL
+                    )
                 """
-            )
-        except sqlite3.OperationalError:
-            # FTS5 unavailable or cannot attach — queries fall back to substring only
-            pass
+                )
+                cur.execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS meta (
+                        key TEXT PRIMARY KEY,
+                        value TEXT
+                    )
+                """
+                )
+                # Indexes
+                cur.execute("CREATE INDEX IF NOT EXISTS idx_nodes_type ON nodes(type)")
+                cur.execute("CREATE INDEX IF NOT EXISTS idx_nodes_status ON nodes(status)")
+                cur.execute("CREATE INDEX IF NOT EXISTS idx_nodes_topic ON nodes(topic)")
+                cur.execute("CREATE INDEX IF NOT EXISTS idx_nodes_priority ON nodes(priority)")
+                cur.execute("CREATE INDEX IF NOT EXISTS idx_edges_from ON edges(from_id)")
+                cur.execute("CREATE INDEX IF NOT EXISTS idx_edges_to ON edges(to_id)")
+                cur.execute("CREATE INDEX IF NOT EXISTS idx_edges_type ON edges(type)")
+                cur.execute("CREATE INDEX IF NOT EXISTS idx_nodes_fts ON nodes USING GIN(fts_vector)")
 
-        conn.execute(
-            "INSERT OR IGNORE INTO meta VALUES ('schema_version', ?)",
-            (str(SCHEMA_VERSION),),
-        )
-        conn.commit()
+                cur.execute(
+                    "INSERT INTO meta (key, value) VALUES (%s, %s) ON CONFLICT DO NOTHING",
+                    ("schema_version", str(SCHEMA_VERSION)),
+                )
     finally:
         conn.close()
 
 
-def _fts_table_exists(conn: sqlite3.Connection) -> bool:
-    """Return True if nodes_fts virtual table exists."""
-    row = conn.execute(
-        "SELECT 1 FROM sqlite_master WHERE type='table' AND name='nodes_fts'"
-    ).fetchone()
-    return row is not None
-
-
 def _node_to_row(node: dict[str, Any]) -> dict[str, str]:
-    """Convert node dict to SQLite row dict."""
+    """Convert node dict to DB row dict."""
     fts_parts = [
         node.get("id", ""),
         node.get("name", ""),
@@ -128,70 +133,60 @@ def _node_to_row(node: dict[str, Any]) -> dict[str, str]:
         "id": node.get("id", ""),
         "type": node.get("type", ""),
         "name": node.get("name", ""),
-        "status": str(node.get("status", "") or ""),
-        "topic": str(node.get("topic", "") or ""),
-        "subject": str(node.get("subject", "") or ""),
-        "group_field": str(node.get("group", "") or ""),
-        "scope": str(node.get("scope", "") or ""),
-        "created": str(node.get("created", "") or ""),
-        "updated": str(node.get("updated", "") or ""),
+        "status": node.get("status", ""),
+        "topic": node.get("topic", ""),
+        "subject": node.get("subject", ""),
+        "group_field": node.get("group", ""),
+        "scope": node.get("scope", ""),
+        "priority": node.get("priority", "medium"),
+        "created": node.get("created", ""),
+        "updated": node.get("updated", ""),
         "fts_content": fts_content,
     }
 
 
-def _sync_fts_after_node_write(conn: sqlite3.Connection, node_id: str) -> None:
-    """Notify FTS5 external content index of a nodes row change."""
-    if not _fts_table_exists(conn):
-        return
-    row = conn.execute("SELECT rowid FROM nodes WHERE id = ?", (node_id,)).fetchone()
-    if row is None:
-        return
-    rid = int(row["rowid"])
-    try:
-        conn.execute("INSERT INTO nodes_fts(nodes_fts) VALUES('delete', ?)", (rid,))
-    except sqlite3.OperationalError:
-        pass
-    try:
-        conn.execute("INSERT INTO nodes_fts(nodes_fts) VALUES('insert', ?)", (rid,))
-    except sqlite3.OperationalError:
-        pass
-
-
 def upsert_node(gobp_root: Path, node: dict[str, Any]) -> None:
     """Insert or replace a node in the index."""
+    conn = _get_conn(gobp_root)
+    if conn is None:
+        return
+
     row = _node_to_row(node)
-    conn = _connect(gobp_root)
     try:
-        conn.execute(
-            """
-            INSERT OR REPLACE INTO nodes
-            (id, type, name, status, topic, subject, group_field, scope, created, updated, fts_content)
-            VALUES (:id, :type, :name, :status, :topic, :subject, :group_field, :scope, :created, :updated, :fts_content)
-            """,
-            row,
-        )
-        _sync_fts_after_node_write(conn, row["id"])
-        conn.commit()
+        with conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    INSERT INTO nodes
+                        (id, type, name, status, topic, subject, group_field,
+                         scope, priority, created, updated, fts_content)
+                    VALUES
+                        (%(id)s, %(type)s, %(name)s, %(status)s, %(topic)s,
+                         %(subject)s, %(group_field)s, %(scope)s, %(priority)s,
+                         %(created)s, %(updated)s, %(fts_content)s)
+                    ON CONFLICT (id) DO UPDATE SET
+                        type=EXCLUDED.type, name=EXCLUDED.name,
+                        status=EXCLUDED.status, topic=EXCLUDED.topic,
+                        subject=EXCLUDED.subject, group_field=EXCLUDED.group_field,
+                        scope=EXCLUDED.scope, priority=EXCLUDED.priority,
+                        created=EXCLUDED.created, updated=EXCLUDED.updated,
+                        fts_content=EXCLUDED.fts_content
+                """,
+                    row,
+                )
     finally:
         conn.close()
 
 
 def delete_node(gobp_root: Path, node_id: str) -> None:
     """Remove a node from the index."""
-    conn = _connect(gobp_root)
+    conn = _get_conn(gobp_root)
+    if conn is None:
+        return
     try:
-        if _fts_table_exists(conn):
-            row = conn.execute("SELECT rowid FROM nodes WHERE id = ?", (node_id,)).fetchone()
-            if row is not None:
-                try:
-                    conn.execute(
-                        "INSERT INTO nodes_fts(nodes_fts) VALUES('delete', ?)",
-                        (int(row["rowid"]),),
-                    )
-                except sqlite3.OperationalError:
-                    pass
-        conn.execute("DELETE FROM nodes WHERE id = ?", (node_id,))
-        conn.commit()
+        with conn:
+            with conn.cursor() as cur:
+                cur.execute("DELETE FROM nodes WHERE id = %s", (node_id,))
     finally:
         conn.close()
 
@@ -203,36 +198,52 @@ def upsert_edge(gobp_root: Path, edge: dict[str, Any]) -> None:
     edge_type = edge.get("type", "")
     edge_id = f"{from_id}__{edge_type}__{to_id}"
 
-    conn = _connect(gobp_root)
+    conn = _get_conn(gobp_root)
+    if conn is None:
+        return
     try:
-        conn.execute(
-            """
-            INSERT OR REPLACE INTO edges (id, from_id, to_id, type)
-            VALUES (?, ?, ?, ?)
-            """,
-            (edge_id, from_id, to_id, edge_type),
-        )
-        conn.commit()
+        with conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    INSERT INTO edges (id, from_id, to_id, type)
+                    VALUES (%s, %s, %s, %s)
+                    ON CONFLICT (id) DO UPDATE SET
+                        from_id=EXCLUDED.from_id,
+                        to_id=EXCLUDED.to_id,
+                        type=EXCLUDED.type
+                """,
+                    (edge_id, from_id, to_id, edge_type),
+                )
     finally:
         conn.close()
 
 
 def delete_edges_for_node(gobp_root: Path, node_id: str) -> None:
     """Remove all edges where from_id or to_id matches node_id."""
-    conn = _connect(gobp_root)
+    conn = _get_conn(gobp_root)
+    if conn is None:
+        return
     try:
-        conn.execute("DELETE FROM edges WHERE from_id = ? OR to_id = ?", (node_id, node_id))
-        conn.commit()
+        with conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "DELETE FROM edges WHERE from_id = %s OR to_id = %s",
+                    (node_id, node_id),
+                )
     finally:
         conn.close()
 
 
 def query_nodes_by_type(gobp_root: Path, node_type: str) -> list[str]:
     """Return list of node IDs for a given type."""
-    conn = _connect(gobp_root)
+    conn = _get_conn(gobp_root)
+    if conn is None:
+        return []
     try:
-        rows = conn.execute("SELECT id FROM nodes WHERE type = ?", (node_type,)).fetchall()
-        return [str(r["id"]) for r in rows]
+        with conn.cursor() as cur:
+            cur.execute("SELECT id FROM nodes WHERE type = %s", (node_type,))
+            return [row[0] for row in cur.fetchall()]
     finally:
         conn.close()
 
@@ -240,33 +251,33 @@ def query_nodes_by_type(gobp_root: Path, node_type: str) -> list[str]:
 def query_nodes_fts(
     gobp_root: Path, query: str, type_filter: str | None = None, limit: int = 20
 ) -> list[str]:
-    """Full-text search nodes. Returns list of node IDs."""
-    conn = _connect(gobp_root)
+    """Full-text search nodes using PostgreSQL tsvector. Returns node IDs."""
+    conn = _get_conn(gobp_root)
+    if conn is None:
+        return []
     try:
-        if not _fts_table_exists(conn):
-            return []
-        if type_filter:
-            rows = conn.execute(
-                """
-                SELECT n.id FROM nodes_fts AS f
-                JOIN nodes AS n ON n.rowid = f.rowid
-                WHERE f MATCH ? AND n.type = ?
-                LIMIT ?
+        with conn.cursor() as cur:
+            if type_filter:
+                cur.execute(
+                    """
+                    SELECT id FROM nodes
+                    WHERE fts_vector @@ plainto_tsquery('english', %s)
+                    AND type = %s
+                    LIMIT %s
                 """,
-                (query, type_filter, limit),
-            ).fetchall()
-        else:
-            rows = conn.execute(
-                """
-                SELECT n.id FROM nodes_fts AS f
-                JOIN nodes AS n ON n.rowid = f.rowid
-                WHERE f MATCH ?
-                LIMIT ?
+                    (query, type_filter, limit),
+                )
+            else:
+                cur.execute(
+                    """
+                    SELECT id FROM nodes
+                    WHERE fts_vector @@ plainto_tsquery('english', %s)
+                    LIMIT %s
                 """,
-                (query, limit),
-            ).fetchall()
-        return [str(r["id"]) for r in rows]
-    except sqlite3.OperationalError:
+                    (query, limit),
+                )
+            return [row[0] for row in cur.fetchall()]
+    except Exception:
         return []
     finally:
         conn.close()
@@ -276,123 +287,155 @@ def query_nodes_substring(
     gobp_root: Path, query: str, type_filter: str | None = None, limit: int = 20
 ) -> list[str]:
     """Substring search nodes (fallback when FTS fails). Returns node IDs."""
-    conn = _connect(gobp_root)
+    conn = _get_conn(gobp_root)
+    if conn is None:
+        return []
     try:
         q = f"%{query}%"
-        if type_filter:
-            rows = conn.execute(
-                """
-                SELECT id FROM nodes
-                WHERE (id LIKE ? OR name LIKE ? OR fts_content LIKE ?) AND type = ?
-                LIMIT ?
+        with conn.cursor() as cur:
+            if type_filter:
+                cur.execute(
+                    """
+                    SELECT id FROM nodes
+                    WHERE (id ILIKE %s OR name ILIKE %s OR fts_content ILIKE %s)
+                    AND type = %s
+                    LIMIT %s
                 """,
-                (q, q, q, type_filter, limit),
-            ).fetchall()
-        else:
-            rows = conn.execute(
-                """
-                SELECT id FROM nodes
-                WHERE id LIKE ? OR name LIKE ? OR fts_content LIKE ?
-                LIMIT ?
+                    (q, q, q, type_filter, limit),
+                )
+            else:
+                cur.execute(
+                    """
+                    SELECT id FROM nodes
+                    WHERE id ILIKE %s OR name ILIKE %s OR fts_content ILIKE %s
+                    LIMIT %s
                 """,
-                (q, q, q, limit),
-            ).fetchall()
-        return [str(r["id"]) for r in rows]
+                    (q, q, q, limit),
+                )
+            return [row[0] for row in cur.fetchall()]
     finally:
         conn.close()
 
 
 def query_edges_from(gobp_root: Path, node_id: str) -> list[dict[str, str]]:
     """Get all edges where from_id = node_id."""
-    conn = _connect(gobp_root)
+    conn = _get_conn(gobp_root)
+    if conn is None:
+        return []
     try:
-        rows = conn.execute(
-            "SELECT from_id, to_id, type FROM edges WHERE from_id = ?", (node_id,)
-        ).fetchall()
-        return [
-            {"from": str(r["from_id"]), "to": str(r["to_id"]), "type": str(r["type"])}
-            for r in rows
-        ]
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT from_id, to_id, type FROM edges WHERE from_id = %s",
+                (node_id,),
+            )
+            return [{"from": r[0], "to": r[1], "type": r[2]} for r in cur.fetchall()]
     finally:
         conn.close()
 
 
 def query_edges_to(gobp_root: Path, node_id: str) -> list[dict[str, str]]:
     """Get all edges where to_id = node_id."""
-    conn = _connect(gobp_root)
+    conn = _get_conn(gobp_root)
+    if conn is None:
+        return []
     try:
-        rows = conn.execute(
-            "SELECT from_id, to_id, type FROM edges WHERE to_id = ?", (node_id,)
-        ).fetchall()
-        return [
-            {"from": str(r["from_id"]), "to": str(r["to_id"]), "type": str(r["type"])}
-            for r in rows
-        ]
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT from_id, to_id, type FROM edges WHERE to_id = %s",
+                (node_id,),
+            )
+            return [{"from": r[0], "to": r[1], "type": r[2]} for r in cur.fetchall()]
     finally:
         conn.close()
 
 
 def index_exists(gobp_root: Path) -> bool:
-    """Return True if SQLite index file exists."""
-    return _db_path(gobp_root).exists()
-
-
-def rebuild_index(gobp_root: Path, graph_index: Any) -> dict[str, Any]:
-    """Rebuild SQLite index from scratch using GraphIndex data.
-
-    Args:
-        gobp_root: Project root.
-        graph_index: Populated GraphIndex instance (source of truth).
-
-    Returns:
-        Dict with ok, nodes_indexed, edges_indexed, message.
-    """
-    db_path = _db_path(gobp_root)
-
-    if db_path.exists():
-        db_path.unlink()
-
-    init_schema(gobp_root)
-
-    conn = _connect(gobp_root)
+    """Return True if PostgreSQL schema exists and has nodes table."""
+    conn = _get_conn(gobp_root)
+    if conn is None:
+        return False
     try:
-        nodes_indexed = 0
-        for node in graph_index.all_nodes():
-            row = _node_to_row(node)
-            conn.execute(
+        with conn.cursor() as cur:
+            cur.execute(
                 """
-                INSERT OR REPLACE INTO nodes
-                (id, type, name, status, topic, subject, group_field, scope, created, updated, fts_content)
-                VALUES (:id, :type, :name, :status, :topic, :subject, :group_field, :scope, :created, :updated, :fts_content)
-                """,
-                row,
+                SELECT EXISTS (
+                    SELECT FROM information_schema.tables
+                    WHERE table_name = 'nodes'
+                )
+            """
             )
-            nodes_indexed += 1
-
-        edges_indexed = 0
-        for edge in graph_index.all_edges():
-            from_id = edge.get("from", "")
-            to_id = edge.get("to", "")
-            edge_type = edge.get("type", "")
-            edge_id = f"{from_id}__{edge_type}__{to_id}"
-            conn.execute(
-                "INSERT OR REPLACE INTO edges (id, from_id, to_id, type) VALUES (?, ?, ?, ?)",
-                (edge_id, from_id, to_id, edge_type),
-            )
-            edges_indexed += 1
-
-        if _fts_table_exists(conn):
-            try:
-                conn.execute("INSERT INTO nodes_fts(nodes_fts) VALUES('rebuild')")
-            except sqlite3.OperationalError:
-                pass
-        conn.commit()
+            return cur.fetchone()[0]
+    except Exception:
+        return False
     finally:
         conn.close()
 
-    return {
-        "ok": True,
-        "nodes_indexed": nodes_indexed,
-        "edges_indexed": edges_indexed,
-        "message": f"Index rebuilt: {nodes_indexed} nodes, {edges_indexed} edges",
-    }
+
+def rebuild_index(gobp_root: Path, graph_index: Any) -> dict[str, Any]:
+    """Rebuild PostgreSQL index from scratch using GraphIndex data."""
+    conn = _get_conn(gobp_root)
+    if conn is None:
+        return {
+            "ok": False,
+            "message": "PostgreSQL not available — set GOBP_DB_URL env var",
+            "nodes_indexed": 0,
+            "edges_indexed": 0,
+        }
+
+    try:
+        with conn:
+            with conn.cursor() as cur:
+                # Clear existing data
+                cur.execute("TRUNCATE TABLE nodes, edges RESTART IDENTITY CASCADE")
+
+                # Insert all nodes
+                nodes_indexed = 0
+                for node in graph_index.all_nodes():
+                    row = _node_to_row(node)
+                    cur.execute(
+                        """
+                        INSERT INTO nodes
+                            (id, type, name, status, topic, subject, group_field,
+                             scope, priority, created, updated, fts_content)
+                        VALUES
+                            (%(id)s, %(type)s, %(name)s, %(status)s, %(topic)s,
+                             %(subject)s, %(group_field)s, %(scope)s, %(priority)s,
+                             %(created)s, %(updated)s, %(fts_content)s)
+                        ON CONFLICT (id) DO NOTHING
+                    """,
+                        row,
+                    )
+                    nodes_indexed += 1
+
+                # Insert all edges
+                edges_indexed = 0
+                for edge in graph_index.all_edges():
+                    from_id = edge.get("from", "")
+                    to_id = edge.get("to", "")
+                    edge_type = edge.get("type", "")
+                    edge_id = f"{from_id}__{edge_type}__{to_id}"
+                    cur.execute(
+                        """
+                        INSERT INTO edges (id, from_id, to_id, type)
+                        VALUES (%s, %s, %s, %s)
+                        ON CONFLICT (id) DO NOTHING
+                    """,
+                        (edge_id, from_id, to_id, edge_type),
+                    )
+                    edges_indexed += 1
+
+        return {
+            "ok": True,
+            "nodes_indexed": nodes_indexed,
+            "edges_indexed": edges_indexed,
+            "message": f"Index rebuilt: {nodes_indexed} nodes, {edges_indexed} edges",
+        }
+    except Exception as e:
+        return {
+            "ok": False,
+            "message": f"Rebuild failed: {e}",
+            "nodes_indexed": 0,
+            "edges_indexed": 0,
+        }
+    finally:
+        conn.close()
