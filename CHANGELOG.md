@@ -5,6 +5,43 @@ Format: [Wave N — Title] with date, what was added/changed/fixed.
 
 ---
 
+## [Wave 10A] - gobp() Single Tool + Structured Query Protocol - 2026-04-15
+
+### Problem solved
+Claude.ai web and other MCP clients may limit visible tools per server.
+GoBP's 14 tools were reduced to 5 visible tools - write operations invisible.
+
+### Solution
+Collapsed 14 MCP tools -> 1 `gobp()` tool with structured query protocol.
+All 14 capabilities accessible via `gobp(query="<action>:<type> ...")`.
+
+### Added
+- `gobp/mcp/dispatcher.py` - deterministic query parser + router
+- `tests/test_dispatcher.py` - ~20 dispatcher tests
+- `gobp_overview()` response: `interface` field with full protocol guide
+
+### Changed
+- `gobp/mcp/server.py` - 14 tools -> 1 gobp() tool
+- `gobp/mcp/tools/read.py` - gobp_overview includes PROTOCOL_GUIDE
+- `docs/MCP_TOOLS.md` - gobp() protocol documented as primary API
+
+### NOT changed
+- All tool functions (read.py, write.py, etc.) - unchanged
+- All existing 217 tests - unchanged (test functions directly)
+
+### Protocol
+```
+gobp(query="overview:")                              -> project state
+gobp(query="find: login")                            -> search nodes
+gobp(query="create:Idea name='x' session_id='y'")   -> create node
+gobp(query="lock:Decision topic='x' what='y'")      -> lock decision
+gobp(query="session:start actor='x' goal='y'")      -> start session
+```
+
+### Total after wave: 1 MCP tool, 237+ tests passing
+
+---
+
 ## [Wave 9A] — SQLite Persistent Index + LRU Cache — 2026-04-15
 
 ### Added
