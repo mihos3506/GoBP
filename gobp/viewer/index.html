@@ -140,6 +140,40 @@ const STATUS_COLORS = {
 const CORE_TYPES = new Set(['Engine','Flow','Entity','Feature','Decision',
   'SoulPrinciple','Invariant','Document','Node','Idea']);
 const PRIORITY_SIZE = {critical:8, high:5, medium:3, low:2};
+const NODE_TIERS = {
+  // Top / principle layer
+  Repository: 1, Document: 1, SoulPrinciple: 1, Invariant: 1, Concept: 1, Wave: 1,
+  // Architecture / foundation layer
+  Engine: 2, SharedLibModule: 2, Config: 2, APIEndpoint: 2, DBTable: 2, Entity: 2,
+  // Product / behavior layer
+  Flow: 3, Feature: 3, Screen: 3, UIComponent: 3, TestKind: 3,
+  // Execution / validation layer
+  TestCase: 4, Session: 4, Idea: 4, Node: 4, Lesson: 4,
+};
+const EDGE_STATIC_COLORS = {
+  implements: 'rgba(255, 214, 66, 0.92)',
+  depends_on: 'rgba(255, 197, 38, 0.88)',
+  enforces: 'rgba(255, 176, 64, 0.9)',
+  supersedes: 'rgba(255, 160, 0, 0.86)',
+  covers: 'rgba(255, 221, 120, 0.86)',
+  discovered_in: 'rgba(255, 204, 95, 0.8)',
+  references: 'rgba(255, 193, 7, 0.76)',
+  touches: 'rgba(255, 210, 90, 0.72)',
+  belongs_to: 'rgba(255, 227, 150, 0.66)',
+  relates_to: 'rgba(255, 235, 180, 0.58)',
+};
+const EDGE_SIGNAL_COLORS = {
+  implements: '#ffc107',
+  depends_on: '#ffb300',
+  enforces: '#ffca28',
+  supersedes: '#ff8f00',
+  covers: '#ffd54f',
+  discovered_in: '#ffcf33',
+  references: '#ffb300',
+  touches: '#ffca28',
+  belongs_to: '#ffd95e',
+  relates_to: '#ffdf80',
+};
 
 let FG, GRAPH_DATA = {nodes:[], edges:[], links:[]};
 let VISIBLE_TYPES = new Set(), VISIBLE_STATUSES = new Set();
@@ -238,9 +272,35 @@ function applyFilters(searchSet=null, hits=null) {
     return true;
   });
   const ids = new Set(nodes.map(n=>n.id));
+  const nodesById = Object.fromEntries(nodes.map(n => [n.id, n]));
   const links = (GRAPH_DATA.links||GRAPH_DATA.edges||[]).filter(e =>
     ids.has(e.source||e.from) && ids.has(e.target||e.to)
-  ).map(e => ({...e, source: e.source||e.from, target: e.target||e.to}));
+  ).map(e => {
+    const rawSource = e.source || e.from;
+    const rawTarget = e.target || e.to;
+    const sourceTier = NODE_TIERS[nodesById[rawSource]?.type] || 3;
+    const targetTier = NODE_TIERS[nodesById[rawTarget]?.type] || 3;
+    const sameTier = sourceTier === targetTier;
+
+    // Signal rule:
+    // - Same tier: send "return" pulse (reverse direction)
+    // - Different tier: always from lower layer (bigger tier) to upper (smaller tier)
+    const signalSource = sameTier
+      ? rawTarget
+      : (sourceTier > targetTier ? rawSource : rawTarget);
+    const signalTarget = sameTier
+      ? rawSource
+      : (sourceTier > targetTier ? rawTarget : rawSource);
+    const tierDelta = Math.abs(sourceTier - targetTier);
+
+    return {
+      ...e,
+      source: signalSource,
+      target: signalTarget,
+      __sameTier: sameTier,
+      __tierDelta: tierDelta,
+    };
+  });
 
   nodes.forEach(n => { n.__hit = hits ? hits.has(n.id) : false; });
   FG.graphData({nodes, links});
@@ -262,20 +322,19 @@ function initGraph() {
       return makeSprite(n.name, TYPE_COLORS[n.type]||'#aaa');
     })
     .nodeThreeObjectExtend(false)
-    .linkColor(l => {
-      const m = {
-        implements:'rgba(255,193,7,0.4)', depends_on:'rgba(255,200,80,0.35)',
-        relates_to:'rgba(255,255,255,0.12)', enforces:'rgba(255,138,101,0.4)',
-        discovered_in:'rgba(16,185,129,0.3)', references:'rgba(140,180,220,0.25)',
-        supersedes:'rgba(239,68,68,0.4)', covers:'rgba(139,92,246,0.3)',
-        belongs_to:'rgba(150,150,170,0.14)', touches:'rgba(180,220,180,0.28)',
-      };
-      return m[l.type]||'rgba(150,150,150,0.15)';
+    .linkColor(l => EDGE_STATIC_COLORS[l.type] || 'rgba(180, 188, 204, 0.24)')
+    .linkWidth(l => ['implements','depends_on','enforces'].includes(l.type)?2.1:1.5)
+    // Single pulse per edge: a new cycle starts after reaching destination.
+    .linkDirectionalParticles(() => 1)
+    .linkDirectionalParticleWidth(l => ['implements','depends_on','enforces'].includes(l.type) ? 5.4 : 4.5)
+    .linkDirectionalParticleSpeed(l => {
+      // Same tier = slower "return" signal.
+      if (l.__sameTier) return 0.0038;
+      // Cross-tier upward = faster, scaled by tier gap.
+      const delta = l.__tierDelta || 1;
+      return Math.min(0.009, 0.0056 + (delta * 0.0012));
     })
-    .linkWidth(l => ['implements','depends_on','enforces'].includes(l.type)?1:0.3)
-    .linkDirectionalParticles(l => l.type==='implements'?2:0)
-    .linkDirectionalParticleSpeed(0.003)
-    .linkDirectionalParticleColor(()=>'#ffc107')
+    .linkDirectionalParticleColor(l => EDGE_SIGNAL_COLORS[l.type] || '#ffd54f')
     .onNodeClick(n => showDetail(n))
     .onBackgroundClick(() => document.getElementById('detail').classList.remove('visible'));
 
