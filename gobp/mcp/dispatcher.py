@@ -169,6 +169,22 @@ def parse_query(query: str) -> tuple[str, str, dict[str, Any]]:
             node_type = maybe_type
             return action, node_type, {"query": remainder.strip()}
 
+    # Import shorthand: "import: path/to/file.md session_id='x'"
+    if action == "import" and node_type == "":
+        token_match = re.match(r"^(\S+)\s+(.*)$", rest)
+        if token_match and "=" in token_match.group(2):
+            params = dict(base_params)
+            params["query"] = token_match.group(1)
+            extra = token_match.group(2)
+            for km in re.finditer(r"(\w+)='([^']*)'|(\w+)=\"([^\"]*)\"|(\w+)=(\S+)", extra):
+                if km.group(1) is not None:
+                    params[km.group(1)] = km.group(2)
+                elif km.group(3) is not None:
+                    params[km.group(3)] = km.group(4)
+                elif km.group(5) is not None:
+                    params[km.group(5)] = km.group(6)
+            return action, "", params
+
     # Parse params: key='value' or key=value or bare value
     params: dict[str, Any] = dict(base_params)
 
@@ -283,22 +299,47 @@ async def dispatch(
 
             # Auto-generate ID if not provided
             node_id = params.pop("id", params.pop("node_id", None))
+            auto_generated_id = False
             if not node_id:
                 import uuid as _uuid
-                from datetime import datetime, timezone
 
                 type_prefix = _get_type_prefix(node_type)
                 short_hash = _uuid.uuid4().hex[:6]
+                if type_prefix == "node" and short_hash[0].isdigit():
+                    short_hash = f"n{short_hash[:5]}"
                 node_id = f"{type_prefix}:{short_hash}"
+                auto_generated_id = True
+
+            create_fields = {
+                k: v for k, v in params.items() if k not in ("name", "type", "session_id")
+            }
+            if node_type == "Idea":
+                idea_name = params.get("name", "")
+                create_fields.setdefault("raw_quote", idea_name or "Auto-generated idea")
+                create_fields.setdefault("interpretation", idea_name or "Auto-generated idea")
+                create_fields.setdefault("subject", "general")
+                create_fields.setdefault("maturity", "RAW")
+                create_fields.setdefault("confidence", "medium")
 
             args = {
-                "node_id": node_id,
+                "id": node_id,
                 "type": node_type,
                 "name": params.get("name", ""),
-                "fields": {k: v for k, v in params.items() if k not in ("name", "type", "session_id")},
+                "fields": create_fields,
                 "session_id": params.get("session_id", ""),
             }
             result = tools_write.node_upsert(index, project_root, args)
+            if (
+                isinstance(result, dict)
+                and not result.get("ok")
+                and auto_generated_id
+                and node_type in ("Idea", "Decision", "Lesson")
+            ):
+                fallback_args = dict(args)
+                fallback_args.pop("id", None)
+                result = tools_write.node_upsert(index, project_root, fallback_args)
+                if isinstance(result, dict) and result.get("ok"):
+                    result["node_id"] = node_id
 
         elif action == "update":
             node_id = params.pop("id", params.pop("node_id", ""))
@@ -432,7 +473,10 @@ async def dispatch(
 
                 # Create Document node
                 import hashlib as _hashlib
-                content_hash = f"sha256:{_hashlib.sha256(content.encode()).hexdigest()[:16]}" if content else ""
+                from datetime import datetime, timezone
+
+                now_iso = datetime.now(timezone.utc).isoformat()
+                content_hash = f"sha256:{_hashlib.sha256(content.encode()).hexdigest()}" if content else ""
 
                 doc_node = {
                     "id": doc_id,
@@ -440,6 +484,8 @@ async def dispatch(
                     "name": source_path.stem.replace("_", " ").title(),
                     "source_path": source_path_str,
                     "content_hash": content_hash,
+                    "registered_at": now_iso,
+                    "last_verified": now_iso,
                     "priority": priority,
                     "sections": sections,
                     "status": "ACTIVE",
@@ -447,7 +493,7 @@ async def dispatch(
                 }
 
                 doc_args = {
-                    "node_id": doc_id,
+                    "id": doc_id,
                     "type": "Document",
                     "name": doc_node["name"],
                     "fields": {
