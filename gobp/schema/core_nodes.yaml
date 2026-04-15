@@ -465,3 +465,148 @@ node_types:
       tags:
         type: "list[str]"
         default: []
+
+  Engine:
+    description: "Business logic engine (TrustEngine, LevelEngine, etc.)"
+    id_prefix: "engine"
+    required:
+      id: {type: str, pattern: "^engine:.+$"}
+      type: {type: str, enum_values: ["Engine"]}
+      name: {type: str}
+      status: {type: enum, enum_values: ["DRAFT", "ACTIVE", "DEPRECATED"]}
+      created: {type: timestamp}
+      updated: {type: timestamp}
+    optional:
+      priority: {type: enum, enum_values: ["critical","high","medium","low"], default: "medium"}
+      description: {type: str}
+      code_refs: {type: "list[dict]", default: []}
+      invariants: {type: "list[str]", default: []}
+      spec_source: {type: str}
+
+  Flow:
+    description: "User flow or process flow (registration, auth, etc.)"
+    id_prefix: "flow"
+    required:
+      id: {type: str, pattern: "^flow:.+$"}
+      type: {type: str, enum_values: ["Flow"]}
+      name: {type: str}
+      status: {type: enum, enum_values: ["DRAFT", "ACTIVE", "DEPRECATED"]}
+      created: {type: timestamp}
+      updated: {type: timestamp}
+    optional:
+      priority: {type: enum, enum_values: ["critical","high","medium","low"], default: "medium"}
+      description: {type: str}
+      code_refs: {type: "list[dict]", default: []}
+      invariants: {type: "list[str]", default: []}
+      spec_source: {type: str}
+
+  Entity:
+    description: "Domain entity (Traveller, Place, Moment, etc.)"
+    id_prefix: "entity"
+    required:
+      id: {type: str, pattern: "^entity:.+$"}
+      type: {type: str, enum_values: ["Entity"]}
+      name: {type: str}
+      status: {type: enum, enum_values: ["DRAFT", "ACTIVE", "DEPRECATED"]}
+      created: {type: timestamp}
+      updated: {type: timestamp}
+    optional:
+      priority: {type: enum, enum_values: ["critical","high","medium","low"], default: "medium"}
+      description: {type: str}
+      code_refs: {type: "list[dict]", default: []}
+      invariants: {type: "list[str]", default: []}
+      spec_source: {type: str}
+
+  Feature:
+    description: "Product feature (user-facing capability)"
+    id_prefix: "feat"
+    required:
+      id: {type: str, pattern: "^feat:.+$"}
+      type: {type: str, enum_values: ["Feature"]}
+      name: {type: str}
+      status: {type: enum, enum_values: ["DRAFT", "ACTIVE", "DEPRECATED"]}
+      created: {type: timestamp}
+      updated: {type: timestamp}
+    optional:
+      priority: {type: enum, enum_values: ["critical","high","medium","low"], default: "medium"}
+      description: {type: str}
+      code_refs: {type: "list[dict]", default: []}
+      invariants: {type: "list[str]", default: []}
+      spec_source: {type: str}
+
+  Invariant:
+    description: "Hard constraint that must always be true"
+    id_prefix: "inv"
+    required:
+      id: {type: str, pattern: "^inv:.+$"}
+      type: {type: str, enum_values: ["Invariant"]}
+      name: {type: str}
+      status: {type: enum, enum_values: ["DRAFT", "ACTIVE", "DEPRECATED"]}
+      created: {type: timestamp}
+      updated: {type: timestamp}
+    optional:
+      priority: {type: enum, enum_values: ["critical","high","medium","low"], default: "high"}
+      description: {type: str}
+      rule: {type: str}
+      spec_source: {type: str}
+
+  Screen:
+    description: "UI screen or page"
+    id_prefix: "screen"
+    required:
+      id: {type: str, pattern: "^screen:.+$"}
+      type: {type: str, enum_values: ["Screen"]}
+      name: {type: str}
+      status: {type: enum, enum_values: ["DRAFT", "ACTIVE", "DEPRECATED"]}
+      created: {type: timestamp}
+      updated: {type: timestamp}
+    optional:
+      priority: {type: enum, enum_values: ["critical","high","medium","low"], default: "medium"}
+      description: {type: str}
+      code_refs: {type: "list[dict]", default: []}
+      spec_source: {type: str}
+
+  APIEndpoint:
+    description: "REST/RPC API endpoint"
+    id_prefix: "api"
+    required:
+      id: {type: str, pattern: "^api:.+$"}
+      type: {type: str, enum_values: ["APIEndpoint"]}
+      name: {type: str}
+      status: {type: enum, enum_values: ["DRAFT", "ACTIVE", "DEPRECATED"]}
+      created: {type: timestamp}
+      updated: {type: timestamp}
+    optional:
+      priority: {type: enum, enum_values: ["critical","high","medium","low"], default: "medium"}
+      description: {type: str}
+      code_refs: {type: "list[dict]", default: []}
+      spec_source: {type: str}
+
+  Repository:
+    description: "Code repository (flutter, backend, etc.)"
+    id_prefix: "repo"
+    required:
+      id: {type: str, pattern: "^repo:.+$"}
+      type: {type: str, enum_values: ["Repository"]}
+      name: {type: str}
+      status: {type: enum, enum_values: ["DRAFT", "ACTIVE", "DEPRECATED"]}
+      created: {type: timestamp}
+      updated: {type: timestamp}
+    optional:
+      priority: {type: enum, enum_values: ["critical","high","medium","low"], default: "high"}
+      description: {type: str}
+      url: {type: str}
+
+  Wave:
+    description: "Build wave / sprint"
+    id_prefix: "wave"
+    required:
+      id: {type: str, pattern: "^wave:.+$"}
+      type: {type: str, enum_values: ["Wave"]}
+      name: {type: str}
+      status: {type: enum, enum_values: ["DRAFT", "ACTIVE", "COMPLETED", "DEPRECATED"]}
+      created: {type: timestamp}
+      updated: {type: timestamp}
+    optional:
+      priority: {type: enum, enum_values: ["critical","high","medium","low"], default: "medium"}
+      description: {type: str}

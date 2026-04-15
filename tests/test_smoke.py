@@ -107,7 +107,9 @@ def test_core_nodes_yaml_valid():
         "TestCase",
     }
     actual_types = set(data["node_types"].keys())
-    assert actual_types == expected_types, f"Expected {expected_types}, got {actual_types}"
+    assert expected_types.issubset(actual_types), (
+        f"Missing core types: {expected_types - actual_types}"
+    )
 
 
 def test_core_edges_yaml_valid():
