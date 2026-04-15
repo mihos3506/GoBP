@@ -142,7 +142,7 @@ def parse_query(query: str) -> tuple[str, str, dict[str, Any]]:
         return action, node_type, {}
 
     # Typed actions: "create:Idea ..." or "lock:Decision ..."
-    if action in ("create", "lock") and node_type == "":
+    if action in ("create", "lock", "upsert") and node_type == "":
         first_token, sep, remainder = rest.partition(" ")
         if first_token and "=" not in first_token:
             node_type = first_token
@@ -422,6 +422,53 @@ async def dispatch(
                 }
             else:
                 result = tools_write.node_upsert(index, project_root, args)
+
+        elif action == "upsert":
+            node_type = node_type or params.pop("type", "Node")
+            dedupe_key = params.pop("dedupe_key", "name")
+            dedupe_value = params.get(dedupe_key, "")
+            session_id = params.get("session_id", "")
+
+            is_dry = _is_dry_run(params.get("dry_run"))
+
+            existing_node = None
+            if dedupe_value:
+                candidates = index.nodes_by_type(node_type)
+                existing_node = next(
+                    (n for n in candidates if str(n.get(dedupe_key, "")) == str(dedupe_value)),
+                    None,
+                )
+
+            if is_dry:
+                result = {
+                    "ok": True,
+                    "dry_run": True,
+                    "would_action": "updated" if existing_node else "created",
+                    "dedupe_key": dedupe_key,
+                    "dedupe_value": dedupe_value,
+                    "existing_id": existing_node.get("id") if existing_node else None,
+                    "message": "dry_run=true: no changes made",
+                }
+            else:
+                node_id = existing_node.get("id") if existing_node else None
+                args = {
+                    "id": node_id,
+                    "type": node_type,
+                    "name": params.get("name", dedupe_value),
+                    "fields": {
+                        k: v
+                        for k, v in params.items()
+                        if k not in ("name", "type", "session_id", "dry_run")
+                    },
+                    "session_id": session_id,
+                }
+                result = tools_write.node_upsert(index, project_root, args)
+                if result.get("ok"):
+                    result["dedupe_key"] = dedupe_key
+                    result["dedupe_value"] = dedupe_value
+                    result["existing_id"] = existing_node.get("id") if existing_node else None
+                    if not result.get("action"):
+                        result["action"] = "updated" if existing_node else "created"
 
         elif action == "lock":
             locked_by_raw = params.get("locked_by", "CEO,Claude-CLI")
