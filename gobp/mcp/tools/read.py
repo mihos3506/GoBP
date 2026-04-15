@@ -99,6 +99,32 @@ def gobp_overview(index: GraphIndex, project_root: Path, args: dict[str, Any]) -
         for n in session_nodes[:3]
     ]
 
+    # Concepts — for AI orientation
+    concept_nodes = [n for n in index.all_nodes() if n.get("type") == "Concept"]
+    concepts = [
+        {
+            "id": n.get("id", ""),
+            "name": n.get("name", ""),
+            "definition": _truncate(n.get("definition", ""), 200),
+            "usage_guide": _truncate(n.get("usage_guide", ""), 300),
+            "applies_to": n.get("applies_to", []),
+        }
+        for n in concept_nodes[:10]
+    ]
+
+    # Test coverage summary
+    test_kind_nodes = [n for n in index.all_nodes() if n.get("type") == "TestKind"]
+    kinds_by_group: dict[str, int] = {}
+    for tk in test_kind_nodes:
+        g = tk.get("group", "unknown")
+        kinds_by_group[g] = kinds_by_group.get(g, 0) + 1
+
+    test_case_nodes = [n for n in index.all_nodes() if n.get("type") == "TestCase"]
+    cases_by_status: dict[str, int] = {}
+    for tc in test_case_nodes:
+        s = tc.get("status", "DRAFT")
+        cases_by_status[s] = cases_by_status.get(s, 0) + 1
+
     return {
         "ok": True,
         "project": {
@@ -122,6 +148,13 @@ def gobp_overview(index: GraphIndex, project_root: Path, args: dict[str, Any]) -
             "decisions_for(topic='<topic>') to find locked decisions on a topic",
             "session_recent(n=3) to see recent session history",
         ],
+        "concepts": concepts,
+        "test_coverage": {
+            "kinds_available": len(test_kind_nodes),
+            "kinds_by_group": kinds_by_group,
+            "test_cases_total": len(test_case_nodes),
+            "test_cases_by_status": cases_by_status,
+        },
     }
 
 
