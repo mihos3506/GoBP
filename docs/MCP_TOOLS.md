@@ -8,6 +8,55 @@
 
 ---
 
+## gobp() - Primary Interface (v2)
+
+As of Wave 10A, GoBP exposes a single MCP tool: `gobp()`.
+
+**Why:** MCP clients may limit visible tools per server. `gobp()` provides
+access to all 14 capabilities through 1 tool using structured query protocol.
+
+### Protocol
+
+```
+gobp(query="<action>:<NodeType> <key>='<value>' ...")
+```
+
+### Quick reference
+
+| Query | Capability |
+|---|---|
+| `overview:` | Project stats, orientation, protocol guide |
+| `find: <keyword>` | Search any node |
+| `find:<NodeType> <keyword>` | Search by type + keyword |
+| `get: <node_id>` | Full node + edges + decisions |
+| `signature: <node_id>` | Minimal node summary |
+| `recent: <n>` | Latest N sessions |
+| `decisions: <topic>` | Locked decisions for topic |
+| `sections: <doc_id>` | Document sections |
+| `create:<NodeType> name='x' session_id='y'` | Create node |
+| `update: id='x' name='y'` | Update node |
+| `lock:Decision topic='x' what='y' why='z'` | Lock decision |
+| `session:start actor='x' goal='y'` | Start session |
+| `session:end outcome='x' handoff='y'` | End session |
+| `import: path/to/doc.md` | Propose import |
+| `commit: imp:proposal-id` | Commit proposal |
+| `validate: <scope>` | Validate graph |
+| `extract: lessons` | Extract lesson candidates |
+
+### First call
+
+Always call `gobp(query="overview:")` first. Response includes:
+- Project state (nodes, edges, recent decisions)
+- Full protocol guide in `interface` field
+- Suggested next queries in gobp() syntax
+
+### Notes
+- `locked_by` in lock action: comma-separated string e.g. `locked_by='CEO,Claude'`
+- `session_id` required for create/update/lock - get from `session:start` first
+- `_dispatch` field in every response - shows what was routed internally (for audit)
+
+---
+
 ## 0. PURPOSE
 
 MCP_TOOLS.md is the **API contract** for GoBP v1. Every tool is documented with:
@@ -110,6 +159,8 @@ Note: MCP SDK wraps results in `content` array with `type: text`. Tool payloads 
 ## 3. READ TOOLS
 
 ### 3.1 gobp_overview
+> **v2 note:** Use `gobp(query="overview:")` via the gobp() interface.
+> Direct tool calls below are for internal/test use only.
 
 **Purpose:** Orientation tool for AI clients connecting to a GoBP instance. Returns project metadata, stats, main topics, and suggested next queries. **First tool AI should call** when connecting - requires no prior knowledge of IDs.
 
@@ -212,6 +263,8 @@ suggested_next_queries: list[string]
 ---
 
 ### 3.2 find
+> **v2 note:** Use `gobp(query="find: ...")` via the gobp() interface.
+> Direct tool calls below are for internal/test use only.
 
 **Purpose:** Fuzzy search nodes by id, exact name, or substring match.
 
@@ -273,6 +326,8 @@ truncated: boolean  # true if more results exist beyond limit
 3. Substring match in id or name → collect up to limit
 
 ### 3.3 signature
+> **v2 note:** Use `gobp(query="signature: ...")` via the gobp() interface.
+> Direct tool calls below are for internal/test use only.
 
 **Purpose:** Get minimal spec of a single node. Fast summary, small payload.
 
@@ -330,6 +385,8 @@ signature:
 - Node not found → `{"ok": false, "error": "Node not found: dec:d999"}`
 
 ### 3.4 context
+> **v2 note:** Use `gobp(query="get: ...")` via the gobp() interface.
+> Direct tool calls below are for internal/test use only.
 
 **Purpose:** Full context bundle for a node. Includes outgoing + incoming edges + applicable decisions. Use before starting a task.
 
@@ -423,6 +480,8 @@ references:
 - Node not found → `{"ok": false, "error": "Node not found"}`
 
 ### 3.5 session_recent
+> **v2 note:** Use `gobp(query="recent: ...")` via the gobp() interface.
+> Direct tool calls below are for internal/test use only.
 
 **Purpose:** Get latest N sessions for continuity. AI calls at session start to see "what happened recently".
 
@@ -501,6 +560,8 @@ count: integer
 ```
 
 ### 3.6 decisions_for
+> **v2 note:** Use `gobp(query="decisions: ...")` via the gobp() interface.
+> Direct tool calls below are for internal/test use only.
 
 **Purpose:** Get locked decisions for a topic or node. Use when starting a task to know what's already decided.
 
@@ -569,6 +630,8 @@ count: integer
 ```
 
 ### 3.7 doc_sections
+> **v2 note:** Use `gobp(query="sections: ...")` via the gobp() interface.
+> Direct tool calls below are for internal/test use only.
 
 **Purpose:** List sections of a Document node without loading content.
 
@@ -632,6 +695,8 @@ count: integer
 ## 4. WRITE TOOLS
 
 ### 4.1 node_upsert
+> **v2 note:** Use `gobp(query="create:...")` or `gobp(query="update:...")` via the gobp() interface.
+> Direct tool calls below are for internal/test use only.
 
 **Purpose:** Create or update a node. Idempotent. Handles rename via supersedes pattern.
 
@@ -710,6 +775,8 @@ warnings: list[string]
 - Invalid session → `{"ok": false, "error": "Session not found"}`
 
 ### 4.2 decision_lock
+> **v2 note:** Use `gobp(query="lock:Decision ...")` via the gobp() interface.
+> Direct tool calls below are for internal/test use only.
 
 **Purpose:** Lock a decision with full verification. Founder has confirmed.
 
@@ -795,6 +862,8 @@ warnings: list[string]
 **CRITICAL:** AI MUST verify with founder before calling this. See INPUT_MODEL.md §3.
 
 ### 4.3 session_log
+> **v2 note:** Use `gobp(query="session:start ...")` / `gobp(query="session:end ...")` via the gobp() interface.
+> Direct tool calls below are for internal/test use only.
 
 **Purpose:** Start, update, or end a session. AI calls at start and end of every conversation session.
 
@@ -884,6 +953,8 @@ session_id: string
 ## 5. IMPORT TOOLS
 
 ### 5.1 import_proposal
+> **v2 note:** Use `gobp(query="import: ...")` via the gobp() interface.
+> Direct tool calls below are for internal/test use only.
 
 **Purpose:** AI proposes a batch import from an existing file. Founder reviews before commit.
 
@@ -975,6 +1046,8 @@ warnings: list[string]
 - NOTHING is written to actual graph until commit
 
 ### 5.2 import_commit
+> **v2 note:** Use `gobp(query="commit: ...")` via the gobp() interface.
+> Direct tool calls below are for internal/test use only.
 
 **Purpose:** Commit an approved proposal atomically.
 
@@ -1048,6 +1121,8 @@ errors: list[dict]
 ## 6. MAINTENANCE TOOLS
 
 ### 6.1 validate
+> **v2 note:** Use `gobp(query="validate: ...")` via the gobp() interface.
+> Direct tool calls below are for internal/test use only.
 
 **Purpose:** Run full schema + constraint check on the entire graph. Returns issues.
 
