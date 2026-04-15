@@ -5,6 +5,37 @@ Format: [Wave N — Title] with date, what was added/changed/fixed.
 
 ---
 
+## [Wave 15] — Parser Rewrite + Import Fix + Edge Dedupe — 2026-04-15
+
+### Bugs fixed (from Cursor production testing)
+- **B1 (High)**: `find: login page_size=10` parsed wrong (`type='login'`, `query='page_size=10'`)
+  - Fix: rewritten `parse_query()` with positional grammar
+- **B2 (High)**: `related: node:x direction='out'` lost `node_id` and returned `ok=False`
+  - Fix: action-specific positional key mapping (`_POSITIONAL_KEY`)
+- **B3 (High)**: `import:` `doc_id` collision for same-stem files in different folders
+  - Fix: `doc_id = "doc:{slug}_{md5[:6]}"` (collision-proof)
+- **B4 (Medium)**: duplicate edges in file storage
+  - Fix: `create_edge()` now checks `(from,type,to)` before append
+  - Fix: `deduplicate_edges()` cleanup utility + `dedupe: edges` action
+- **B5 (Medium)**: `import:` returned `ok=False` but still included success-like fields
+  - Fix: clean response contract (`ok=False` has only error fields)
+- **B6 (Medium)**: bool values parsed as strings (`"true"` instead of `True`)
+  - Fix: `_coerce_value()` converts `true/false->bool`, digits->int, `null/none->None`
+
+### Changed
+- `gobp/mcp/dispatcher.py`
+  - `parse_query()` rewritten
+  - Added `_POSITIONAL_KEY`, `_coerce_value()`, `_tokenize_rest()`, `_parse_edge_rest()`
+  - `import:` now uses collision-proof `doc_id` and clean error envelope
+  - Added `dedupe: edges` action
+- `gobp/core/mutator.py`
+  - `create_edge()` is idempotent for duplicate triples
+  - Added `deduplicate_edges()` for one-shot cleanup
+
+### Total after wave: 1 MCP tool, 29 actions, 327+ tests
+
+---
+
 ## [Wave 13] — Pagination + Upsert + Guardrails + Observability — 2026-04-15
 
 ### Problems solved
