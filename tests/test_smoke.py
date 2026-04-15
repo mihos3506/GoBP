@@ -170,8 +170,18 @@ def get_templates_dir() -> Path:
 
 
 def test_all_templates_exist():
-    """All 6 template files exist."""
-    expected = ["node.md", "idea.md", "decision.md", "session.md", "document.md", "lesson.md"]
+    """All 9 template files exist."""
+    expected = [
+        "node.md",
+        "idea.md",
+        "decision.md",
+        "session.md",
+        "document.md",
+        "lesson.md",
+        "concept.md",
+        "testkind.md",
+        "testcase.md",
+    ]
     templates_dir = get_templates_dir()
 
     for template_name in expected:
