@@ -48,6 +48,22 @@ from typing import Any
 from gobp.core.graph import GraphIndex
 
 
+def _get_type_prefix(node_type: str) -> str:
+    """Get ID prefix for node type."""
+    prefix_map = {
+        "Node": "node",
+        "Idea": "idea",
+        "Decision": "dec",
+        "Session": "session",
+        "Document": "doc",
+        "Lesson": "lesson",
+        "Concept": "concept",
+        "TestKind": "testkind",
+        "TestCase": "tc",
+    }
+    return prefix_map.get(node_type, "node")
+
+
 # -- Query parser --------------------------------------------------------------
 
 def parse_query(query: str) -> tuple[str, str, dict[str, Any]]:
@@ -201,10 +217,23 @@ async def dispatch(
 
         # -- Write actions -----------------------------------------------------
         elif action == "create":
+            node_type = node_type or params.pop("type", "Node")
+
+            # Auto-generate ID if not provided
+            node_id = params.pop("id", params.pop("node_id", None))
+            if not node_id:
+                import uuid as _uuid
+                from datetime import datetime, timezone
+
+                type_prefix = _get_type_prefix(node_type)
+                short_hash = _uuid.uuid4().hex[:6]
+                node_id = f"{type_prefix}:{short_hash}"
+
             args = {
-                "type": node_type or params.pop("type", "Node"),
+                "node_id": node_id,
+                "type": node_type,
                 "name": params.get("name", ""),
-                "fields": {k: v for k, v in params.items() if k not in ("name", "type")},
+                "fields": {k: v for k, v in params.items() if k not in ("name", "type", "session_id")},
                 "session_id": params.get("session_id", ""),
             }
             result = tools_write.node_upsert(index, project_root, args)
