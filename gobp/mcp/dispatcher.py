@@ -451,6 +451,14 @@ async def dispatch(
                 }
             else:
                 node_id = existing_node.get("id") if existing_node else None
+                if not node_id:
+                    import uuid as _uuid
+
+                    type_prefix = _get_type_prefix(node_type)
+                    short_hash = _uuid.uuid4().hex[:6]
+                    if type_prefix == "node" and short_hash[0].isdigit():
+                        short_hash = f"n{short_hash[:5]}"
+                    node_id = f"{type_prefix}:{short_hash}"
                 args = {
                     "id": node_id,
                     "type": node_type,
