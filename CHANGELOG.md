@@ -5,6 +5,35 @@ Format: [Wave N — Title] with date, what was added/changed/fixed.
 
 ---
 
+## [Wave 11A] — Lazy Query Actions — 2026-04-15
+
+### Problem solved
+`get: <node_id>` loads full node context (~500 tokens). AI often needs
+only 1 dimension. Token waste 60-80% for targeted queries.
+
+### Solution
+4 new lazy query actions — each returns only the requested dimension:
+
+| Action | Returns | Tokens |
+|---|---|---|
+| `code: <node_id>` | Code file references | ~150 |
+| `invariants: <node_id>` | Hard constraints | ~100 |
+| `tests: <node_id>` | Linked TestCases + coverage | ~200 |
+| `related: <node_id>` | Neighbor names only | ~150 |
+
+vs `get: <node_id>` full context: ~500 tokens
+
+### Added
+- `gobp/schema/core_nodes.yaml`: `code_refs` + `invariants` optional fields
+- `gobp/mcp/tools/read.py`: 4 new handler functions
+- `gobp/mcp/dispatcher.py`: 4 new actions + 7 PROTOCOL_GUIDE entries
+- `tests/test_wave11a.py`: ~25 tests
+- `docs/MCP_TOOLS.md`: new actions documented
+
+### Total after wave: 1 MCP tool, 22 actions, 278+ tests passing
+
+---
+
 ## [Wave 10C] — PostgreSQL Migration — 2026-04-15
 
 ### Why

@@ -33,6 +33,13 @@ gobp(query="<action>:<NodeType> <key>='<value>' ...")
 | `recent: <n>` | Latest N sessions |
 | `decisions: <topic>` | Locked decisions for topic |
 | `sections: <doc_id>` | Document sections |
+| `code: <node_id>` | Code files implementing this node |
+| `code: <node_id> path='x' description='y' language='z'` | Add code reference |
+| `invariants: <node_id>` | Hard constraints for node |
+| `tests: <node_id>` | Linked TestCase nodes with coverage |
+| `tests: <node_id> status='FAILING'` | Filter tests by status |
+| `related: <node_id>` | Neighbor nodes summary (no full data) |
+| `related: <node_id> direction='outgoing'` | Only outgoing neighbors |
 | `create:<NodeType> name='x' session_id='y'` | Create node |
 | `update: id='x' name='y'` | Update node |
 | `lock:Decision topic='x' what='y' why='z'` | Lock decision |
