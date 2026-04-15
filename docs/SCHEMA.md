@@ -513,6 +513,78 @@ node_type:
     - verified_count >= 1
 ```
 
+### 2.7 Concept
+
+Stores a defined concept or framework idea for AI orientation. When AI connects to a project, it reads Concept nodes via `gobp_overview()` to understand the project's vocabulary and thinking framework without CEO re-explanation.
+
+**Required fields:**
+- `id` — e.g. `concept:test_taxonomy`
+- `type` — always `Concept`
+- `name` — short concept name (e.g. "Test Taxonomy")
+- `definition` — what this concept means in this project
+- `usage_guide` — how AI should use or apply this concept
+- `created`, `updated` — timestamps
+
+**Optional fields:**
+- `applies_to` — list of node types this concept applies to
+- `seed_values` — default values or examples
+- `extensible` — bool, default true
+- `tags` — list of strings
+
+**Example:** `concept:test_taxonomy` — explains GoBP's 3-level test taxonomy so AI understands how to create and link TestKind and TestCase nodes.
+
+---
+
+### 2.8 TestKind
+
+A category of software test with a template and seed examples. GoBP seeds 16 universal TestKind nodes on `gobp init` covering 4 groups: functional, non_functional, security, process.
+
+**Required fields:**
+- `id` — e.g. `testkind:unit`, `testkind:security_network`
+- `type` — always `TestKind`
+- `name` — short name (e.g. "Unit Test", "Network Security Test")
+- `group` — enum: `functional | non_functional | security | process`
+- `scope` — enum: `universal | platform | project`
+- `description` — what this kind of test verifies
+- `template` — dict with template fields (given/when/then or scenario/threshold/tool etc.)
+- `created`, `updated` — timestamps
+
+**Optional fields:**
+- `platform` — null (universal) or "flutter" | "deno" | "web" etc.
+- `seed_examples` — list of example test case names
+- `extensible` — bool, default true
+- `tags` — list of strings
+
+**3-level scope:**
+- `universal` — pre-seeded on init, applies to all projects
+- `platform` — added per project for specific stack (Flutter, Deno, etc.)
+- `project` — custom kinds unique to this project
+
+---
+
+### 2.9 TestCase
+
+A specific test instance linked to a TestKind and a feature/node being tested.
+
+**Required fields:**
+- `id` — e.g. `tc:login_unit_001`
+- `type` — always `TestCase`
+- `name` — short test case title
+- `kind_id` — node_ref to the TestKind this test belongs to
+- `covers` — node_ref to the Feature/Node being tested
+- `status` — enum: `DRAFT | READY | PASSING | FAILING | SKIPPED | DEPRECATED`
+- `priority` — enum: `low | medium | high | critical`
+- `created`, `updated` — timestamps
+
+**Optional fields:**
+- `given` — preconditions (BDD Given)
+- `when` — action being tested (BDD When)
+- `then` — expected outcome (BDD Then)
+- `scenario` — alternative to Given/When/Then for non-BDD kinds
+- `automated` — bool, whether actual test code exists
+- `code_ref` — path to test file + test name (e.g. `test/auth_test.dart#login_valid`)
+- `tags` — list of strings
+
 ---
 
 ## 3. CORE EDGE SCHEMAS
@@ -671,6 +743,33 @@ edge_type:
   cardinality: many_to_many
   allowed_node_types: [all -> Document]
 ```
+
+### 3.6 covers
+
+TestCase covers/validates a Feature or Node. The test validates that the target node works as intended.
+
+**Usage:**
+- `tc:login_unit_001` covers `node:feat_login`
+- `tc:otp_security_001` covers `dec:d001`
+
+**Rules:**
+- Directed: TestCase → Node/Feature/Decision
+- Many-to-one cardinality (many tests can cover one feature)
+- Optional `coverage_type` field: `happy_path | error_path | boundary | security`
+
+---
+
+### 3.7 of_kind
+
+TestCase belongs to a TestKind category.
+
+**Usage:**
+- `tc:login_unit_001` of_kind `testkind:unit`
+- `tc:otp_security_001` of_kind `testkind:security_auth`
+
+**Rules:**
+- Directed: TestCase → TestKind
+- Many-to-one cardinality (many tests belong to one kind)
 
 ---
 
@@ -978,8 +1077,8 @@ Ship structure for v1:
 
 ```
 gobp/schema/
-├── core_nodes.yaml       # 6 node types above
-├── core_edges.yaml       # 5 edge types above
+├── core_nodes.yaml       # 9 node types above
+├── core_edges.yaml       # 7 edge types above
 ├── core_validation.yaml  # cross-cutting validation rules
 └── README.md             # how to read this
 ```
@@ -987,7 +1086,7 @@ gobp/schema/
 ### 9.1 core_nodes.yaml (abbreviated)
 
 ```yaml
-schema_version: 1.0
+schema_version: 2.0
 node_types:
   Node:         {...}  # Section 2.1 expanded
   Idea:         {...}  # Section 2.2 expanded
@@ -995,18 +1094,23 @@ node_types:
   Session:      {...}  # Section 2.4 expanded
   Document:     {...}  # Section 2.5 expanded
   Lesson:       {...}  # Section 2.6 expanded
+  Concept:      {...}  # Section 2.7 expanded
+  TestKind:     {...}  # Section 2.8 expanded
+  TestCase:     {...}  # Section 2.9 expanded
 ```
 
 ### 9.2 core_edges.yaml (abbreviated)
 
 ```yaml
-schema_version: 1.0
+schema_version: 2.0
 edge_types:
   relates_to:    {...}  # Section 3.1 expanded
   supersedes:    {...}  # Section 3.2 expanded
   implements:    {...}  # Section 3.3 expanded
   discovered_in: {...}  # Section 3.4 expanded
   references:   {...}  # Section 3.5 expanded
+  covers:       {...}  # Section 3.6 expanded
+  of_kind:      {...}  # Section 3.7 expanded
 ```
 
 ### 9.3 core_validation.yaml
