@@ -17,6 +17,8 @@ from typing import Any
 
 import yaml
 
+from gobp.core import cache as _cache_module
+from gobp.core import db as _db
 from gobp.core.history import append_event
 from gobp.core.loader import parse_frontmatter
 from gobp.core.validator import validate_edge, validate_node
@@ -125,6 +127,19 @@ def create_node(
 
     _atomic_write(node_file, content)
 
+    # Write-through: update SQLite index
+    try:
+        _db.init_schema(gobp_root)
+        _db.upsert_node(gobp_root, node)
+    except Exception:
+        pass  # SQLite failure non-fatal
+
+    # Invalidate cache
+    try:
+        _cache_module.get_cache().invalidate_all()
+    except Exception:
+        pass
+
     append_event(
         gobp_root=gobp_root,
         event_type="node.created",
@@ -180,6 +195,19 @@ def update_node(
 
     _atomic_write(node_file, content)
 
+    # Write-through: update SQLite index
+    try:
+        _db.init_schema(gobp_root)
+        _db.upsert_node(gobp_root, node)
+    except Exception:
+        pass  # SQLite failure non-fatal
+
+    # Invalidate cache
+    try:
+        _cache_module.get_cache().invalidate_all()
+    except Exception:
+        pass
+
     append_event(
         gobp_root=gobp_root,
         event_type="node.updated",
@@ -230,6 +258,13 @@ def delete_node(
     new_content = f"---\n{frontmatter_yaml}---\n\n{body}"
 
     _atomic_write(node_file, new_content)
+
+    try:
+        _db.delete_node(gobp_root, node_id)
+        _db.delete_edges_for_node(gobp_root, node_id)
+        _cache_module.get_cache().invalidate_all()
+    except Exception:
+        pass
 
     append_event(
         gobp_root=gobp_root,
@@ -285,6 +320,13 @@ def create_edge(
 
     new_content = yaml.safe_dump(existing_edges, default_flow_style=False, sort_keys=False)
     _atomic_write(edge_file, new_content)
+
+    try:
+        _db.init_schema(gobp_root)
+        _db.upsert_edge(gobp_root, edge)
+        _cache_module.get_cache().invalidate_all()
+    except Exception:
+        pass
 
     append_event(
         gobp_root=gobp_root,
