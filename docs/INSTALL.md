@@ -168,3 +168,46 @@ Full specs: `docs/MCP_TOOLS.md`.
 **Schema validation errors on startup**
 → Run `python -m gobp.cli validate` to see what's wrong.
 → Usually caused by manually edited node files with missing required fields.
+
+## PostgreSQL Setup (Recommended for scale)
+
+GoBP uses PostgreSQL as persistent index for projects with 1,000+ nodes.
+
+### Install PostgreSQL
+
+Download from https://www.postgresql.org/download/windows/
+Install version 18.x or later.
+
+### Create databases
+
+```powershell
+& "C:\Program Files\PostgreSQL\18\bin\psql.exe" -U postgres -c "CREATE DATABASE gobp;"
+& "C:\Program Files\PostgreSQL\18\bin\psql.exe" -U postgres -c "CREATE DATABASE gobp_mihos;"
+```
+
+### Configure environment
+
+Set environment variables (passwords with @ must use %40):
+
+```powershell
+[System.Environment]::SetEnvironmentVariable("GOBP_DB_URL", "postgresql://postgres:YOUR%40PASSWORD@localhost/gobp", "User")
+[System.Environment]::SetEnvironmentVariable("GOBP_MIHOS_DB_URL", "postgresql://postgres:YOUR%40PASSWORD@localhost/gobp_mihos", "User")
+```
+
+Restart PowerShell after setting variables.
+
+### Install Python driver
+
+```powershell
+pip install psycopg2-binary
+```
+
+### Verify
+
+```powershell
+python -m gobp.cli validate --reindex
+```
+
+### Note
+
+If GOBP_DB_URL is not set, GoBP falls back to in-memory index (no persistence between restarts). PostgreSQL is optional but recommended for MIHOS-scale projects.
