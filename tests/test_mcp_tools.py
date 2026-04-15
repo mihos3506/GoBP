@@ -326,29 +326,10 @@ def test_doc_sections_non_document_node(index: GraphIndex, populated_root: Path)
 
 
 def test_mcp_server_registers_all_14_tools():
-    """Smoke test: MCP server must list all 14 tools (7 read + 6 write/import/validate + lessons_extract)."""
+    """Smoke test: MCP server must list only the gobp tool."""
     from gobp.mcp import server as srv
     import asyncio
 
     tools = asyncio.run(srv.list_tools())
-    tool_names = [t.name for t in tools]
-
-    expected = {
-        "gobp_overview",
-        "find",
-        "signature",
-        "context",
-        "session_recent",
-        "decisions_for",
-        "doc_sections",
-        "node_upsert",
-        "decision_lock",
-        "session_log",
-        "import_proposal",
-        "import_commit",
-        "validate",
-        "lessons_extract",
-    }
-
-    assert set(tool_names) == expected, f"Got {tool_names}, expected {expected}"
-    assert len(tools) == 14
+    assert len(tools) == 1
+    assert tools[0].name == "gobp"
