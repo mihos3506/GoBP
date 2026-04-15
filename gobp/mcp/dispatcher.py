@@ -64,6 +64,48 @@ def _get_type_prefix(node_type: str) -> str:
     return prefix_map.get(node_type, "node")
 
 
+def _classify_doc_priority(content: str, path: str) -> str:
+    """Auto-classify document priority based on content keywords.
+
+    Rules (deterministic, no AI):
+      critical: user flows, auth, payment, proof of presence, trust gate
+      high:     entity, engine, architecture, API, database
+      medium:   design, copy, admin, notification, map
+      low:      mascot, growth, future, level system, campaign
+    """
+    content_lower = content.lower()
+    path_lower = path.lower()
+    combined = content_lower + " " + path_lower
+
+    critical_keywords = [
+        "user flow", "authentication", "proof of presence", "payment",
+        "trust gate", "verify gate", "core flow", "master definition",
+        "pop_protocol", "mihot", "homecoming", "registration flow",
+    ]
+    high_keywords = [
+        "entity", "engine", "architecture", "api", "database",
+        "engine spec", "adapter", "domain dictionary", "migration",
+        "interface reference", "middleware", "scale",
+    ]
+    low_keywords = [
+        "mascot", "growth", "launch", "campaign", "level system",
+        "gamification", "future", "phase 2", "nice to have",
+    ]
+
+    critical_score = sum(1 for kw in critical_keywords if kw in combined)
+    high_score = sum(1 for kw in high_keywords if kw in combined)
+    low_score = sum(1 for kw in low_keywords if kw in combined)
+
+    if critical_score >= 2:
+        return "critical"
+    elif critical_score >= 1 or high_score >= 3:
+        return "high"
+    elif low_score >= 2:
+        return "low"
+    else:
+        return "medium"
+
+
 # -- Query parser --------------------------------------------------------------
 
 def parse_query(query: str) -> tuple[str, str, dict[str, Any]]:
@@ -355,17 +397,84 @@ async def dispatch(
 
         # -- Import actions ----------------------------------------------------
         elif action == "import":
-            source_path = params.get("query") or params.get("source_path", "")
-            args = {
-                "source_path": source_path,
-                "session_id": params.get("session_id", ""),
-                "proposal_type": params.get("type", "doc"),
-                "ai_notes": params.get("notes", ""),
-                "proposed_nodes": [],
-                "proposed_edges": [],
-                "confidence": params.get("confidence", "medium"),
-            }
-            result = tools_import.import_proposal(index, project_root, args)
+            source_path_str = params.get("query") or params.get("source_path", "")
+            session_id = params.get("session_id", "")
+
+            if not source_path_str:
+                result = {
+                    "ok": False,
+                    "error": "import: requires source path",
+                    "hint": "gobp(query=\"import: path/to/doc.md session_id='session:x'\")",
+                }
+            else:
+                # Resolve path relative to project root
+                source_path = project_root / source_path_str
+
+                # Read file content for classification
+                content = ""
+                sections = []
+                if source_path.exists():
+                    content = source_path.read_text(encoding="utf-8", errors="replace")
+                    # Extract markdown headings as sections
+                    import re as _re
+                    sections = [
+                        {"heading": m.group(2).strip(), "level": len(m.group(1))}
+                        for m in _re.finditer(r"^(#{1,3})\s+(.+)$", content, _re.MULTILINE)
+                    ][:20]  # max 20 sections
+
+                # Auto-classify priority
+                priority = _classify_doc_priority(content, source_path_str)
+
+                # Generate Document node ID from filename
+                import re as _re
+                doc_slug = _re.sub(r"[^a-z0-9_]", "_", source_path.stem.lower())
+                doc_id = f"doc:{doc_slug}"
+
+                # Create Document node
+                import hashlib as _hashlib
+                content_hash = f"sha256:{_hashlib.sha256(content.encode()).hexdigest()[:16]}" if content else ""
+
+                doc_node = {
+                    "id": doc_id,
+                    "type": "Document",
+                    "name": source_path.stem.replace("_", " ").title(),
+                    "source_path": source_path_str,
+                    "content_hash": content_hash,
+                    "priority": priority,
+                    "sections": sections,
+                    "status": "ACTIVE",
+                    "session_id": session_id,
+                }
+
+                doc_args = {
+                    "node_id": doc_id,
+                    "type": "Document",
+                    "name": doc_node["name"],
+                    "fields": {
+                        k: v for k, v in doc_node.items()
+                        if k not in ("id", "type", "name", "session_id")
+                    },
+                    "session_id": session_id,
+                }
+
+                upsert_result = tools_write.node_upsert(index, project_root, doc_args)
+
+                result = {
+                    "ok": upsert_result.get("ok", False),
+                    "document_node": doc_id,
+                    "document_name": doc_node["name"],
+                    "priority": priority,
+                    "sections_found": len(sections),
+                    "sections": sections[:5],  # show first 5
+                    "content_hash": content_hash,
+                    "file_exists": source_path.exists(),
+                    "suggestion": (
+                        f"Document node created. Now extract key concepts:\n"
+                        f"  gobp(query=\"create:Node name='...' priority='{priority}' session_id='{session_id}'\")\n"
+                        f"Then link with:\n"
+                        f"  gobp(query=\"edge: node:x --references--> {doc_id}\")"
+                    ),
+                }
 
         elif action == "commit":
             proposal_id = params.get("query") or params.get("proposal_id", "")
