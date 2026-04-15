@@ -1,0 +1,107 @@
+# MIHOS Schema Extension for GoBP
+# Extends GoBP core schema with MIHOS-specific node types.
+# Core types (Node, Idea, Decision, Session, Document, Lesson) remain unchanged.
+#
+# To use: reference this file in .gobp/config.yaml as:
+#   schema_extensions:
+#     - gobp/schema/extensions/mihos.yaml
+
+extension_name: mihos
+version: "1.0"
+extends: gobp_core_v1
+
+node_types:
+
+  Imprint:
+    description: A verified heritage presence record — the core MIHOS asset
+    id_prefix: "imprint"
+    parent: Node  # extends Node
+
+    required:
+      id:
+        type: str
+        pattern: "^imprint:.+$"
+      type:
+        type: str
+        enum_values: [Imprint]
+      name:
+        type: str
+        description: Short description of the imprint
+      traveller_id:
+        type: str
+        description: DID of the Traveller who created the imprint
+      provider_id:
+        type: str
+        description: ID of the heritage Provider
+      gps_lat:
+        type: float
+        description: GPS latitude at capture time
+      gps_lng:
+        type: float
+        description: GPS longitude at capture time
+      captured_at:
+        type: timestamp
+      proof_type:
+        type: enum
+        enum_values: [GPS_PHOTO, GPS_ONLY, PROVIDER_VERIFIED]
+      status:
+        type: enum
+        enum_values: [PENDING, VERIFIED, DISPUTED, WITHDRAWN]
+      created:
+        type: timestamp
+      updated:
+        type: timestamp
+
+    optional:
+      photo_hash:
+        type: str
+        description: SHA-256 of the capture photo
+      value_points:
+        type: int
+        default: 0
+        description: Economic value assigned to this imprint
+      heritage_tags:
+        type: list[str]
+        default: []
+        description: Heritage category tags (e.g. ["temple", "buddhist"])
+
+  Provider:
+    description: A heritage site or experience provider in the MIHOS network
+    id_prefix: "provider"
+    parent: Node
+
+    required:
+      id:
+        type: str
+        pattern: "^provider:.+$"
+      type:
+        type: str
+        enum_values: [Provider]
+      name:
+        type: str
+      location_name:
+        type: str
+        description: Human-readable location (e.g. "Hoi An Ancient Town")
+      gps_lat:
+        type: float
+      gps_lng:
+        type: float
+      status:
+        type: enum
+        enum_values: [ACTIVE, SUSPENDED, PENDING_REVIEW]
+      created:
+        type: timestamp
+      updated:
+        type: timestamp
+
+    optional:
+      reputation_score:
+        type: float
+        default: 0.0
+        description: Aggregated trust score (0.0–5.0)
+      heritage_category:
+        type: list[str]
+        default: []
+      verified_by:
+        type: str
+        description: Authority that verified this provider
