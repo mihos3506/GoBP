@@ -318,6 +318,10 @@ async def dispatch(
             args = {"node_id": node_id}
             if status:
                 args["status"] = status
+            if "page_size" in params:
+                args["page_size"] = params["page_size"]
+            if "cursor" in params:
+                args["cursor"] = params["cursor"]
             result = tools_read.node_tests(index, project_root, args)
 
         elif action == "related":
@@ -327,6 +331,10 @@ async def dispatch(
             args = {"node_id": node_id, "direction": direction}
             if edge_type:
                 args["edge_type"] = edge_type
+            if "page_size" in params:
+                args["page_size"] = params["page_size"]
+            if "cursor" in params:
+                args["cursor"] = params["cursor"]
             result = tools_read.node_related(index, project_root, args)
 
         # -- Write actions -----------------------------------------------------

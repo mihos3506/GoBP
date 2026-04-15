@@ -689,26 +689,50 @@ def node_tests(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> d
     status_order = {"FAILING": 0, "DRAFT": 1, "READY": 2, "PASSING": 3, "SKIPPED": 4, "DEPRECATED": 5}
     test_cases.sort(key=lambda t: status_order.get(t["status"], 99))
 
-    passing = sum(1 for t in test_cases if t["status"] == "PASSING")
-    failing = sum(1 for t in test_cases if t["status"] == "FAILING")
+    page_size = min(int(args.get("page_size", 50)), 200)
+    if page_size < 1:
+        page_size = 1
+    cursor = args.get("cursor")
+
+    total_estimate = len(test_cases)
+
+    if cursor:
+        try:
+            idx = next(i for i, t in enumerate(test_cases) if t.get("id") == cursor)
+            test_cases = test_cases[idx + 1:]
+        except StopIteration:
+            test_cases = []
+
+    page = test_cases[:page_size]
+    has_more = len(test_cases) > page_size
+    next_cursor = page[-1].get("id") if has_more and page else None
+
+    passing = sum(1 for t in page if t["status"] == "PASSING")
+    failing = sum(1 for t in page if t["status"] == "FAILING")
 
     return {
         "ok": True,
         "node_id": node_id,
         "node_name": node.get("name", ""),
         "node_type": node.get("type", ""),
-        "test_cases": test_cases,
-        "count": len(test_cases),
+        "test_cases": page,
+        "count": len(page),
         "summary": {
             "passing": passing,
             "failing": failing,
-            "draft": len(test_cases) - passing - failing,
+            "draft": len(page) - passing - failing,
         },
-        "coverage": "none" if not test_cases else (
+        "coverage": "none" if not page else (
             "full" if failing == 0 and passing > 0 else
             "partial" if passing > 0 else
             "draft"
         ),
+        "page_info": {
+            "next_cursor": next_cursor,
+            "has_more": has_more,
+            "total_estimate": total_estimate,
+            "page_size": page_size,
+        },
     }
 
 
@@ -765,12 +789,48 @@ def node_related(index: GraphIndex, project_root: Path, args: dict[str, Any]) ->
                 "priority": neighbor.get("priority", "medium") if neighbor else "medium",
             })
 
+    page_size = min(int(args.get("page_size", 50)), 200)
+    if page_size < 1:
+        page_size = 1
+    cursor = args.get("cursor")
+    direction_filter = args.get("direction", "both")
+
+    all_items: list[dict[str, Any]] = []
+    if direction_filter in ("outgoing", "both"):
+        all_items.extend([{**item, "_dir": "outgoing"} for item in outgoing])
+    if direction_filter in ("incoming", "both"):
+        all_items.extend([{**item, "_dir": "incoming"} for item in incoming])
+
+    total_estimate = len(all_items)
+
+    if cursor:
+        try:
+            idx = next(i for i, item in enumerate(all_items) if item.get("node_id") == cursor)
+            all_items = all_items[idx + 1:]
+        except StopIteration:
+            all_items = []
+
+    page = all_items[:page_size]
+    has_more = len(all_items) > page_size
+    next_cursor = page[-1].get("node_id") if has_more and page else None
+
+    page_outgoing = [i for i in page if i.get("_dir") == "outgoing"]
+    page_incoming = [i for i in page if i.get("_dir") == "incoming"]
+    for i in page_outgoing + page_incoming:
+        i.pop("_dir", None)
+
     return {
         "ok": True,
         "node_id": node_id,
         "node_name": node.get("name", ""),
         "node_type": node.get("type", ""),
-        "outgoing": outgoing,
-        "incoming": incoming,
-        "count": len(outgoing) + len(incoming),
+        "outgoing": page_outgoing,
+        "incoming": page_incoming,
+        "count": len(page),
+        "page_info": {
+            "next_cursor": next_cursor,
+            "has_more": has_more,
+            "total_estimate": total_estimate,
+            "page_size": page_size,
+        },
     }
