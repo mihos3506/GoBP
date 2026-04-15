@@ -20,6 +20,8 @@ import json
 import logging
 import os
 import sys
+import time as _time
+from collections import defaultdict as _defaultdict
 from pathlib import Path
 from typing import Any
 
@@ -57,6 +59,55 @@ def _load_index(project_root: Path) -> GraphIndex:
 server: Server = Server("gobp")
 _index: GraphIndex | None = None
 _project_root: Path | None = None
+
+# ── In-memory stats ───────────────────────────────────────────────────────────
+_stats: dict[str, dict[str, Any]] = _defaultdict(
+    lambda: {
+        "calls": 0,
+        "total_ms": 0.0,
+        "errors": 0,
+        "last_called": None,
+        "recent_queries": [],
+    }
+)
+_stats_session_start: float = _time.time()
+
+
+def _record_stat(action: str, elapsed_ms: float, error: bool = False, query: str = "") -> None:
+    """Record a tool call stat."""
+    s = _stats[action]
+    s["calls"] += 1
+    s["total_ms"] += elapsed_ms
+    if error:
+        s["errors"] += 1
+    s["last_called"] = _time.strftime("%Y-%m-%dT%H:%M:%SZ", _time.gmtime())
+    if query:
+        s["recent_queries"] = ([query] + s["recent_queries"])[:5]
+
+
+def _get_stats_summary() -> dict[str, Any]:
+    """Return stats summary for all actions."""
+    result: dict[str, Any] = {}
+    total_calls = 0
+    for action, s in _stats.items():
+        calls = s["calls"]
+        total_calls += calls
+        avg_ms = round(s["total_ms"] / calls, 1) if calls > 0 else 0
+        result[action] = {
+            "calls": calls,
+            "avg_ms": avg_ms,
+            "errors": s["errors"],
+            "last_called": s["last_called"],
+            "recent_queries": s["recent_queries"],
+        }
+    return {
+        "stats": result,
+        "session": {
+            "started": _time.strftime("%Y-%m-%dT%H:%M:%SZ", _time.gmtime(_stats_session_start)),
+            "total_calls": total_calls,
+            "uptime_seconds": round(_time.time() - _stats_session_start),
+        },
+    }
 
 
 @server.list_tools()
@@ -109,14 +160,47 @@ async def call_tool(
 
     query = arguments.get("query", "overview:")
 
+    from gobp.mcp.dispatcher import parse_query
+
+    action, _, _ = parse_query(query)
+    if action == "stats":
+        parts = query.split(":", 1)
+        sub = parts[1].strip() if len(parts) > 1 else ""
+        if sub == "reset":
+            _stats.clear()
+            result = {"ok": True, "message": "Stats reset"}
+        elif sub:
+            s = _stats.get(
+                sub,
+                {"calls": 0, "total_ms": 0.0, "errors": 0, "last_called": None, "recent_queries": []},
+            )
+            calls = s.get("calls", 0)
+            result = {
+                "ok": True,
+                "action": sub,
+                "stats": {
+                    "calls": calls,
+                    "avg_ms": round(s.get("total_ms", 0.0) / calls, 1) if calls > 0 else 0,
+                    "errors": s.get("errors", 0),
+                    "last_called": s.get("last_called"),
+                    "recent_queries": s.get("recent_queries", []),
+                },
+            }
+        else:
+            result = {"ok": True, **_get_stats_summary()}
+        return [types.TextContent(type="text", text=json.dumps(result, ensure_ascii=False))]
+
+    start = _time.time()
+    error = False
     try:
-        from gobp.mcp.dispatcher import dispatch, parse_query
+        from gobp.mcp.dispatcher import dispatch
 
         result = await dispatch(query, _index, _project_root)
+        if not result.get("ok"):
+            error = True
 
         # Reload index after write operations
-        action, _, _ = parse_query(query)
-        if action in ("create", "update", "lock", "session", "commit"):
+        if action in ("create", "update", "upsert", "lock", "session", "commit"):
             _index = _load_index(_project_root)
             # Invalidate cache
             try:
@@ -126,11 +210,15 @@ async def call_tool(
             except Exception:
                 pass
     except Exception as e:
+        error = True
         result = {
             "ok": False,
             "error": str(e),
             "hint": "Call gobp(query='overview:') to see available actions",
         }
+    finally:
+        elapsed = (_time.time() - start) * 1000
+        _record_stat(action, elapsed, error, query[:100])
 
     return [types.TextContent(type="text", text=json.dumps(result, ensure_ascii=False))]
 
