@@ -24,6 +24,8 @@ from gobp.core.history import append_event
 from gobp.core.loader import parse_frontmatter
 from gobp.core.validator import validate_edge, validate_node
 
+_EDGE_DEDUPE_CACHE: dict[str, tuple[int, int, int, int]] = {}
+
 
 def _generate_session_id(goal: str = "") -> str:
     """Generate short, unique session ID.
@@ -303,7 +305,7 @@ def create_edge(
     schema: dict[str, Any],
     edge_file_name: str = "relations.yaml",
     actor: str = "unknown",
-) -> Path:
+) -> dict[str, Any]:
     """Append a new edge to an edge YAML file.
 
     Edge files contain a YAML list. This function appends one edge
@@ -317,7 +319,7 @@ def create_edge(
         actor: Who is creating.
 
     Returns:
-        Path to the edge file.
+        Dict with edge creation status and edge_id.
 
     Raises:
         ValueError: If edge validation fails.
@@ -340,14 +342,19 @@ def create_edge(
     from_id = edge.get("from", "")
     to_id = edge.get("to", "")
     edge_type = edge.get("type", "")
+    edge_id = f"{from_id}__{edge_type}__{to_id}"
     for existing in existing_edges:
         if (
             existing.get("from") == from_id
             and existing.get("to") == to_id
             and existing.get("type") == edge_type
         ):
-            # Idempotent behavior: do not append duplicate edge triple.
-            return edge_file
+            return {
+                "ok": True,
+                "action": "skipped",
+                "edge_id": edge_id,
+                "reason": f"Edge {from_id} --{edge_type}--> {to_id} already exists",
+            }
 
     existing_edges.append(edge)
 
@@ -375,7 +382,11 @@ def create_edge(
         actor=actor,
     )
 
-    return edge_file
+    return {
+        "ok": True,
+        "action": "created",
+        "edge_id": edge_id,
+    }
 
 
 def deduplicate_edges(gobp_root: Path) -> dict[str, Any]:
@@ -390,16 +401,33 @@ def deduplicate_edges(gobp_root: Path) -> dict[str, Any]:
     total_duplicates = 0
     total_edges = 0
 
-    for edge_file in edges_dir.glob("**/*.yaml"):
+    for edge_file in edges_dir.rglob("*.yaml"):
         try:
+            cache_key = str(edge_file.resolve())
+            stat = edge_file.stat()
+            sig = (int(stat.st_mtime_ns), stat.st_size)
+            cached = _EDGE_DEDUPE_CACHE.get(cache_key)
+            if cached and cached[0] == sig[0] and cached[1] == sig[1]:
+                files_processed += 1
+                total_duplicates += cached[2]
+                total_edges += cached[3]
+                continue
+
+            # Fast-path: skip files with obvious empty-list content.
+            if edge_file.stat().st_size <= 4:
+                files_processed += 1
+                _EDGE_DEDUPE_CACHE[cache_key] = (sig[0], sig[1], 0, 0)
+                continue
             edges = load_edge_file(edge_file)
             seen: set[tuple[str, str, str]] = set()
             deduped: list[dict[str, Any]] = []
+            file_duplicates = 0
 
             for e in edges:
                 triple = (e.get("from", ""), e.get("type", ""), e.get("to", ""))
                 if triple in seen:
                     total_duplicates += 1
+                    file_duplicates += 1
                 else:
                     seen.add(triple)
                     deduped.append(e)
@@ -411,7 +439,9 @@ def deduplicate_edges(gobp_root: Path) -> dict[str, Any]:
                 )
 
             files_processed += 1
-            total_edges += len(deduped)
+            file_total_edges = len(deduped)
+            total_edges += file_total_edges
+            _EDGE_DEDUPE_CACHE[cache_key] = (sig[0], sig[1], file_duplicates, file_total_edges)
         except Exception:
             continue
 

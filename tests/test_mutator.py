@@ -182,10 +182,13 @@ def test_delete_node_missing_raises(tmp_path: Path):
 
 def test_create_edge_writes_file(tmp_path: Path, edges_schema):
     edge = {"from": "node:a", "to": "node:b", "type": "relates_to"}
-    path = create_edge(tmp_path, edge, edges_schema, actor="test")
+    result = create_edge(tmp_path, edge, edges_schema, actor="test")
 
-    assert path.exists()
-    data = yaml.safe_load(path.read_text(encoding="utf-8"))
+    assert result["ok"] is True
+    assert result["action"] == "created"
+    edge_file = tmp_path / ".gobp" / "edges" / "relations.yaml"
+    assert edge_file.exists()
+    data = yaml.safe_load(edge_file.read_text(encoding="utf-8"))
     assert len(data) == 1
 
 

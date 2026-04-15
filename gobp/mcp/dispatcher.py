@@ -48,6 +48,34 @@ from typing import Any
 from gobp.core.graph import GraphIndex
 
 
+_CANONICAL_NODE_TYPES: dict[str, str] = {
+    "node": "Node",
+    "idea": "Idea",
+    "decision": "Decision",
+    "session": "Session",
+    "document": "Document",
+    "lesson": "Lesson",
+    "concept": "Concept",
+    "testkind": "TestKind",
+    "testcase": "TestCase",
+    "engine": "Engine",
+    "flow": "Flow",
+    "entity": "Entity",
+    "feature": "Feature",
+    "invariant": "Invariant",
+    "screen": "Screen",
+    "apiendpoint": "APIEndpoint",
+    "repository": "Repository",
+    "wave": "Wave",
+}
+
+
+def _normalize_node_type(node_type: str) -> str:
+    """Normalize user-provided node type to canonical schema casing."""
+    cleaned = re.sub(r"[^a-zA-Z0-9]+", "", node_type).casefold()
+    return _CANONICAL_NODE_TYPES.get(cleaned, node_type)
+
+
 def _get_type_prefix(node_type: str) -> str:
     """Get ID prefix for node type."""
     prefix_map = {
@@ -209,6 +237,8 @@ def parse_query(query: str) -> tuple[str, str, dict[str, Any]]:
     action_tokens = action_part.split(None, 1)
     action = action_tokens[0]
     node_type = action_tokens[1] if len(action_tokens) > 1 else ""
+    if node_type:
+        node_type = _normalize_node_type(node_type)
 
     if not rest:
         return action, node_type, {}
@@ -222,13 +252,15 @@ def parse_query(query: str) -> tuple[str, str, dict[str, Any]]:
     if action in ("create", "lock", "upsert") and node_type == "" and tokens:
         first = tokens[0]
         if "=" not in first:
-            node_type = first.strip("'\"")
+            node_type = _normalize_node_type(first.strip("'\""))
             tokens = tokens[1:]
 
     if action == "find" and node_type == "" and tokens:
         first = tokens[0]
-        if "=" not in first and ":" not in first and first[:1].isupper():
-            node_type = first.strip("'\"")
+        first_value = first.strip("'\"")
+        normalized_first = _normalize_node_type(first_value)
+        if "=" not in first and ":" not in first and normalized_first in _CANONICAL_NODE_TYPES.values():
+            node_type = normalized_first
             tokens = tokens[1:]
 
     positional_key = _POSITIONAL_KEY.get(action, "query")
@@ -255,6 +287,9 @@ _a, _t, _p = parse_query("find: login page_size=10")
 assert (_a, _t) == ("find", "")
 assert _p.get("query") == "login" and _p.get("page_size") == 10
 _a, _t, _p = parse_query("find:Decision auth page_size=5")
+assert (_a, _t) == ("find", "Decision")
+assert _p.get("query") == "auth" and _p.get("page_size") == 5
+_a, _t, _p = parse_query("find:decision auth page_size=5")
 assert (_a, _t) == ("find", "Decision")
 assert _p.get("query") == "auth" and _p.get("page_size") == 5
 _a, _t, _p = parse_query("related: node:x direction='outgoing' page_size=10")
@@ -612,23 +647,21 @@ async def dispatch(
                     result = {"ok": False, "error": f"Node not found: {to_id}"}
                 else:
                     try:
-                        create_edge(
+                        result = create_edge(
                             gobp_root=project_root,
                             edge=edge,
                             schema=edges_schema,
                             actor="gobp-dispatcher",
                             edge_file_name="semantic_edges.yaml",
                         )
-                        result = {
-                            "ok": True,
-                            "edge_created": {
+                        if result.get("ok"):
+                            result["edge_created"] = {
                                 "from": from_id,
                                 "from_name": from_node.get("name", ""),
                                 "type": edge_type,
                                 "to": to_id,
                                 "to_name": to_node.get("name", ""),
                             }
-                        }
                     except Exception as e:
                         result = {"ok": False, "error": str(e)}
 

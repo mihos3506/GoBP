@@ -35,6 +35,14 @@ def test_find_type_with_positional_and_pagination() -> None:
     assert params.get("page_size") == 5
 
 
+def test_find_type_case_is_normalized() -> None:
+    action, node_type, params = parse_query("find:decision auth page_size=5")
+    assert action == "find"
+    assert node_type == "Decision"
+    assert params.get("query") == "auth"
+    assert params.get("page_size") == 5
+
+
 def test_related_preserves_node_id_with_pagination() -> None:
     action, _, params = parse_query("related: node:x direction='outgoing' page_size=10")
     assert action == "related"
@@ -152,8 +160,12 @@ def test_create_edge_idempotent(gobp_root: Path) -> None:
     edges_schema = load_schema(schema_dir / "core_edges.yaml")
 
     edge = {"from": "node:test_a", "to": "node:test_b", "type": "relates_to"}
-    create_edge(gobp_root, edge, edges_schema, actor="test")
-    create_edge(gobp_root, edge, edges_schema, actor="test")
+    r1 = create_edge(gobp_root, edge, edges_schema, actor="test")
+    r2 = create_edge(gobp_root, edge, edges_schema, actor="test")
+
+    assert r1.get("action") == "created"
+    assert r2.get("action") == "skipped"
+    assert "already exists" in r2.get("reason", "").lower()
 
     edge_file = gobp_root / ".gobp" / "edges" / "relations.yaml"
     edges = yaml.safe_load(edge_file.read_text(encoding="utf-8"))
