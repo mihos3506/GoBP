@@ -1,13 +1,8 @@
-"""GoBP CLI entry point.
+"""Module entry point — allows `python -m gobp.cli`."""
 
-Implementation begins in Wave 4.
-"""
+import sys
 
-
-def main() -> None:
-    """Entry point for the gobp CLI command."""
-    print("GoBP CLI — not yet implemented")
-
+from gobp.cli.commands import main
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

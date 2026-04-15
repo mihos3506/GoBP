@@ -1,5 +1,174 @@
-"""GoBP CLI commands.
+"""GoBP command-line interface.
 
-This module will contain CLI command implementations.
-Implementation begins in Wave 4.
+Usage:
+    python -m gobp.cli init [--name NAME] [--force]
+    python -m gobp.cli validate [--scope SCOPE]
+    python -m gobp.cli status
+
+Uses GOBP_PROJECT_ROOT env var or current directory.
 """
+
+from __future__ import annotations
+
+import argparse
+import os
+import sys
+from pathlib import Path
+from typing import Any
+
+
+def _get_project_root() -> Path:
+    """Get project root from env var or current directory."""
+    env_root = os.environ.get("GOBP_PROJECT_ROOT")
+    if env_root:
+        return Path(env_root)
+    return Path.cwd()
+
+
+def cmd_init(args: argparse.Namespace) -> int:
+    """Handle `gobp init` command."""
+    from gobp.core.init import init_project
+
+    root = _get_project_root()
+    result = init_project(project_root=root, project_name=args.name, force=args.force)
+
+    if result["ok"]:
+        print(result["message"])
+        seeded = result.get("seeded_nodes", [])
+        print(f"Seeded {len(seeded)} universal nodes (TestKind + Concept)")
+        print("\nCreated:")
+        for path in result["created"]:
+            print(f"  {path}")
+        print(f"\nNext: set GOBP_PROJECT_ROOT={root} in your MCP client config.")
+        return 0
+
+    print(f"Error: {result['message']}", file=sys.stderr)
+    return 1
+
+
+def cmd_validate(args: argparse.Namespace) -> int:
+    """Handle `gobp validate` command."""
+    from gobp.core.graph import GraphIndex
+    from gobp.mcp.tools.maintain import validate
+
+    root = _get_project_root()
+    if not (root / ".gobp").exists():
+        print(
+            f"Error: No .gobp/ at {root}. Run `python -m gobp.cli init` first.",
+            file=sys.stderr,
+        )
+        return 1
+
+    print(f"Validating {root}...")
+    try:
+        index = GraphIndex.load_from_disk(root)
+    except Exception as e:
+        print(f"Error loading graph: {e}", file=sys.stderr)
+        return 1
+
+    result = validate(index, root, {"scope": args.scope, "severity_filter": "all"})
+    if not result["ok"] and "issues" not in result:
+        print(f"Error: {result.get('error', 'unknown')}", file=sys.stderr)
+        return 1
+
+    issues = result.get("issues", [])
+    hard = [i for i in issues if i.get("severity") == "hard"]
+    warnings = [i for i in issues if i.get("severity") == "warning"]
+
+    if not issues:
+        print(
+            f"Graph valid — {len(index.all_nodes())} nodes, {len(index.all_edges())} edges, 0 issues"
+        )
+        return 0
+
+    print(f"Found {len(hard)} hard errors, {len(warnings)} warnings:\n")
+    for issue in hard:
+        nid = issue.get("node_id", issue.get("edge", "?"))
+        print(f"  [ERROR] {nid}: {issue['message']}")
+    for issue in warnings:
+        nid = issue.get("node_id", issue.get("edge", "?"))
+        print(f"  [WARN]  {nid}: {issue['message']}")
+    return 1 if hard else 0
+
+
+def cmd_status(args: argparse.Namespace) -> int:
+    """Handle `gobp status` command."""
+    import yaml
+
+    from gobp.core.graph import GraphIndex
+
+    root = _get_project_root()
+    if not (root / ".gobp").exists():
+        print(
+            f"Error: No .gobp/ at {root}. Run `python -m gobp.cli init` first.",
+            file=sys.stderr,
+        )
+        return 1
+
+    config: dict[str, Any] = {}
+    config_path = root / ".gobp" / "config.yaml"
+    if config_path.exists():
+        with open(config_path, encoding="utf-8") as f:
+            config = yaml.safe_load(f) or {}
+
+    try:
+        index = GraphIndex.load_from_disk(root)
+        nodes = index.all_nodes()
+        edges = index.all_edges()
+    except Exception as e:
+        print(f"Error loading graph: {e}", file=sys.stderr)
+        return 1
+
+    type_counts: dict[str, int] = {}
+    for node in nodes:
+        node_type = node.get("type", "Unknown")
+        type_counts[node_type] = type_counts.get(node_type, 0) + 1
+
+    sessions = sorted(
+        [n for n in nodes if n.get("type") == "Session"],
+        key=lambda s: s.get("updated", ""),
+        reverse=True,
+    )
+    last = sessions[0] if sessions else None
+    created_at = str(config.get("created_at", "?"))[:10]
+
+    print(f"\nGoBP Project: {config.get('project_name', root.name)}")
+    print(f"Root:         {root}")
+    print(f"Schema:       v{config.get('schema_version', '?')}  |  Created: {created_at}")
+    print(f"\nGraph: {len(nodes)} nodes, {len(edges)} edges")
+    for node_type, count in sorted(type_counts.items()):
+        print(f"  {node_type}: {count}")
+    if last:
+        print(f"\nLast session: {last.get('id', '?')}")
+        print(f"  Goal:   {last.get('goal', '?')[:60]}")
+        print(f"  Status: {last.get('status', '?')}  Actor: {last.get('actor', '?')}")
+    else:
+        print("\nNo sessions yet.")
+    print()
+    return 0
+
+
+def main() -> int:
+    """CLI entry point."""
+    parser = argparse.ArgumentParser(prog="gobp", description="GoBP CLI")
+    sub = parser.add_subparsers(dest="command", metavar="COMMAND")
+    sub.required = True
+
+    p_init = sub.add_parser("init", help="Initialize a new GoBP project")
+    p_init.add_argument("--name", default=None)
+    p_init.add_argument("--force", action="store_true")
+    p_init.set_defaults(func=cmd_init)
+
+    p_val = sub.add_parser("validate", help="Validate graph schema")
+    p_val.add_argument(
+        "--scope",
+        choices=["all", "nodes", "edges", "references"],
+        default="all",
+    )
+    p_val.set_defaults(func=cmd_validate)
+
+    p_stat = sub.add_parser("status", help="Show project summary")
+    p_stat.set_defaults(func=cmd_status)
+
+    args = parser.parse_args()
+    return args.func(args)
