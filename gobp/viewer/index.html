@@ -1,546 +1,420 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>◈ GoBP Graph Viewer</title>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>◈ GoBP Graph Viewer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;1,9..144,300&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --bg-panel: rgba(15,15,22,0.92);
+    --border: rgba(255,193,7,0.14);
+    --border-strong: rgba(255,193,7,0.35);
+    --text: #e8e8ee;
+    --text-dim: #8a8a95;
+    --text-fade: #4a4a55;
+    --amber: #ffc107;
+    --amber-soft: rgba(255,193,7,0.7);
+    --mono: 'JetBrains Mono', ui-monospace, monospace;
+    --serif: 'Fraunces', Georgia, serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 100%; height: 100%; overflow: hidden; }
+  body { background: var(--bg); color: var(--text); font-family: var(--mono); font-size: 13px; font-weight: 300; -webkit-font-smoothing: antialiased; }
 
-    :root {
-      --bg: #0a0a0f;
-      --surface: #12121a;
-      --border: #1e1e2e;
-      --text: #e2e8f0;
-      --text-dim: #64748b;
-      --amber: #f59e0b;
-      --cyan: #06b6d4;
-      --violet: #8b5cf6;
-      --green: #10b981;
-      --blue: #3b82f6;
-      --red: #ef4444;
-      --gold: #eab308;
-      --teal: #14b8a6;
-      --orange: #f97316;
-    }
+  #graph-canvas { position: fixed; inset: 0; z-index: 1; }
 
-    body {
-      background: var(--bg);
-      color: var(--text);
-      font-family: 'SF Mono', 'Fira Code', monospace;
-      overflow: hidden;
-      height: 100vh;
-      width: 100vw;
-    }
+  #header { position: fixed; top: 0; left: 0; right: 0; z-index: 10; padding: 14px 24px 10px; background: linear-gradient(180deg, var(--bg) 40%, transparent); pointer-events: none; display: flex; align-items: baseline; gap: 12px; }
+  #header h1 { font-family: var(--serif); font-weight: 300; font-size: 20px; pointer-events: auto; }
+  #header h1 .r { color: var(--amber); font-weight: 500; margin-right: 6px; }
+  #header h1 em { font-style: italic; color: var(--amber-soft); font-size: 0.65em; margin-left: 6px; letter-spacing: 0.12em; text-transform: uppercase; font-family: var(--mono); }
+  #project-switcher { pointer-events: auto; background: transparent; border: 1px solid var(--border); color: var(--amber-soft); font-family: var(--mono); font-size: 11px; padding: 4px 8px; cursor: pointer; outline: none; }
+  #project-switcher:focus { border-color: var(--border-strong); }
 
-    #graph-container {
-      position: fixed;
-      inset: 0;
-      z-index: 1;
-    }
+  #controls { position: fixed; top: 56px; left: 16px; z-index: 10; width: 220px; background: var(--bg-panel); backdrop-filter: blur(16px); border: 1px solid var(--border); padding: 14px 16px; max-height: calc(100vh - 80px); overflow-y: auto; }
+  #controls section { margin-bottom: 16px; }
+  #controls h3 { font-size: 9px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.22em; color: var(--amber-soft); margin-bottom: 8px; border-bottom: 1px solid var(--border); padding-bottom: 4px; }
+  #controls label { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text); padding: 2px 0; cursor: pointer; user-select: none; }
+  #controls label:hover { color: var(--amber); }
+  #controls input[type="checkbox"] { appearance: none; width: 10px; height: 10px; border: 1px solid var(--text-dim); background: transparent; cursor: pointer; flex-shrink: 0; position: relative; }
+  #controls input[type="checkbox"]:checked { background: var(--amber); border-color: var(--amber); }
+  #controls .count { margin-left: auto; font-size: 9px; color: var(--text-fade); }
+  #controls input[type="text"] { width: 100%; background: transparent; border: none; border-bottom: 1px solid var(--border); color: var(--text); font-family: var(--mono); font-size: 11px; padding: 4px 0; outline: none; }
+  #controls input[type="text"]:focus { border-bottom-color: var(--amber); }
+  #controls input[type="text"]::placeholder { color: var(--text-fade); }
+  #controls button { background: transparent; border: 1px solid var(--border-strong); color: var(--amber); font-family: var(--mono); font-size: 9px; padding: 5px 8px; cursor: pointer; letter-spacing: 0.1em; text-transform: uppercase; transition: all 0.15s; margin-right: 4px; margin-bottom: 4px; }
+  #controls button:hover { background: var(--amber); color: var(--bg); }
 
-    /* -- Top bar -- */
-    #topbar {
-      position: fixed;
-      top: 0; left: 0; right: 0;
-      height: 48px;
-      background: rgba(18, 18, 26, 0.9);
-      border-bottom: 1px solid var(--border);
-      backdrop-filter: blur(12px);
-      display: flex;
-      align-items: center;
-      gap: 16px;
-      padding: 0 20px;
-      z-index: 10;
-    }
+  #detail { position: fixed; top: 56px; right: 16px; z-index: 10; width: 300px; background: var(--bg-panel); backdrop-filter: blur(16px); border: 1px solid var(--border); padding: 16px 18px; max-height: calc(100vh - 80px); overflow-y: auto; display: none; }
+  #detail.visible { display: block; }
+  #detail .close { position: absolute; top: 12px; right: 14px; background: none; border: none; color: var(--text-dim); font-size: 16px; cursor: pointer; }
+  #detail .close:hover { color: var(--amber); }
+  #detail .node-type { font-size: 9px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.22em; color: var(--amber-soft); margin-bottom: 4px; }
+  #detail .node-id { font-size: 9px; color: var(--text-fade); margin-bottom: 8px; word-break: break-all; }
+  #detail .node-name { font-family: var(--serif); font-size: 17px; font-weight: 300; color: var(--text); line-height: 1.3; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
+  #detail .field { margin-bottom: 8px; }
+  #detail .field-label { font-size: 9px; text-transform: uppercase; letter-spacing: 0.18em; color: var(--text-dim); margin-bottom: 2px; }
+  #detail .field-value { font-size: 11px; color: var(--text); line-height: 1.5; word-break: break-word; }
+  #detail .relations { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
+  #detail .relations h4 { font-size: 9px; text-transform: uppercase; letter-spacing: 0.22em; color: var(--amber-soft); margin-bottom: 6px; }
+  #detail .rel-item { font-size: 10px; padding: 2px 0; color: var(--text-dim); display: flex; gap: 6px; cursor: pointer; }
+  #detail .rel-item:hover .rel-target { color: var(--amber); }
+  #detail .rel-verb { color: var(--text-fade); font-size: 9px; text-transform: uppercase; letter-spacing: 0.1em; min-width: 70px; flex-shrink: 0; }
+  #detail .rel-target { color: var(--text); }
+  #detail .gobp-query { background: rgba(0,0,0,0.3); border: 1px solid var(--border); padding: 6px 10px; font-size: 10px; color: var(--amber); margin-top: 12px; word-break: break-all; }
 
-    #logo {
-      color: var(--amber);
-      font-size: 18px;
-      font-weight: 700;
-      letter-spacing: 0.05em;
-    }
+  #statusbar { position: fixed; bottom: 0; left: 0; right: 0; z-index: 10; padding: 8px 24px; background: linear-gradient(0deg, var(--bg) 40%, transparent); font-size: 9px; color: var(--text-fade); letter-spacing: 0.12em; text-transform: uppercase; display: flex; justify-content: space-between; pointer-events: none; }
 
-    #project-name {
-      color: var(--text-dim);
-      font-size: 13px;
-    }
+  #loading { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: var(--bg); z-index: 100; flex-direction: column; gap: 12px; }
+  #loading .r { color: var(--amber); font-size: 36px; animation: pulse 2s ease-in-out infinite; }
+  #loading p { font-size: 10px; color: var(--text-dim); letter-spacing: 0.2em; text-transform: uppercase; }
+  @keyframes pulse { 0%,100%{opacity:0.3;transform:scale(1)} 50%{opacity:1;transform:scale(1.08)} }
 
-    #stats {
-      margin-left: auto;
-      display: flex;
-      gap: 16px;
-      font-size: 12px;
-      color: var(--text-dim);
-    }
-
-    #stats span { color: var(--text); }
-
-    #refresh-btn {
-      background: var(--border);
-      border: 1px solid #2a2a3e;
-      color: var(--text);
-      padding: 4px 12px;
-      border-radius: 4px;
-      cursor: pointer;
-      font-size: 12px;
-      font-family: inherit;
-      transition: all 0.2s;
-    }
-    #refresh-btn:hover { background: #1e1e2e; border-color: var(--amber); }
-
-    /* -- Side panel -- */
-    #panel {
-      position: fixed;
-      top: 48px; right: 0;
-      width: 280px;
-      height: calc(100vh - 48px);
-      background: rgba(18, 18, 26, 0.92);
-      border-left: 1px solid var(--border);
-      backdrop-filter: blur(12px);
-      display: flex;
-      flex-direction: column;
-      z-index: 10;
-      transform: translateX(100%);
-      transition: transform 0.3s ease;
-    }
-
-    #panel.open { transform: translateX(0); }
-
-    #panel-header {
-      padding: 16px;
-      border-bottom: 1px solid var(--border);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    #panel-title {
-      font-size: 13px;
-      font-weight: 600;
-      color: var(--amber);
-    }
-
-    #panel-close {
-      background: none;
-      border: none;
-      color: var(--text-dim);
-      cursor: pointer;
-      font-size: 18px;
-      line-height: 1;
-    }
-
-    #panel-body {
-      padding: 16px;
-      overflow-y: auto;
-      flex: 1;
-    }
-
-    .field { margin-bottom: 12px; }
-    .field-label {
-      font-size: 10px;
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      color: var(--text-dim);
-      margin-bottom: 4px;
-    }
-    .field-value {
-      font-size: 13px;
-      color: var(--text);
-      word-break: break-word;
-    }
-
-    .priority-badge {
-      display: inline-block;
-      padding: 2px 8px;
-      border-radius: 3px;
-      font-size: 11px;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-    }
-    .priority-critical { background: rgba(245,158,11,0.2); color: var(--amber); }
-    .priority-high     { background: rgba(239,68,68,0.15); color: var(--red); }
-    .priority-medium   { background: rgba(100,116,139,0.2); color: #94a3b8; }
-    .priority-low      { background: rgba(30,30,46,0.8); color: var(--text-dim); }
-
-    /* -- Filter panel -- */
-    #filters {
-      position: fixed;
-      top: 60px; left: 16px;
-      background: rgba(18, 18, 26, 0.9);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 12px;
-      z-index: 10;
-      backdrop-filter: blur(12px);
-      min-width: 160px;
-    }
-
-    #filter-title {
-      font-size: 10px;
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      color: var(--text-dim);
-      margin-bottom: 8px;
-    }
-
-    .filter-item {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin-bottom: 6px;
-      cursor: pointer;
-      font-size: 12px;
-    }
-
-    .filter-dot {
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
-      flex-shrink: 0;
-    }
-
-    .filter-item input { cursor: pointer; accent-color: var(--amber); }
-
-    /* -- Search -- */
-    #search-wrap {
-      position: fixed;
-      top: 60px; left: 50%;
-      transform: translateX(-50%);
-      z-index: 10;
-    }
-
-    #search {
-      background: rgba(18, 18, 26, 0.9);
-      border: 1px solid var(--border);
-      border-radius: 20px;
-      padding: 6px 16px;
-      color: var(--text);
-      font-family: inherit;
-      font-size: 13px;
-      width: 280px;
-      backdrop-filter: blur(12px);
-      outline: none;
-      transition: border-color 0.2s;
-    }
-    #search:focus { border-color: var(--amber); }
-    #search::placeholder { color: var(--text-dim); }
-
-    /* -- Loading -- */
-    #loading {
-      position: fixed;
-      inset: 0;
-      background: var(--bg);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      z-index: 100;
-      gap: 16px;
-    }
-
-    #loading-logo {
-      font-size: 48px;
-      color: var(--amber);
-      animation: pulse 2s ease-in-out infinite;
-    }
-
-    #loading-text {
-      color: var(--text-dim);
-      font-size: 13px;
-    }
-
-    @keyframes pulse {
-      0%, 100% { opacity: 1; transform: scale(1); }
-      50% { opacity: 0.6; transform: scale(0.95); }
-    }
-
-    /* -- Tooltip -- */
-    #tooltip {
-      position: fixed;
-      background: rgba(18, 18, 26, 0.95);
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      padding: 8px 12px;
-      font-size: 12px;
-      pointer-events: none;
-      z-index: 20;
-      display: none;
-      max-width: 220px;
-    }
-
-    #tooltip-name { font-weight: 600; margin-bottom: 2px; }
-    #tooltip-type { color: var(--text-dim); font-size: 11px; }
-  </style>
+  #controls::-webkit-scrollbar, #detail::-webkit-scrollbar { width: 3px; }
+  #controls::-webkit-scrollbar-thumb, #detail::-webkit-scrollbar-thumb { background: var(--border-strong); }
+</style>
 </head>
 <body>
 
-<div id="loading">
-  <div id="loading-logo">◈</div>
-  <div id="loading-text">Loading graph...</div>
+<div id="loading"><div class="r">◈</div><p>Loading graph...</p></div>
+
+<div id="header">
+  <h1><span class="r">◈</span>GoBP<em>graph viewer</em></h1>
+  <select id="project-switcher"></select>
 </div>
 
-<div id="topbar">
-  <div id="logo">◈ GoBP</div>
-  <div id="project-name">—</div>
-  <div id="stats">
-    <div>Nodes: <span id="stat-nodes">0</span></div>
-    <div>Edges: <span id="stat-edges">0</span></div>
-  </div>
-  <button id="refresh-btn" onclick="loadGraph()">↺ Refresh</button>
+<div id="controls">
+  <section>
+    <h3>Search</h3>
+    <input type="text" id="search" placeholder="name or id...">
+  </section>
+  <section>
+    <h3>Node Type</h3>
+    <div id="type-filters"></div>
+  </section>
+  <section>
+    <h3>Status</h3>
+    <div id="status-filters"></div>
+  </section>
+  <section>
+    <h3>View</h3>
+    <button id="btn-core">Core Only</button>
+    <button id="btn-all">Show All</button>
+    <button id="btn-labels">Labels</button>
+    <button id="btn-reset">Reset Camera</button>
+    <button id="btn-refresh">↺ Refresh</button>
+  </section>
 </div>
 
-<div id="search-wrap">
-  <input id="search" type="text" placeholder="Search nodes..." oninput="onSearch(this.value)">
+<div id="graph-canvas"></div>
+
+<div id="detail">
+  <button class="close" onclick="document.getElementById('detail').classList.remove('visible')">×</button>
+  <div id="detail-content"></div>
 </div>
 
-<div id="filters">
-  <div id="filter-title">Node Types</div>
-  <div id="filter-list"></div>
+<div id="statusbar">
+  <span id="status-left">Loading...</span>
+  <span id="status-right"></span>
 </div>
 
-<div id="graph-container"></div>
-
-<div id="panel">
-  <div id="panel-header">
-    <div id="panel-title">Node Detail</div>
-    <button id="panel-close" onclick="closePanel()">×</button>
-  </div>
-  <div id="panel-body" id="panel-content"></div>
-</div>
-
-<div id="tooltip">
-  <div id="tooltip-name"></div>
-  <div id="tooltip-type"></div>
-</div>
-
-<!-- 3d-force-graph via CDN -->
 <script src="https://unpkg.com/3d-force-graph@1/dist/3d-force-graph.min.js"></script>
 
 <script>
-// -- Color config --------------------------------------------------------------
 const TYPE_COLORS = {
-  Decision:  '#f59e0b',  // amber
-  Node:      '#06b6d4',  // cyan
-  Idea:      '#8b5cf6',  // violet
-  Session:   '#10b981',  // green
-  Document:  '#3b82f6',  // blue
-  Lesson:    '#ef4444',  // red
-  Concept:   '#eab308',  // gold
-  TestKind:  '#14b8a6',  // teal
-  TestCase:  '#f97316',  // orange
+  Decision:'#ffc107', Node:'#06b6d4', Idea:'#8b5cf6', Session:'#10b981',
+  Document:'#3b82f6', Lesson:'#ef4444', Concept:'#eab308', TestKind:'#14b8a6',
+  TestCase:'#f97316', Engine:'#f59e0b', Flow:'#22d3ee', Entity:'#a78bfa',
+  Feature:'#34d399', Invariant:'#fb923c', Screen:'#60a5fa', APIEndpoint:'#f472b6',
+  Repository:'#94a3b8', Wave:'#64748b', Invariant:'#fb923c',
+  SoulPrinciple:'#ffd700', SharedLibModule:'#c084fc',
 };
-
-const PRIORITY_SIZE = {
-  critical: 8,
-  high: 5,
-  medium: 3,
-  low: 2,
+const STATUS_COLORS = {
+  ACTIVE:'#10b981', DRAFT:'#64748b', DEPRECATED:'#ef4444',
+  SKELETON:'#4a4a55', BUILT:'#3b82f6', VERIFIED:'#10b981',
+  IN_PROGRESS:'#f59e0b', BLOCKED:'#ef4444', LEGACY_DISCARDED:'#2a2a35',
+  READY:'#22d3ee', COMPLETED:'#10b981',
 };
+const CORE_TYPES = new Set(['Engine','Flow','Entity','Feature','Decision',
+  'SoulPrinciple','Invariant','Document','Node','Idea']);
+const PRIORITY_SIZE = {critical:8, high:5, medium:3, low:2};
 
-const EDGE_COLORS = {
-  implements:    '#f59e0b88',
-  relates_to:    '#ffffff22',
-  supersedes:    '#ef444488',
-  discovered_in: '#10b98144',
-  references:    '#3b82f644',
-  covers:        '#8b5cf644',
-  of_kind:       '#14b8a644',
-};
+let FG, GRAPH_DATA = {nodes:[], edges:[], links:[]};
+let VISIBLE_TYPES = new Set(), VISIBLE_STATUSES = new Set();
+let SHOW_LABELS = false;
+let CURRENT_ROOT = null;
+let PROJECTS = [];
 
-// -- State ---------------------------------------------------------------------
-let graph = null;
-let graphData = { nodes: [], links: [] };
-let activeFilters = new Set();
-let searchQuery = '';
-
-// -- Init graph ----------------------------------------------------------------
-function initGraph() {
-  graph = ForceGraph3D()(document.getElementById('graph-container'))
-    .backgroundColor('#0a0a0f')
-    .nodeId('id')
-    .nodeLabel(node => `${node.name} [${node.type}]`)
-    .nodeVal(node => PRIORITY_SIZE[node.priority] || 3)
-    .nodeColor(node => {
-      const color = TYPE_COLORS[node.type] || '#ffffff';
-      // Dim if filtered out
-      if (activeFilters.size > 0 && activeFilters.has(node.type)) {
-        return '#ffffff11';
-      }
-      if (searchQuery && !node.name.toLowerCase().includes(searchQuery)) {
-        return '#ffffff11';
-      }
-      return color;
-    })
-    .nodeOpacity(0.9)
-    .linkSource('source')
-    .linkTarget('target')
-    .linkColor(link => EDGE_COLORS[link.type] || '#ffffff22')
-    .linkWidth(link => link.type === 'implements' ? 1.5 : 0.5)
-    .linkDirectionalArrowLength(3)
-    .linkDirectionalArrowRelPos(1)
-    .linkDirectionalParticles(link => link.type === 'implements' ? 2 : 0)
-    .linkDirectionalParticleSpeed(0.004)
-    .onNodeClick(node => openPanel(node))
-    .onNodeHover(node => {
-      document.getElementById('graph-container').style.cursor = node ? 'pointer' : 'default';
-      showTooltip(node);
-    });
+async function boot() {
+  try {
+    const res = await fetch('/api/projects');
+    PROJECTS = await res.json();
+  } catch(e) {
+    PROJECTS = [];
+  }
+  buildProjectSwitcher();
+  initGraph();
+  await loadGraph(PROJECTS[0]?.root || null);
 }
 
-// -- Load data -----------------------------------------------------------------
-async function loadGraph() {
+function buildProjectSwitcher() {
+  const sel = document.getElementById('project-switcher');
+  sel.innerHTML = '';
+  PROJECTS.forEach(p => {
+    const opt = document.createElement('option');
+    opt.value = p.root;
+    opt.textContent = p.name;
+    sel.appendChild(opt);
+  });
+  sel.addEventListener('change', e => loadGraph(e.target.value));
+}
+
+async function loadGraph(root) {
+  document.getElementById('loading').style.display = 'flex';
+  CURRENT_ROOT = root;
   try {
-    const res = await fetch('/api/graph');
+    const url = root ? `/api/graph?root=${encodeURIComponent(root)}` : '/api/graph';
+    const res = await fetch(url);
     const data = await res.json();
-
-    graphData = data;
-
-    document.getElementById('project-name').textContent = data.meta?.project_name || '';
-    document.getElementById('stat-nodes').textContent = data.meta?.node_count || 0;
-    document.getElementById('stat-edges').textContent = data.meta?.link_count || 0;
-
-    buildFilters(data.nodes);
-    graph.graphData({ nodes: data.nodes, links: data.links });
-
+    if (data.error) throw new Error(data.error);
+    GRAPH_DATA = data;
+    initFilters();
+    applyFilters();
     document.getElementById('loading').style.display = 'none';
-  } catch (e) {
-    document.getElementById('loading-text').textContent = 'Error loading graph: ' + e.message;
+  } catch(e) {
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('status-left').textContent = 'Error: ' + e.message;
   }
 }
 
-// -- Filters -------------------------------------------------------------------
-function buildFilters(nodes) {
-  const types = [...new Set(nodes.map(n => n.type))].sort();
-  const list = document.getElementById('filter-list');
-  list.innerHTML = '';
+function initFilters() {
+  const typeCounts = {}, statusCounts = {};
+  GRAPH_DATA.nodes.forEach(n => {
+    typeCounts[n.type] = (typeCounts[n.type]||0)+1;
+    const s = n.status||'__none__';
+    statusCounts[s] = (statusCounts[s]||0)+1;
+  });
 
-  types.forEach(type => {
-    const color = TYPE_COLORS[type] || '#ffffff';
-    const count = nodes.filter(n => n.type === type).length;
-    const item = document.createElement('label');
-    item.className = 'filter-item';
-    item.innerHTML = `
-      <input type="checkbox" checked onchange="toggleFilter('${type}', this.checked)">
-      <div class="filter-dot" style="background:${color}"></div>
-      <span>${type} <span style="color:#475569">(${count})</span></span>
-    `;
-    list.appendChild(item);
+  VISIBLE_TYPES = new Set(GRAPH_DATA.nodes.map(n=>n.type));
+  VISIBLE_STATUSES = new Set(GRAPH_DATA.nodes.map(n=>n.status||'__none__'));
+
+  const tEl = document.getElementById('type-filters');
+  tEl.innerHTML = '';
+  Object.keys(typeCounts).sort().forEach(t => {
+    const label = document.createElement('label');
+    label.innerHTML = `<input type="checkbox" checked data-type="${t}">
+      <span style="color:${TYPE_COLORS[t]||'#fff'}">●</span>
+      <span>${t}</span><span class="count">${typeCounts[t]}</span>`;
+    label.querySelector('input').addEventListener('change', e => {
+      if(e.target.checked) VISIBLE_TYPES.add(t); else VISIBLE_TYPES.delete(t);
+      applyFilters();
+    });
+    tEl.appendChild(label);
+  });
+
+  const sEl = document.getElementById('status-filters');
+  sEl.innerHTML = '';
+  Object.keys(statusCounts).sort().forEach(s => {
+    if(s==='__none__') return;
+    const label = document.createElement('label');
+    label.innerHTML = `<input type="checkbox" checked data-status="${s}">
+      <span style="color:${STATUS_COLORS[s]||'#888'}">■</span>
+      <span>${s}</span><span class="count">${statusCounts[s]}</span>`;
+    label.querySelector('input').addEventListener('change', e => {
+      if(e.target.checked) VISIBLE_STATUSES.add(s); else VISIBLE_STATUSES.delete(s);
+      applyFilters();
+    });
+    sEl.appendChild(label);
   });
 }
 
-function toggleFilter(type, checked) {
-  if (checked) {
-    activeFilters.delete(type);
-  } else {
-    activeFilters.add(type);
+function applyFilters(searchSet=null, hits=null) {
+  const nodes = GRAPH_DATA.nodes.filter(n => {
+    if(!VISIBLE_TYPES.has(n.type)) return false;
+    if(!VISIBLE_STATUSES.has(n.status||'__none__')) return false;
+    if(searchSet && !searchSet.has(n.id)) return false;
+    return true;
+  });
+  const ids = new Set(nodes.map(n=>n.id));
+  const links = (GRAPH_DATA.links||GRAPH_DATA.edges||[]).filter(e =>
+    ids.has(e.source||e.from) && ids.has(e.target||e.to)
+  ).map(e => ({...e, source: e.source||e.from, target: e.target||e.to}));
+
+  nodes.forEach(n => { n.__hit = hits ? hits.has(n.id) : false; });
+  FG.graphData({nodes, links});
+  document.getElementById('status-left').textContent =
+    `${nodes.length} / ${GRAPH_DATA.nodes.length} nodes`;
+  document.getElementById('status-right').textContent =
+    `${links.length} edges`;
+}
+
+function initGraph() {
+  FG = ForceGraph3D()(document.getElementById('graph-canvas'))
+    .backgroundColor('#0a0a0f')
+    .nodeLabel(n => n.name)
+    .nodeColor(n => n.__hit ? '#ffffff' : (TYPE_COLORS[n.type]||'#888'))
+    .nodeOpacity(0.92)
+    .nodeVal(n => PRIORITY_SIZE[n.priority]||3)
+    .nodeThreeObject(n => {
+      if(!SHOW_LABELS) return null;
+      return makeSprite(n.name, TYPE_COLORS[n.type]||'#aaa');
+    })
+    .nodeThreeObjectExtend(false)
+    .linkColor(l => {
+      const m = {
+        implements:'rgba(255,193,7,0.4)', depends_on:'rgba(255,200,80,0.35)',
+        relates_to:'rgba(255,255,255,0.12)', enforces:'rgba(255,138,101,0.4)',
+        discovered_in:'rgba(16,185,129,0.3)', references:'rgba(140,180,220,0.25)',
+        supersedes:'rgba(239,68,68,0.4)', covers:'rgba(139,92,246,0.3)',
+        belongs_to:'rgba(150,150,170,0.14)', touches:'rgba(180,220,180,0.28)',
+      };
+      return m[l.type]||'rgba(150,150,150,0.15)';
+    })
+    .linkWidth(l => ['implements','depends_on','enforces'].includes(l.type)?1:0.3)
+    .linkDirectionalParticles(l => l.type==='implements'?2:0)
+    .linkDirectionalParticleSpeed(0.003)
+    .linkDirectionalParticleColor(()=>'#ffc107')
+    .onNodeClick(n => showDetail(n))
+    .onBackgroundClick(() => document.getElementById('detail').classList.remove('visible'));
+
+  FG.d3Force('charge').strength(-120);
+  FG.d3Force('link').distance(l => l.type==='belongs_to'?30:60);
+}
+
+function makeSprite(text, color) {
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
+  const fs = 32;
+  ctx.font = `${fs}px "JetBrains Mono", monospace`;
+  const w = ctx.measureText(text).width;
+  canvas.width = w+16; canvas.height = fs+8;
+  ctx.font = `${fs}px "JetBrains Mono", monospace`;
+  ctx.fillStyle = color;
+  ctx.textBaseline = 'middle';
+  ctx.fillText(text, 8, canvas.height/2);
+  const tex = new THREE.CanvasTexture(canvas);
+  const mat = new THREE.SpriteMaterial({map:tex, transparent:true, depthWrite:false});
+  const sprite = new THREE.Sprite(mat);
+  const aspect = canvas.width/canvas.height;
+  sprite.scale.set(aspect*4, 4, 1);
+  return sprite;
+}
+
+function showDetail(node) {
+  const out = [], inc = [];
+  const edges = GRAPH_DATA.edges||GRAPH_DATA.links||[];
+  edges.forEach(e => {
+    const f = e.from||e.source, t = e.to||e.target;
+    if(f===node.id) out.push({type:e.type,id:t});
+    if(t===node.id) inc.push({type:e.type,id:f});
+  });
+  const nodesById = {};
+  GRAPH_DATA.nodes.forEach(n => nodesById[n.id]=n);
+
+  const skip = new Set(['id','type','name','status','__hit','__searchHit',
+    'x','y','z','vx','vy','vz','index','fx','fy','fz']);
+  const fields = Object.entries(node).filter(([k])=>!skip.has(k)&&node[k]!=null);
+
+  let html = `<div class="node-type">${node.type}</div>
+    <div class="node-id">${node.id}</div>
+    <div class="node-name">${esc(node.name)}</div>`;
+  if(node.status) html += `<div class="field"><div class="field-label">Status</div>
+    <div class="field-value" style="color:${STATUS_COLORS[node.status]||'#888'}">${node.status}</div></div>`;
+  fields.forEach(([k,v]) => {
+    let val = Array.isArray(v) ? v.map(i=>`• ${esc(String(i))}`).join('<br>')
+            : typeof v==='object' ? `<pre style="font-size:9px;color:var(--text-dim);white-space:pre-wrap">${esc(JSON.stringify(v,null,2))}</pre>`
+            : esc(String(v));
+    html += `<div class="field"><div class="field-label">${k.replace(/_/g,' ')}</div>
+      <div class="field-value">${val}</div></div>`;
+  });
+  if(out.length) {
+    html += '<div class="relations"><h4>→ Outgoing</h4>';
+    out.slice(0,30).forEach(e => {
+      const name = nodesById[e.id]?.name||e.id;
+      html += `<div class="rel-item" data-id="${e.id}">
+        <span class="rel-verb">${e.type}</span>
+        <span class="rel-target">${esc(name)}</span></div>`;
+    });
+    html += '</div>';
   }
-  graph.nodeColor(graph.nodeColor()); // force re-render
-}
-
-// -- Search --------------------------------------------------------------------
-function onSearch(value) {
-  searchQuery = value.toLowerCase();
-  graph.nodeColor(graph.nodeColor()); // force re-render
-
-  if (searchQuery) {
-    const match = graphData.nodes.find(n =>
-      n.name.toLowerCase().includes(searchQuery)
-    );
-    if (match) {
-      graph.centerAt(
-        match.x, match.y, match.z,
-        1000
-      );
-    }
+  if(inc.length) {
+    html += '<div class="relations"><h4>← Incoming</h4>';
+    inc.slice(0,30).forEach(e => {
+      const name = nodesById[e.id]?.name||e.id;
+      html += `<div class="rel-item" data-id="${e.id}">
+        <span class="rel-verb">${e.type}</span>
+        <span class="rel-target">${esc(name)}</span></div>`;
+    });
+    html += '</div>';
   }
+  html += `<div class="gobp-query">gobp(query="get: ${node.id}")</div>`;
+
+  const content = document.getElementById('detail-content');
+  content.innerHTML = html;
+  document.getElementById('detail').classList.add('visible');
+
+  content.querySelectorAll('.rel-item[data-id]').forEach(el => {
+    el.addEventListener('click', () => {
+      const n = GRAPH_DATA.nodes.find(n=>n.id===el.dataset.id);
+      if(n) { showDetail(n); focusNode(n); }
+    });
+  });
+
+  focusNode(node);
 }
 
-// -- Panel ---------------------------------------------------------------------
-function openPanel(node) {
-  const panel = document.getElementById('panel');
-  const body = document.getElementById('panel-body');
-
-  const priorityClass = `priority-${node.priority || 'medium'}`;
-
-  body.innerHTML = `
-    <div class="field">
-      <div class="field-label">ID</div>
-      <div class="field-value" style="color:#64748b;font-size:11px">${node.id}</div>
-    </div>
-    <div class="field">
-      <div class="field-label">Name</div>
-      <div class="field-value">${node.name}</div>
-    </div>
-    <div class="field">
-      <div class="field-label">Type</div>
-      <div class="field-value">
-        <span style="color:${TYPE_COLORS[node.type] || '#fff'}">${node.type}</span>
-      </div>
-    </div>
-    <div class="field">
-      <div class="field-label">Priority</div>
-      <div class="field-value">
-        <span class="priority-badge ${priorityClass}">${node.priority || 'medium'}</span>
-      </div>
-    </div>
-    <div class="field">
-      <div class="field-label">Status</div>
-      <div class="field-value" style="color:#94a3b8">${node.status || '—'}</div>
-    </div>
-    ${node.description ? `
-    <div class="field">
-      <div class="field-label">Description</div>
-      <div class="field-value" style="color:#94a3b8;font-size:12px;line-height:1.5">${node.description}</div>
-    </div>` : ''}
-    ${node.topic ? `
-    <div class="field">
-      <div class="field-label">Topic</div>
-      <div class="field-value" style="color:#64748b;font-size:11px">${node.topic}</div>
-    </div>` : ''}
-    <div class="field" style="margin-top:16px;padding-top:16px;border-top:1px solid #1e1e2e">
-      <div class="field-label">GoBP Query</div>
-      <div class="field-value" style="color:#f59e0b;font-size:11px;background:#0a0a0f;padding:8px;border-radius:4px;margin-top:4px">
-        gobp(query="get: ${node.id}")
-      </div>
-    </div>
-  `;
-
-  panel.classList.add('open');
-
-  // Focus camera on node
-  graph.centerAt(node.x, node.y, node.z, 1000);
-  graph.zoom(2, 1000);
+function focusNode(n) {
+  if(!n.x) return;
+  const d = 120;
+  const r = 1 + d/Math.hypot(n.x||0, n.y||0, n.z||0);
+  FG.cameraPosition({x:n.x*r, y:n.y*r, z:n.z*r}, n, 800);
 }
 
-function closePanel() {
-  document.getElementById('panel').classList.remove('open');
+function esc(s) {
+  return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 
-// -- Tooltip -------------------------------------------------------------------
-function showTooltip(node) {
-  const tooltip = document.getElementById('tooltip');
-  if (!node) {
-    tooltip.style.display = 'none';
-    return;
-  }
-  document.getElementById('tooltip-name').textContent = node.name;
-  document.getElementById('tooltip-type').textContent = `${node.type} · ${node.priority || 'medium'}`;
-  tooltip.style.display = 'block';
-}
-
-document.addEventListener('mousemove', e => {
-  const tooltip = document.getElementById('tooltip');
-  if (tooltip.style.display !== 'none') {
-    tooltip.style.left = (e.clientX + 12) + 'px';
-    tooltip.style.top = (e.clientY - 8) + 'px';
-  }
+document.getElementById('btn-core').addEventListener('click', () => {
+  document.querySelectorAll('#type-filters input').forEach(cb => {
+    cb.checked = CORE_TYPES.has(cb.dataset.type);
+    if(cb.checked) VISIBLE_TYPES.add(cb.dataset.type); else VISIBLE_TYPES.delete(cb.dataset.type);
+  });
+  applyFilters();
+});
+document.getElementById('btn-all').addEventListener('click', () => {
+  document.querySelectorAll('#type-filters input').forEach(cb => {
+    cb.checked = true; VISIBLE_TYPES.add(cb.dataset.type);
+  });
+  applyFilters();
+});
+document.getElementById('btn-labels').addEventListener('click', () => {
+  SHOW_LABELS = !SHOW_LABELS; FG.refresh();
+});
+document.getElementById('btn-reset').addEventListener('click', () => {
+  FG.cameraPosition({x:0,y:0,z:600},{x:0,y:0,z:0},800);
+});
+document.getElementById('btn-refresh').addEventListener('click', () => {
+  loadGraph(CURRENT_ROOT);
+});
+document.getElementById('search').addEventListener('input', e => {
+  const q = e.target.value.trim().toLowerCase();
+  if(!q) { applyFilters(); return; }
+  const hits = new Set();
+  GRAPH_DATA.nodes.forEach(n => {
+    if(n.id.toLowerCase().includes(q)||(n.name||'').toLowerCase().includes(q)) hits.add(n.id);
+  });
+  const neighbors = new Set(hits);
+  (GRAPH_DATA.edges||GRAPH_DATA.links||[]).forEach(e => {
+    const f=e.from||e.source, t=e.to||e.target;
+    if(hits.has(f)) neighbors.add(t);
+    if(hits.has(t)) neighbors.add(f);
+  });
+  applyFilters(neighbors, hits);
 });
 
-// -- Boot ----------------------------------------------------------------------
-initGraph();
-loadGraph();
+boot();
 </script>
 </body>
 </html>
