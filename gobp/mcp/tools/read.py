@@ -534,3 +534,209 @@ def doc_sections(index: GraphIndex, project_root: Path, args: dict[str, Any]) ->
         "sections": sections,
         "count": len(sections),
     }
+
+
+def code_refs(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> dict[str, Any]:
+    """Get code references for a node.
+
+    Returns list of code files implementing or related to this node.
+    Only returns code_refs field — much cheaper than full context().
+
+    Args:
+        node_id: str (required)
+        add: dict (optional) — add a new code ref
+             {path, description, language}
+
+    Returns:
+        ok, node_id, node_name, code_refs, count
+    """
+    node_id = args.get("node_id", "")
+    if not node_id:
+        return {"ok": False, "error": "node_id required"}
+
+    node = index.get_node(node_id)
+    if not node:
+        return {"ok": False, "error": f"Node not found: {node_id}"}
+
+    refs = node.get("code_refs", [])
+
+    return {
+        "ok": True,
+        "node_id": node_id,
+        "node_name": node.get("name", ""),
+        "node_type": node.get("type", ""),
+        "code_refs": refs,
+        "count": len(refs),
+        "hint": (
+            "To add a code ref: "
+            f"gobp(query=\"code: {node_id} path='lib/x.dart' description='x' language='dart'\")"
+        ) if not refs else "",
+    }
+
+
+def node_invariants(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> dict[str, Any]:
+    """Get invariants (hard constraints) for a node.
+
+    Returns list of invariant strings — constraints that must always be true.
+    Only returns invariants field — much cheaper than full context().
+
+    Args:
+        node_id: str (required)
+
+    Returns:
+        ok, node_id, node_name, invariants, count
+    """
+    node_id = args.get("node_id", "")
+    if not node_id:
+        return {"ok": False, "error": "node_id required"}
+
+    node = index.get_node(node_id)
+    if not node:
+        return {"ok": False, "error": f"Node not found: {node_id}"}
+
+    invs = node.get("invariants", [])
+
+    return {
+        "ok": True,
+        "node_id": node_id,
+        "node_name": node.get("name", ""),
+        "node_type": node.get("type", ""),
+        "invariants": invs,
+        "count": len(invs),
+        "hint": (
+            "To add an invariant: use update: or create: with invariants field"
+        ) if not invs else "",
+    }
+
+
+def node_tests(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> dict[str, Any]:
+    """Get TestCase nodes linked to this node.
+
+    Finds TestCase nodes where covers field = node_id.
+    No schema change needed — uses existing covers edges.
+
+    Args:
+        node_id: str (required)
+        status: str (optional) — filter by status: PASSING, FAILING, DRAFT, etc.
+
+    Returns:
+        ok, node_id, node_name, test_cases, count
+    """
+    node_id = args.get("node_id", "")
+    if not node_id:
+        return {"ok": False, "error": "node_id required"}
+
+    node = index.get_node(node_id)
+    if not node:
+        return {"ok": False, "error": f"Node not found: {node_id}"}
+
+    status_filter = args.get("status")
+
+    # Find TestCase nodes that cover this node via 'covers' edges
+    covering_edges = index.get_edges_to(node_id)
+    test_cases = []
+    for edge in covering_edges:
+        if edge.get("type") != "covers":
+            continue
+        tc_node = index.get_node(edge.get("from", ""))
+        if tc_node and tc_node.get("type") == "TestCase":
+            if status_filter and tc_node.get("status") != status_filter:
+                continue
+            test_cases.append({
+                "id": tc_node.get("id"),
+                "name": tc_node.get("name", ""),
+                "status": tc_node.get("status", "DRAFT"),
+                "priority": tc_node.get("priority", "medium"),
+                "automated": tc_node.get("automated", False),
+                "kind_id": tc_node.get("kind_id", ""),
+            })
+
+    # Sort: FAILING first, then DRAFT, then PASSING
+    status_order = {"FAILING": 0, "DRAFT": 1, "READY": 2, "PASSING": 3, "SKIPPED": 4, "DEPRECATED": 5}
+    test_cases.sort(key=lambda t: status_order.get(t["status"], 99))
+
+    passing = sum(1 for t in test_cases if t["status"] == "PASSING")
+    failing = sum(1 for t in test_cases if t["status"] == "FAILING")
+
+    return {
+        "ok": True,
+        "node_id": node_id,
+        "node_name": node.get("name", ""),
+        "node_type": node.get("type", ""),
+        "test_cases": test_cases,
+        "count": len(test_cases),
+        "summary": {
+            "passing": passing,
+            "failing": failing,
+            "draft": len(test_cases) - passing - failing,
+        },
+        "coverage": "none" if not test_cases else (
+            "full" if failing == 0 and passing > 0 else
+            "partial" if passing > 0 else
+            "draft"
+        ),
+    }
+
+
+def node_related(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> dict[str, Any]:
+    """Get related nodes summary — neighbor names without full data.
+
+    Returns lightweight list of connected nodes.
+    Much cheaper than context() which loads full node data.
+
+    Args:
+        node_id: str (required)
+        direction: str (optional) — 'outgoing', 'incoming', 'both' (default: 'both')
+        edge_type: str (optional) — filter by edge type
+
+    Returns:
+        ok, node_id, node_name, outgoing, incoming, count
+    """
+    node_id = args.get("node_id", "")
+    if not node_id:
+        return {"ok": False, "error": "node_id required"}
+
+    node = index.get_node(node_id)
+    if not node:
+        return {"ok": False, "error": f"Node not found: {node_id}"}
+
+    direction = args.get("direction", "both")
+    edge_type_filter = args.get("edge_type")
+
+    outgoing = []
+    if direction in ("outgoing", "both"):
+        for edge in index.get_edges_from(node_id):
+            if edge_type_filter and edge.get("type") != edge_type_filter:
+                continue
+            neighbor = index.get_node(edge.get("to", ""))
+            outgoing.append({
+                "edge_type": edge.get("type", ""),
+                "node_id": edge.get("to", ""),
+                "node_name": neighbor.get("name", "") if neighbor else "",
+                "node_type": neighbor.get("type", "") if neighbor else "",
+                "priority": neighbor.get("priority", "medium") if neighbor else "medium",
+            })
+
+    incoming = []
+    if direction in ("incoming", "both"):
+        for edge in index.get_edges_to(node_id):
+            if edge_type_filter and edge.get("type") != edge_type_filter:
+                continue
+            neighbor = index.get_node(edge.get("from", ""))
+            incoming.append({
+                "edge_type": edge.get("type", ""),
+                "node_id": edge.get("from", ""),
+                "node_name": neighbor.get("name", "") if neighbor else "",
+                "node_type": neighbor.get("type", "") if neighbor else "",
+                "priority": neighbor.get("priority", "medium") if neighbor else "medium",
+            })
+
+    return {
+        "ok": True,
+        "node_id": node_id,
+        "node_name": node.get("name", ""),
+        "node_type": node.get("type", ""),
+        "outgoing": outgoing,
+        "incoming": incoming,
+        "count": len(outgoing) + len(incoming),
+    }
