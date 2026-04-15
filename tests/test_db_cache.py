@@ -9,6 +9,14 @@ import pytest
 
 from gobp.core.cache import GoBPCache, get_cache, reset_cache
 from gobp.core import db as db_module
+from gobp.core.db_config import is_postgres_available
+
+
+# Skip all DB tests if PostgreSQL not configured
+pytestmark = pytest.mark.skipif(
+    not is_postgres_available(Path(".")),
+    reason="PostgreSQL not available (GOBP_DB_URL not set)"
+)
 
 
 # ── Cache tests ───────────────────────────────────────────────────────────────
