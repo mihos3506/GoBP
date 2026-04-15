@@ -31,6 +31,8 @@ def gobp_overview(index: GraphIndex, project_root: Path, args: dict[str, Any]) -
     First tool AI should call when connecting to a new GoBP instance.
     Takes no arguments.
     """
+    from gobp.mcp.dispatcher import PROTOCOL_GUIDE
+
     all_nodes = index.all_nodes()
     all_edges = index.all_edges()
 
@@ -144,9 +146,9 @@ def gobp_overview(index: GraphIndex, project_root: Path, args: dict[str, Any]) -
         "recent_decisions": recent_decisions,
         "recent_sessions": recent_sessions,
         "suggested_next_queries": [
-            "find(query='<keyword>') to search nodes by keyword",
-            "decisions_for(topic='<topic>') to find locked decisions on a topic",
-            "session_recent(n=3) to see recent session history",
+            "gobp(query='find: <keyword>') to search nodes",
+            "gobp(query='find:Decision <topic>') to find decisions",
+            "gobp(query='session:start actor=<name> goal=<goal>') to start session",
         ],
         "concepts": concepts,
         "test_coverage": {
@@ -155,6 +157,7 @@ def gobp_overview(index: GraphIndex, project_root: Path, args: dict[str, Any]) -
             "test_cases_total": len(test_case_nodes),
             "test_cases_by_status": cases_by_status,
         },
+        "interface": PROTOCOL_GUIDE,
     }
 
 
