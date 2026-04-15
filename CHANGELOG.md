@@ -5,6 +5,36 @@ Format: [Wave N — Title] with date, what was added/changed/fixed.
 
 ---
 
+## [Wave 13] — Pagination + Upsert + Guardrails + Observability — 2026-04-15
+
+### Problems solved
+- Hard limit pagination: AI missed nodes when results > 20
+- No upsert: AI re-importing same node created duplicates
+- No guardrails: AI could write wrong data silently
+- No observability: couldn't optimize slow queries
+
+### Added
+- Cursor-based pagination for `find()`, `related()`, `tests()`
+- `upsert:` action with `dedupe_key` (create or update, no duplicates)
+- `dry_run=true` support for write actions
+- Write response guardrails: `action`, `changed_fields`, `conflicts`, `revision`
+- In-memory stats tracking: calls, avg_ms, errors per action
+- `stats:` action (`overview` + per-action + reset)
+
+### Protocol additions
+`find: auth page_size=50` -> paginated search  
+`find: auth cursor='node:x'` -> next page  
+`upsert:Node dedupe_key='name' name='x'` -> create or update  
+`create:Node ... dry_run=true` -> preview  
+`stats:` -> observability
+
+### page_info format
+`{ next_cursor, has_more, total_estimate, page_size }`
+
+### Total after wave: 1 MCP tool, 25 actions, 310+ tests
+
+---
+
 ## [Wave 12] — Launcher + Project Picker + Schema v3 + Better Viewer — 2026-04-15
 
 ### Problem solved

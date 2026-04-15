@@ -27,6 +27,8 @@ gobp(query="<action>:<NodeType> <key>='<value>' ...")
 |---|---|
 | `overview:` | Project stats, orientation, protocol guide |
 | `find: <keyword>` | Search any node |
+| `find: <keyword> page_size=50` | Paginated search |
+| `find: <keyword> cursor='node:x' page_size=50` | Next page |
 | `find:<NodeType> <keyword>` | Search by type + keyword |
 | `get: <node_id>` | Full node + edges + decisions |
 | `signature: <node_id>` | Minimal node summary |
@@ -41,6 +43,9 @@ gobp(query="<action>:<NodeType> <key>='<value>' ...")
 | `related: <node_id>` | Neighbor nodes summary (no full data) |
 | `related: <node_id> direction='outgoing'` | Only outgoing neighbors |
 | `create:<NodeType> name='x' session_id='y'` | Create node |
+| `create:<Type> ... dry_run=true` | Preview create without writing |
+| `upsert:<Type> dedupe_key='name' name='x' session_id='y'` | Create or update by key |
+| `upsert:<Type> ... dry_run=true` | Preview upsert without writing |
 | `update: id='x' name='y'` | Update node |
 | `lock:Decision topic='x' what='y' why='z'` | Lock decision |
 | `session:start actor='x' goal='y'` | Start session |
@@ -51,6 +56,9 @@ gobp(query="<action>:<NodeType> <key>='<value>' ...")
 | `commit: imp:proposal-id` | Commit proposal |
 | `validate: <scope>` | Validate graph |
 | `extract: lessons` | Extract lesson candidates |
+| `stats:` | All action stats (calls, latency, errors) |
+| `stats: <action>` | Stats for specific action |
+| `stats: reset` | Reset stat counters |
 
 ### First call
 
