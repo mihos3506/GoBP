@@ -91,6 +91,10 @@ async def list_tools() -> list[types.Tool]:
                 "properties": {
                     "query": {"type": "string", "description": "Search term"},
                     "limit": {"type": "integer", "default": 20},
+                    "type": {
+                        "type": "string",
+                        "description": "Filter by node type, e.g. 'TestCase', 'TestKind', 'Decision'",
+                    },
                 },
                 "required": ["query"],
             },

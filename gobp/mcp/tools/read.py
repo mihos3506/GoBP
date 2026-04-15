@@ -126,31 +126,33 @@ def gobp_overview(index: GraphIndex, project_root: Path, args: dict[str, Any]) -
 
 
 def find(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> dict[str, Any]:
-    """Fuzzy search nodes by id, exact name, or substring match.
+    """Search nodes by keyword with optional type filter.
 
-    Args:
-        query: str (required) - search term
-        limit: int (optional, default 20) - max results
+    Input:
+        query: str — search term (required)
+        limit: int — max results (default 20)
+        type: str — filter by node type, e.g. "TestCase", "TestKind" (optional)
 
-    Returns:
-        matches list with match type: exact_id | exact_name | substring
+    Output:
+        ok, nodes, count
     """
-    query = args.get("query")
-    if not query or not isinstance(query, str):
-        return {"ok": False, "error": "query parameter required"}
+    query = args.get("query", "")
+    if not query:
+        return {"ok": False, "error": "Missing required field: query"}
 
     limit = int(args.get("limit", 20))
-    query_lower = query.lower()
+    type_filter = args.get("type", None)
 
+    query_lower = query.lower()
     matches: list[dict[str, Any]] = []
 
     # Exact ID match (highest priority)
     exact_id_node = index.get_node(query)
-    if exact_id_node:
+    if exact_id_node and (not type_filter or exact_id_node.get("type") == type_filter):
         matches.append(
             {
-                "id": exact_id_node.get("id"),
-                "type": exact_id_node.get("type"),
+                "id": exact_id_node.get("id", ""),
+                "type": exact_id_node.get("type", ""),
                 "name": exact_id_node.get("name", ""),
                 "status": exact_id_node.get("status", ""),
                 "match": "exact_id",
@@ -159,16 +161,27 @@ def find(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> dict[st
 
     # Exact name + substring matches
     for node in index.all_nodes():
+        # Type filter first (cheap)
+        if type_filter and node.get("type") != type_filter:
+            continue
+
         node_id = node.get("id", "")
         if node_id == query:
             continue  # Already added as exact_id
 
-        name = node.get("name", "")
-        name_lower = name.lower()
+        node_name = node.get("name", "")
+        node_name_lower = node_name.lower()
 
-        if name_lower == query_lower:
+        # Text search across key fields
+        searchable = f"{node_id} {node_name}".lower()
+        for field in ("topic", "subject", "title", "description", "definition", "group"):
+            val = node.get(field, "")
+            if val:
+                searchable += f" {str(val).lower()}"
+
+        if node_name_lower == query_lower:
             match_type = "exact_name"
-        elif query_lower in name_lower or query_lower in node_id.lower():
+        elif query_lower in searchable:
             match_type = "substring"
         else:
             continue
@@ -176,25 +189,19 @@ def find(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> dict[st
         matches.append(
             {
                 "id": node_id,
-                "type": node.get("type"),
-                "name": name,
+                "type": node.get("type", ""),
+                "name": node_name,
                 "status": node.get("status", ""),
                 "match": match_type,
             }
         )
 
     matches.sort(key=lambda m: _FIND_PRIORITY.get(m["match"], 99))
-
     total = len(matches)
     truncated = total > limit
     matches = matches[:limit]
 
-    return {
-        "ok": True,
-        "matches": matches,
-        "count": len(matches),
-        "truncated": truncated,
-    }
+    return {"ok": True, "matches": matches, "count": len(matches), "truncated": truncated}
 
 
 def signature(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> dict[str, Any]:
