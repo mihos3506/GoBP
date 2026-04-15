@@ -5,6 +5,31 @@ Format: [Wave N — Title] with date, what was added/changed/fixed.
 
 ---
 
+## [Wave 4] — CLI + Schema v2 + Universal Test Taxonomy — 2026-04-15
+
+### Added
+- `gobp/core/init.py` — `init_project()`: bootstrap .gobp/ structure with v2 config
+- `gobp/cli.py` — 3 CLI commands: `init`, `validate`, `status`
+- `gobp/__main__.py` — module entry point
+- Schema v2: 3 new core node types: `Concept`, `TestKind`, `TestCase`
+- Schema v2: 2 new edge types: `covers` (TestCase→Node), `of_kind` (TestCase→TestKind)
+- 16 universal TestKind seed nodes auto-created on `gobp init` (4 groups: functional/non_functional/security/process)
+- 5 security TestKind kinds: Auth, Input Validation, Network, Encryption, API Security, Dependency
+- 1 `concept:test_taxonomy` node explaining AI how to use TestKind/TestCase
+- `find()`: new `type` filter parameter — enables `find(query="login", type="TestCase")`
+- `gobp_overview`: new `concepts[]` and `test_coverage{}` sections
+- Multi-user placeholders in `config.yaml`: owner, collaborators, access_model, project_id (all null, ready for v2)
+- `tests/test_wave4.py`: 22 tests
+
+### Changed
+- `core_nodes.yaml`: schema_version 1.0 → 2.0, 6 → 9 node types
+- `core_edges.yaml`: 5 → 7 edge types
+- `migrate.py`: CURRENT_SCHEMA_VERSION 1 → 2, v1→v2 migration step added
+
+### Total after wave: 14 MCP tools, 188 tests passing
+
+---
+
 ## [Wave 8] — MIHOS Integration Test — 2026-04-15
 
 ### Added

@@ -38,6 +38,47 @@ Expected baseline: 166 tests passing after Wave 6.
 
 ---
 
+## CLI commands
+
+```bash
+# Initialize a new GoBP project (seeds 16 TestKind + 1 Concept)
+python -m gobp.cli init [--name NAME] [--force]
+
+# Validate graph schema
+python -m gobp.cli validate [--scope all|nodes|edges|references]
+
+# Show project summary
+python -m gobp.cli status
+```
+
+Uses `GOBP_PROJECT_ROOT` env var or current directory.
+
+On `init`, GoBP seeds 16 universal TestKind nodes:
+- **Functional** (6): Unit, Integration, E2E, Contract, Regression, Acceptance
+- **Non-functional** (3): Performance, Accessibility, Compatibility
+- **Process** (2): Smoke, Exploratory
+- **Security** (5): Auth, Input Validation, Network, Encryption, API Security, Dependency
+
+## Adding a platform-specific TestKind
+
+```
+node_upsert(type="TestKind", name="Widget Test", group="functional",
+            scope="platform", platform="flutter", ...)
+```
+
+## Adding a TestCase
+
+```
+node_upsert(type="TestCase", name="Login returns token on valid credentials",
+            kind_id="testkind:unit", covers="node:feat_login",
+            status="DRAFT", priority="high",
+            given="Valid email+password in system",
+            when="loginService.login(email, password) called",
+            then="Returns AuthToken with non-null accessToken")
+```
+
+---
+
 ## Project structure
 
 ```
