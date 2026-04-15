@@ -37,6 +37,12 @@ def mihos_perf_root(tmp_path_factory: pytest.TempPathFactory) -> Path:
     return root
 
 
+@pytest.fixture(scope="module")
+def mihos_index(mihos_perf_root: Path) -> GraphIndex:
+    """Load GraphIndex once per module — reused by all read perf tests."""
+    return GraphIndex.load_from_disk(mihos_perf_root)
+
+
 # ── Max latency targets (ms) from MCP_TOOLS.md §10 ───────────────────────────
 MAX_MS = {
     "gobp_overview": 100,
@@ -54,10 +60,6 @@ MAX_MS = {
 }
 
 
-def _load(root: Path) -> GraphIndex:
-    return GraphIndex.load_from_disk(root)
-
-
 def _ms(start: float) -> float:
     return (time.perf_counter() - start) * 1000
 
@@ -65,10 +67,9 @@ def _ms(start: float) -> float:
 # ── Read tools ────────────────────────────────────────────────────────────────
 
 
-def test_perf_gobp_overview(mihos_perf_root: Path) -> None:
-    index = _load(mihos_perf_root)
+def test_perf_gobp_overview(mihos_perf_root: Path, mihos_index: GraphIndex) -> None:
     start = time.perf_counter()
-    result = tools_read.gobp_overview(index, mihos_perf_root, {})
+    result = tools_read.gobp_overview(mihos_index, mihos_perf_root, {})
     elapsed = _ms(start)
     assert result["ok"] is True
     assert elapsed < MAX_MS["gobp_overview"], (
@@ -76,19 +77,17 @@ def test_perf_gobp_overview(mihos_perf_root: Path) -> None:
     )
 
 
-def test_perf_find(mihos_perf_root: Path) -> None:
-    index = _load(mihos_perf_root)
+def test_perf_find(mihos_perf_root: Path, mihos_index: GraphIndex) -> None:
     start = time.perf_counter()
-    result = tools_read.find(index, mihos_perf_root, {"query": "login"})
+    result = tools_read.find(mihos_index, mihos_perf_root, {"query": "login"})
     elapsed = _ms(start)
     assert result["ok"] is True
     assert elapsed < MAX_MS["find"], f"find: {elapsed:.1f}ms > {MAX_MS['find']}ms"
 
 
-def test_perf_signature(mihos_perf_root: Path) -> None:
-    index = _load(mihos_perf_root)
+def test_perf_signature(mihos_perf_root: Path, mihos_index: GraphIndex) -> None:
     start = time.perf_counter()
-    result = tools_read.signature(index, mihos_perf_root, {"node_id": "node:feat_login"})
+    result = tools_read.signature(mihos_index, mihos_perf_root, {"node_id": "node:feat_login"})
     elapsed = _ms(start)
     assert result["ok"] is True
     assert elapsed < MAX_MS["signature"], (
@@ -96,10 +95,9 @@ def test_perf_signature(mihos_perf_root: Path) -> None:
     )
 
 
-def test_perf_context(mihos_perf_root: Path) -> None:
-    index = _load(mihos_perf_root)
+def test_perf_context(mihos_perf_root: Path, mihos_index: GraphIndex) -> None:
     start = time.perf_counter()
-    result = tools_read.context(index, mihos_perf_root, {"node_id": "node:feat_login"})
+    result = tools_read.context(mihos_index, mihos_perf_root, {"node_id": "node:feat_login"})
     elapsed = _ms(start)
     assert result["ok"] is True
     assert elapsed < MAX_MS["context"], (
@@ -107,10 +105,9 @@ def test_perf_context(mihos_perf_root: Path) -> None:
     )
 
 
-def test_perf_session_recent(mihos_perf_root: Path) -> None:
-    index = _load(mihos_perf_root)
+def test_perf_session_recent(mihos_perf_root: Path, mihos_index: GraphIndex) -> None:
     start = time.perf_counter()
-    result = tools_read.session_recent(index, mihos_perf_root, {"n": 3})
+    result = tools_read.session_recent(mihos_index, mihos_perf_root, {"n": 3})
     elapsed = _ms(start)
     assert result["ok"] is True
     assert elapsed < MAX_MS["session_recent"], (
@@ -118,11 +115,10 @@ def test_perf_session_recent(mihos_perf_root: Path) -> None:
     )
 
 
-def test_perf_decisions_for(mihos_perf_root: Path) -> None:
-    index = _load(mihos_perf_root)
+def test_perf_decisions_for(mihos_perf_root: Path, mihos_index: GraphIndex) -> None:
     start = time.perf_counter()
     result = tools_read.decisions_for(
-        index, mihos_perf_root, {"topic": "auth:login.method"}
+        mihos_index, mihos_perf_root, {"topic": "auth:login.method"}
     )
     elapsed = _ms(start)
     assert result["ok"] is True
@@ -131,10 +127,9 @@ def test_perf_decisions_for(mihos_perf_root: Path) -> None:
     )
 
 
-def test_perf_doc_sections(mihos_perf_root: Path) -> None:
-    index = _load(mihos_perf_root)
+def test_perf_doc_sections(mihos_perf_root: Path, mihos_index: GraphIndex) -> None:
     start = time.perf_counter()
-    result = tools_read.doc_sections(index, mihos_perf_root, {"doc_id": "doc:DOC-07"})
+    result = tools_read.doc_sections(mihos_index, mihos_perf_root, {"doc_id": "doc:DOC-07"})
     elapsed = _ms(start)
     assert result["ok"] is True
     assert elapsed < MAX_MS["doc_sections"], (
@@ -143,10 +138,11 @@ def test_perf_doc_sections(mihos_perf_root: Path) -> None:
 
 
 # ── Write tools ───────────────────────────────────────────────────────────────
+# Write tools mutate disk → cannot share index — each loads fresh
 
 
 def test_perf_session_log_start(mihos_perf_root: Path) -> None:
-    index = _load(mihos_perf_root)
+    index = GraphIndex.load_from_disk(mihos_perf_root)
     start = time.perf_counter()
     result = tools_write.session_log(
         index,
@@ -165,7 +161,7 @@ def test_perf_session_log_start(mihos_perf_root: Path) -> None:
 
 
 def test_perf_node_upsert(mihos_perf_root: Path) -> None:
-    index = _load(mihos_perf_root)
+    index = GraphIndex.load_from_disk(mihos_perf_root)
     # Need active session first
     sess_result = tools_write.session_log(
         index,
@@ -206,10 +202,9 @@ def test_perf_node_upsert(mihos_perf_root: Path) -> None:
 # ── Advanced tools ────────────────────────────────────────────────────────────
 
 
-def test_perf_lessons_extract(mihos_perf_root: Path) -> None:
-    index = _load(mihos_perf_root)
+def test_perf_lessons_extract(mihos_perf_root: Path, mihos_index: GraphIndex) -> None:
     start = time.perf_counter()
-    result = asyncio.run(lessons_extract(index, mihos_perf_root, {}))
+    result = asyncio.run(lessons_extract(mihos_index, mihos_perf_root, {}))
     elapsed = _ms(start)
     assert result["ok"] is True
     assert elapsed < MAX_MS["lessons_extract"], (
