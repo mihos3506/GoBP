@@ -65,7 +65,7 @@ def init_project(
         "schema_version": INIT_SCHEMA_VERSION,
         "created_at": datetime.now(timezone.utc).isoformat(),
         "gobp_version": "0.1.0",
-        # Multi-user placeholders â€” null/inactive in v1, ready for v2 upgrade
+        # Multi-user placeholders — null/inactive in v1, ready for v2 upgrade
         "owner": None,
         "collaborators": [],
         "access_model": "open",
@@ -111,7 +111,7 @@ def _seed_universal_nodes(project_root: Path) -> list[str]:
     nodes_dir = project_root / ".gobp" / "nodes"
 
     seeds = [
-        # â”€â”€ FUNCTIONAL GROUP (6 kinds) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        # --- FUNCTIONAL GROUP (6 kinds) ---
         {
             "id": "testkind:unit",
             "type": "TestKind",
@@ -231,7 +231,7 @@ def _seed_universal_nodes(project_root: Path) -> list[str]:
             "created": now,
             "updated": now,
         },
-        # â”€â”€ NON-FUNCTIONAL GROUP (3 kinds) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        # --- NON-FUNCTIONAL GROUP (3 kinds) ---
         {
             "id": "testkind:performance",
             "type": "TestKind",
@@ -293,7 +293,7 @@ def _seed_universal_nodes(project_root: Path) -> list[str]:
             "created": now,
             "updated": now,
         },
-        # â”€â”€ PROCESS GROUP (2 kinds) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        # --- PROCESS GROUP (2 kinds) ---
         {
             "id": "testkind:smoke",
             "type": "TestKind",
@@ -334,7 +334,7 @@ def _seed_universal_nodes(project_root: Path) -> list[str]:
             "created": now,
             "updated": now,
         },
-        # â”€â”€ SECURITY GROUP (5 sub-kinds) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        # --- SECURITY GROUP (5 sub-kinds) ---
         {
             "id": "testkind:security_auth",
             "type": "TestKind",
@@ -445,16 +445,16 @@ def _seed_universal_nodes(project_root: Path) -> list[str]:
             "created": now,
             "updated": now,
         },
-        # â”€â”€ CONCEPT NODE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        # --- CONCEPT NODE ---
         {
             "id": "concept:test_taxonomy",
             "type": "Concept",
             "name": "Test Taxonomy",
             "definition": (
                 "GoBP organizes software tests into 3 levels: "
-                "Level 1 (universal) â€” applies to all projects, pre-seeded on init; "
-                "Level 2 (platform) â€” specific to Flutter, Deno, Web, etc., added by project; "
-                "Level 3 (project) â€” custom kinds unique to this project. "
+                "Level 1 (universal) — applies to all projects, pre-seeded on init; "
+                "Level 2 (platform) — specific to Flutter, Deno, Web, etc., added by project; "
+                "Level 3 (project) — custom kinds unique to this project. "
                 "TestKind nodes define categories. TestCase nodes are individual test instances."
             ),
             "usage_guide": (
