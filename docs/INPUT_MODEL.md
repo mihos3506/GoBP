@@ -661,23 +661,152 @@ This is a known gap. Not a blocker for v1.
 
 ---
 
-## 10. CHECKLIST FOR AI AT SESSION START
+### 10.1 Why this matters
 
-Every AI starting a GoBP-enabled session should run this checklist (Protocol 0 from skill v3):
+Each new Claude session starts with zero context. Without discipline, AI reloads the full graph every session — burning tokens on context that's already been loaded before.
 
-```
-□ 1. Call session_recent(n=3) — see what happened recently
-□ 2. Call session_log(actor=<my_name>, goal=<stated_goal>) — register myself
-□ 3. If founder mentions a topic:
-     □ Call find(query=<topic>) — check if already known
-     □ Call context(node_id=<result>) — get details
-□ 4. If no clear topic yet:
-     □ Call decisions_for(recent=true) — get latest decisions
-     □ Use as background context
-□ 5. Ready to participate in conversation with full state loaded
-```
+Measured impact (MIHOS baseline, 5 sessions/day):
 
-Target: < 10 MCP calls, < 30 seconds, < 5K tokens loaded.
+| Pattern | Tokens/session | Tokens/day | Tokens/month |
+|---|---|---|---|
+| Full reload every session | ~4,200 | ~21,000 | ~630,000 |
+| Continuity pattern | ~800 | ~4,000 | ~120,000 |
+| **Saving** | **~3,400** | **~17,000** | **~510,000** |
+
+At scale (A2A multi-agent, team of 3), token waste multiplies by agent count. This pattern is not optional — it is a core operating discipline.
+
+---
+
+### 10.2 Session start checklist (Protocol 0)
+
+**First session of the day** (no prior context):
+□ 1. gobp_overview()
+→ full project orientation: node counts, recent decisions, topics
+→ call ONCE per day, not every session
+□ 2. session_recent(n=3)
+→ what happened in the last 3 sessions
+→ read handoff_notes of the most recent session
+□ 3. decisions_for(topic=<current_topic>)
+→ load locked decisions relevant to today's work
+→ skip if no specific topic yet
+□ 4. session_log(action="start", actor=<my_name>, goal=<stated_goal>)
+→ register this session in GoBP
+→ use founder's stated goal as-is, don't paraphrase
+□ Ready to participate with full context loaded.
+
+**Subsequent sessions same day** (already oriented):
+□ 1. session_recent(n=1)
+→ fetch the last session only
+→ read handoff_notes field carefully
+□ 2. context(node_id=<node_from_handoff>)
+→ load only the active node being worked on
+→ do not load the full graph
+□ 3. session_log(action="start", actor=<my_name>, goal="continue: <handoff_summary>")
+→ register continuation session
+□ Ready. DO NOT call gobp_overview() — wastes ~800 tokens you don't need.
+
+Target: < 10 MCP calls · < 30 seconds · < 5K tokens loaded.
+
+---
+
+### 10.3 Mandatory session end
+
+Every session MUST end with:
+session_log(
+action="end",
+session_id=<current_session_id>,
+outcome="<what was accomplished, 1-2 sentences>",
+pending=["<unfinished item 1>", "<unfinished item 2>"],
+nodes_touched=[<list of node_ids modified>],
+decisions_locked=[<list of decision_ids if any>],
+handoff_notes="<active node> + <next action> + <blockers if any>"
+)
+
+**This is the single most important call in a session.** Without it, the next AI session has no continuity — it must re-explore the full graph to understand where things stand.
+
+If session ends abruptly (context window full, connection lost):
+- Founder manually triggers: "End session, we were working on feat:login, next is the widget"
+- AI captures immediately before context is lost
+
+---
+
+### 10.4 handoff_notes format
+
+handoff_notes is a contract between this AI session and the next. Write it as if briefing a colleague who has never seen this conversation.
+
+**Good** (next AI understands immediately, 0 re-exploration needed):
+"Active node: feat:login (node:feat_login).
+Decision locked: dec:d001 — OTP email chosen over Face ID.
+Next action: implement LoginScreen widget in Flutter,
+link to testkind:security_auth and testkind:unit.
+Test cases needed: tc:login_otp_valid, tc:login_otp_expired.
+Blocker: waiting for Figma spec from CEO — do not start widget until received."
+
+**Bad** (next AI must re-explore everything):
+"Working on login"
+"Discussed auth stuff"
+"Next: do the widget thing"
+
+Rule of thumb: if a developer who just joined the project reads handoff_notes and understands exactly what to do next — it's good.
+
+---
+
+### 10.5 Reference-first principle
+
+When passing context between sessions, agents, or CEO relays — **pass node_id references, not full content**.
+
+**Wrong** (token waste):
+"Here is the full spec for feat:login:
+[name, description, status, edges, decisions, test cases... 2,000 tokens]"
+
+**Right** (token efficient):
+"Implement feat:login.
+Call context('node:feat_login') for full spec."
+
+The recipient queries GoBP directly and gets exactly what it needs. No duplication. No staleness. Always current.
+
+This principle applies to:
+- CEO relaying context to a new Claude tab
+- Claude briefing Cursor on a task
+- Cursor reporting back to Claude CLI
+- Any agent handoff in A2A pipeline
+
+---
+
+### 10.6 Query discipline table
+
+Before calling any GoBP tool, ask: "Do I already have this information in my context window?"
+
+| Situation | Correct call | Wrong call |
+|---|---|---|
+| Brand new session, first of day | `gobp_overview()` | — |
+| Continuing same day | `session_recent(n=1)` + `context(last_node)` | `gobp_overview()` |
+| Need a specific feature | `find(query="login", type="Node")` | Loading all nodes |
+| Need decisions on topic | `decisions_for(topic="auth:login.method")` | `gobp_overview()` |
+| Deep dive on 1 node | `context(node_id)` | `gobp_overview()` |
+| Check test coverage | `find(type="TestCase", query="login")` | — |
+| Understand a concept | `find(type="Concept", query="test taxonomy")` | — |
+| **Never do** | `gobp_overview()` if already oriented in same day | — |
+
+---
+
+### 10.7 Multi-agent token discipline (A2A ready)
+
+When multiple AI agents work on the same project (Cursor + Claude Desktop + Claude CLI):
+
+Each agent maintains its own session. Agents do NOT pass full context to each other. They pass node_id references.
+Claude → Cursor:   "Execute Wave 4 Task 1. Spec: waves/wave_4_brief.md §Task1.
+Active session: session:2026-04-15_wave4.
+Read context('wave_4_task_1_spec') if exists."
+Cursor → Claude:   "Task 1 done. Commit: abc123.
+6 tests pass. Node created: node:init_module.
+session_recent(n=1) for full report."
+Claude → CLI:      "Audit Task 1. Brief: waves/wave_4_brief.md §Task1.
+Cursor report: session_recent(n=1)."
+
+Total tokens per task handoff: ~100 tokens instead of ~5,000.
+
+This is the operating pattern for Wave 10 (A2A bridge). Establish the discipline now — the protocol just formalizes what's already working.
 
 ---
 
