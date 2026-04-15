@@ -512,6 +512,7 @@ Inside a GoBP-enabled project, the knowledge lives in a `.gobp/` folder at proje
 <project-root>/
 ├── .gobp/                          ← GoBP data for this project
 │   ├── config.yaml                 ← project config, schema version, multi-user placeholders
+│   ├── index.db                    ← derived SQLite index (gitignored, rebuildable)
 │   │
 │   ├── nodes/                      ← all nodes, one markdown file per node
 │   │   ├── node_feat_login.md
@@ -557,7 +558,7 @@ not project-specific data.
 - `archive/` holds pruned node files after `gobp prune`; optional until prune runs
 - Core schema v2 defines **9 node types** and **7 edge types** (see `gobp/schema/*.yaml` and `docs/SCHEMA.md`)
 - `config.yaml` holds `schema_version`, `gobp_version`, and multi-user placeholders — there is no separate `.gobp-version` file
-- **Persistent SQLite index** is deferred to Wave 9A — not present in v1 layout
+- **Persistent SQLite index** (`index.db`) is derived from node/edge files, gitignored, rebuildable via `gobp validate --reindex`
 - `gobp/schema/` at **project root** is required for `GraphIndex.load_from_disk()` (schemas copied on `gobp init`)
 - `.gobp/` should be committed to git (it IS the project memory)
 
