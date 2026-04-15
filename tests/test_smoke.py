@@ -92,10 +92,20 @@ def test_core_nodes_yaml_valid():
         data = yaml.safe_load(f)
 
     assert "schema_version" in data
-    assert data["schema_version"] == "1.0"
+    assert data["schema_version"] == "2.0"
     assert "node_types" in data
 
-    expected_types = {"Node", "Idea", "Decision", "Session", "Document", "Lesson"}
+    expected_types = {
+        "Node",
+        "Idea",
+        "Decision",
+        "Session",
+        "Document",
+        "Lesson",
+        "Concept",
+        "TestKind",
+        "TestCase",
+    }
     actual_types = set(data["node_types"].keys())
     assert actual_types == expected_types, f"Expected {expected_types}, got {actual_types}"
 
@@ -107,10 +117,18 @@ def test_core_edges_yaml_valid():
         data = yaml.safe_load(f)
 
     assert "schema_version" in data
-    assert data["schema_version"] == "1.0"
+    assert data["schema_version"] == "2.0"
     assert "edge_types" in data
 
-    expected_types = {"relates_to", "supersedes", "implements", "discovered_in", "references"}
+    expected_types = {
+        "relates_to",
+        "supersedes",
+        "implements",
+        "discovered_in",
+        "references",
+        "covers",
+        "of_kind",
+    }
     actual_types = set(data["edge_types"].keys())
     assert actual_types == expected_types, f"Expected {expected_types}, got {actual_types}"
 
