@@ -108,3 +108,38 @@ edge_types:
         type: "str"
       lines:
         type: "list[int]"
+
+  covers:
+    description: "TestCase covers/validates a Feature or Node"
+    directional: true
+    cardinality: "many_to_one"
+    allowed_node_types: ["TestCase->Node", "TestCase->Idea", "TestCase->Decision"]
+
+    required:
+      from:
+        type: "node_ref"
+      to:
+        type: "node_ref"
+      type:
+        type: "str"
+        enum_values: ["covers"]
+
+    optional:
+      coverage_type:
+        type: "str"
+        description: "happy_path | error_path | boundary | security"
+
+  of_kind:
+    description: "TestCase belongs to a TestKind"
+    directional: true
+    cardinality: "many_to_one"
+    allowed_node_types: ["TestCase->TestKind"]
+
+    required:
+      from:
+        type: "node_ref"
+      to:
+        type: "node_ref"
+      type:
+        type: "str"
+        enum_values: ["of_kind"]

@@ -2,7 +2,7 @@
 # Reference: docs/SCHEMA.md section 2
 # Schema version: 1.0
 
-schema_version: "1.0"
+schema_version: "2.0"
 schema_name: "gobp_core"
 
 node_types:
@@ -267,6 +267,139 @@ node_types:
         default: 1
       last_applied:
         type: "timestamp"
+      tags:
+        type: "list[str]"
+        default: []
+
+  Concept:
+    description: "A defined concept stored for AI orientation and framework understanding"
+    id_prefix: "concept"
+    parent: null
+
+    required:
+      id:
+        type: "str"
+        pattern: "^concept:.+$"
+      type:
+        type: "str"
+        enum_values: ["Concept"]
+      name:
+        type: "str"
+      definition:
+        type: "str"
+        description: "What this concept means"
+      usage_guide:
+        type: "str"
+        description: "How AI should use this concept"
+      created:
+        type: "timestamp"
+      updated:
+        type: "timestamp"
+
+    optional:
+      applies_to:
+        type: "list[str]"
+        default: []
+      seed_values:
+        type: "list[str]"
+        default: []
+      extensible:
+        type: "bool"
+        default: true
+      tags:
+        type: "list[str]"
+        default: []
+
+  TestKind:
+    description: "A category of software test with template and seed examples"
+    id_prefix: "testkind"
+    parent: null
+
+    required:
+      id:
+        type: "str"
+        pattern: "^testkind:.+$"
+      type:
+        type: "str"
+        enum_values: ["TestKind"]
+      name:
+        type: "str"
+      group:
+        type: "enum"
+        enum_values: ["functional", "non_functional", "security", "process"]
+      scope:
+        type: "enum"
+        enum_values: ["universal", "platform", "project"]
+      description:
+        type: "str"
+      template:
+        type: "dict"
+      created:
+        type: "timestamp"
+      updated:
+        type: "timestamp"
+
+    optional:
+      platform:
+        type: "str"
+        default: null
+      seed_examples:
+        type: "list[str]"
+        default: []
+      extensible:
+        type: "bool"
+        default: true
+      tags:
+        type: "list[str]"
+        default: []
+
+  TestCase:
+    description: "A specific test instance linked to a TestKind and a feature/node"
+    id_prefix: "tc"
+    parent: null
+
+    required:
+      id:
+        type: "str"
+        pattern: "^tc:.+$"
+      type:
+        type: "str"
+        enum_values: ["TestCase"]
+      name:
+        type: "str"
+      kind_id:
+        type: "node_ref"
+        description: "TestKind this test belongs to"
+      covers:
+        type: "node_ref"
+        description: "Feature/Node being tested"
+      status:
+        type: "enum"
+        enum_values: ["DRAFT", "READY", "PASSING", "FAILING", "SKIPPED", "DEPRECATED"]
+      priority:
+        type: "enum"
+        enum_values: ["low", "medium", "high", "critical"]
+      created:
+        type: "timestamp"
+      updated:
+        type: "timestamp"
+
+    optional:
+      given:
+        type: "str"
+      when:
+        type: "str"
+      then:
+        type: "str"
+      scenario:
+        type: "str"
+        description: "Alternative to Given/When/Then for non-BDD kinds"
+      automated:
+        type: "bool"
+        default: false
+      code_ref:
+        type: "str"
+        description: "e.g. test/auth_test.dart#login_valid"
       tags:
         type: "list[str]"
         default: []
