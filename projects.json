@@ -1,0 +1,12 @@
+[
+  {
+    "name": "GoBP",
+    "root": "D:/GoBP",
+    "description": "GoBP development knowledge graph"
+  },
+  {
+    "name": "MIHOS",
+    "root": "D:/MIHOS-v1",
+    "description": "MIHOS heritage-tech social network"
+  }
+]
