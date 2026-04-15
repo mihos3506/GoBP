@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import os
 import tempfile
+import uuid as _uuid
 from pathlib import Path
 from typing import Any
 
@@ -22,6 +23,20 @@ from gobp.core import db as _db
 from gobp.core.history import append_event
 from gobp.core.loader import parse_frontmatter
 from gobp.core.validator import validate_edge, validate_node
+
+
+def _generate_session_id(goal: str = "") -> str:
+    """Generate short, unique session ID.
+
+    Format: session:YYYY-MM-DD_XXXXXXXXX
+    where XXXXXXXXX = first 9 chars of UUID4 hex
+    Never truncated, always exactly 28 chars.
+    """
+    from datetime import datetime, timezone
+
+    date_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    short_hash = _uuid.uuid4().hex[:9]
+    return f"session:{date_str}_{short_hash}"
 
 
 def _atomic_write(target_path: Path, content: str) -> None:
