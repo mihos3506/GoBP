@@ -184,82 +184,116 @@ def gobp_overview(index: GraphIndex, project_root: Path, args: dict[str, Any]) -
 
 
 def find(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> dict[str, Any]:
-    """Search nodes by keyword with optional type filter.
+    """Search nodes by keyword with cursor-based pagination.
 
-    Input:
-        query: str — search term (required)
-        limit: int — max results (default 20)
-        type: str — filter by node type, e.g. "TestCase", "TestKind" (optional)
-
-    Output:
-        ok, nodes, count
+    Args:
+        query: Search keyword (optional; empty means all nodes)
+        type: Node type filter (optional)
+        limit: Deprecated alias for page_size
+        page_size: Max results per page (default 20, max 100)
+        cursor: Opaque pagination cursor (node id of last item)
+        sort: Sort field (default: 'id')
+        direction: 'asc' or 'desc' (default: 'asc')
     """
-    query = args.get("query", "")
-    if not query:
+    query_str = str(args.get("query", "") or "")
+    if "query" not in args:
         return {"ok": False, "error": "Missing required field: query"}
+    type_filter = args.get("type")
+    page_size = min(int(args.get("page_size", args.get("limit", 20))), 100)
+    cursor = args.get("cursor")
+    sort_field = args.get("sort", "id")
+    direction = str(args.get("direction", "asc")).lower()
 
-    limit = int(args.get("limit", 20))
-    type_filter = args.get("type", None)
+    if page_size < 1:
+        page_size = 1
 
-    query_lower = query.lower()
-    matches: list[dict[str, Any]] = []
+    q = query_str.lower()
+    candidates: list[dict[str, Any]] = []
+    seen_ids: set[str] = set()
 
-    # Exact ID match (highest priority)
-    exact_id_node = index.get_node(query)
-    if exact_id_node and (not type_filter or exact_id_node.get("type") == type_filter):
-        matches.append(
-            {
-                "id": exact_id_node.get("id", ""),
-                "type": exact_id_node.get("type", ""),
-                "name": exact_id_node.get("name", ""),
-                "status": exact_id_node.get("status", ""),
-                "match": "exact_id",
-            }
-        )
-
-    # Exact name + substring matches
     for node in index.all_nodes():
-        # Type filter first (cheap)
         if type_filter and node.get("type") != type_filter:
             continue
 
         node_id = node.get("id", "")
-        if node_id == query:
-            continue  # Already added as exact_id
-
         node_name = node.get("name", "")
         node_name_lower = node_name.lower()
 
-        # Text search across key fields
         searchable = f"{node_id} {node_name}".lower()
         for field in ("topic", "subject", "title", "description", "definition", "group"):
             val = node.get(field, "")
             if val:
                 searchable += f" {str(val).lower()}"
 
-        if node_name_lower == query_lower:
-            match_type = "exact_name"
-        elif query_lower in searchable:
+        match_type = ""
+        if not query_str:
             match_type = "substring"
-        else:
+        elif node_id == query_str:
+            match_type = "exact_id"
+        elif node_name_lower == q:
+            match_type = "exact_name"
+        elif q in searchable:
+            match_type = "substring"
+
+        if not match_type:
+            continue
+        if node_id in seen_ids:
             continue
 
-        matches.append(
-            {
-                "id": node_id,
-                "type": node.get("type", ""),
-                "name": node_name,
-                "status": node.get("status", ""),
-                "match": match_type,
-            }
-        )
+        seen_ids.add(node_id)
+        enriched = dict(node)
+        enriched["match"] = match_type
+        candidates.append(enriched)
 
-    matches.sort(key=lambda m: _FIND_PRIORITY.get(m["match"], 99))
-    total = len(matches)
-    truncated = total > limit
-    matches = matches[:limit]
+    # Sort: keep relevance first, then stable field sort.
+    reverse = direction == "desc"
+    candidates.sort(
+        key=lambda n: (
+            _FIND_PRIORITY.get(str(n.get("match", "")), 99),
+            str(n.get(sort_field, n.get("id", ""))),
+        ),
+        reverse=reverse,
+    )
 
-    return {"ok": True, "matches": matches, "count": len(matches), "truncated": truncated}
+    # Apply cursor (keyset pagination)
+    total_estimate = len(candidates)
+    if cursor:
+        try:
+            cursor_idx = next(i for i, n in enumerate(candidates) if n.get("id") == cursor)
+            candidates = candidates[cursor_idx + 1:]
+        except StopIteration:
+            candidates = []
+
+    # Page
+    page = candidates[:page_size]
+    has_more = len(candidates) > page_size
+    next_cursor = page[-1].get("id") if has_more and page else None
+
+    # Format results
+    matches = [
+        {
+            "id": n.get("id"),
+            "type": n.get("type"),
+            "name": n.get("name", ""),
+            "status": n.get("status", ""),
+            "priority": n.get("priority", "medium"),
+            "match": n.get("match", "substring"),
+        }
+        for n in page
+    ]
+
+    return {
+        "ok": True,
+        "matches": matches,
+        "count": len(matches),
+        "truncated": has_more,
+        "page_info": {
+            "next_cursor": next_cursor,
+            "has_more": has_more,
+            "total_estimate": total_estimate,
+            "page_size": page_size,
+        },
+    }
 
 
 def signature(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> dict[str, Any]:
