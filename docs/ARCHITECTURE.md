@@ -1,3 +1,7 @@
+**Architecture doc model:** The long-form base spec is [`GoBP_ARCHITECTURE.md`](./GoBP_ARCHITECTURE.md). **This file** (`ARCHITECTURE.md`) holds **patches, deltas, and pasted update blocks** relative to that base—read both when auditing or implementing anything that touches project layout, MCP wiring, or scaling notes.
+
+---
+
 # FOUNDATIONAL DOCS UPDATES — 2026-04-14
 
 These are additions to existing foundational docs. CEO (or Cursor) pastes each section into the corresponding file at the indicated location.
