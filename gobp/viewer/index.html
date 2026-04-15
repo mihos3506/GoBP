@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>◈ GoBP Graph Viewer</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg: #0a0a0f;
+      --surface: #12121a;
+      --border: #1e1e2e;
+      --text: #e2e8f0;
+      --text-dim: #64748b;
+      --amber: #f59e0b;
+      --cyan: #06b6d4;
+      --violet: #8b5cf6;
+      --green: #10b981;
+      --blue: #3b82f6;
+      --red: #ef4444;
+      --gold: #eab308;
+      --teal: #14b8a6;
+      --orange: #f97316;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      overflow: hidden;
+      height: 100vh;
+      width: 100vw;
+    }
+
+    #graph-container {
+      position: fixed;
+      inset: 0;
+      z-index: 1;
+    }
+
+    /* -- Top bar -- */
+    #topbar {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      height: 48px;
+      background: rgba(18, 18, 26, 0.9);
+      border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(12px);
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 0 20px;
+      z-index: 10;
+    }
+
+    #logo {
+      color: var(--amber);
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+    }
+
+    #project-name {
+      color: var(--text-dim);
+      font-size: 13px;
+    }
+
+    #stats {
+      margin-left: auto;
+      display: flex;
+      gap: 16px;
+      font-size: 12px;
+      color: var(--text-dim);
+    }
+
+    #stats span { color: var(--text); }
+
+    #refresh-btn {
+      background: var(--border);
+      border: 1px solid #2a2a3e;
+      color: var(--text);
+      padding: 4px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+      font-family: inherit;
+      transition: all 0.2s;
+    }
+    #refresh-btn:hover { background: #1e1e2e; border-color: var(--amber); }
+
+    /* -- Side panel -- */
+    #panel {
+      position: fixed;
+      top: 48px; right: 0;
+      width: 280px;
+      height: calc(100vh - 48px);
+      background: rgba(18, 18, 26, 0.92);
+      border-left: 1px solid var(--border);
+      backdrop-filter: blur(12px);
+      display: flex;
+      flex-direction: column;
+      z-index: 10;
+      transform: translateX(100%);
+      transition: transform 0.3s ease;
+    }
+
+    #panel.open { transform: translateX(0); }
+
+    #panel-header {
+      padding: 16px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    #panel-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--amber);
+    }
+
+    #panel-close {
+      background: none;
+      border: none;
+      color: var(--text-dim);
+      cursor: pointer;
+      font-size: 18px;
+      line-height: 1;
+    }
+
+    #panel-body {
+      padding: 16px;
+      overflow-y: auto;
+      flex: 1;
+    }
+
+    .field { margin-bottom: 12px; }
+    .field-label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-dim);
+      margin-bottom: 4px;
+    }
+    .field-value {
+      font-size: 13px;
+      color: var(--text);
+      word-break: break-word;
+    }
+
+    .priority-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 3px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .priority-critical { background: rgba(245,158,11,0.2); color: var(--amber); }
+    .priority-high     { background: rgba(239,68,68,0.15); color: var(--red); }
+    .priority-medium   { background: rgba(100,116,139,0.2); color: #94a3b8; }
+    .priority-low      { background: rgba(30,30,46,0.8); color: var(--text-dim); }
+
+    /* -- Filter panel -- */
+    #filters {
+      position: fixed;
+      top: 60px; left: 16px;
+      background: rgba(18, 18, 26, 0.9);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px;
+      z-index: 10;
+      backdrop-filter: blur(12px);
+      min-width: 160px;
+    }
+
+    #filter-title {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-dim);
+      margin-bottom: 8px;
+    }
+
+    .filter-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 6px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+
+    .filter-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .filter-item input { cursor: pointer; accent-color: var(--amber); }
+
+    /* -- Search -- */
+    #search-wrap {
+      position: fixed;
+      top: 60px; left: 50%;
+      transform: translateX(-50%);
+      z-index: 10;
+    }
+
+    #search {
+      background: rgba(18, 18, 26, 0.9);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 6px 16px;
+      color: var(--text);
+      font-family: inherit;
+      font-size: 13px;
+      width: 280px;
+      backdrop-filter: blur(12px);
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    #search:focus { border-color: var(--amber); }
+    #search::placeholder { color: var(--text-dim); }
+
+    /* -- Loading -- */
+    #loading {
+      position: fixed;
+      inset: 0;
+      background: var(--bg);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      gap: 16px;
+    }
+
+    #loading-logo {
+      font-size: 48px;
+      color: var(--amber);
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    #loading-text {
+      color: var(--text-dim);
+      font-size: 13px;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.6; transform: scale(0.95); }
+    }
+
+    /* -- Tooltip -- */
+    #tooltip {
+      position: fixed;
+      background: rgba(18, 18, 26, 0.95);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 8px 12px;
+      font-size: 12px;
+      pointer-events: none;
+      z-index: 20;
+      display: none;
+      max-width: 220px;
+    }
+
+    #tooltip-name { font-weight: 600; margin-bottom: 2px; }
+    #tooltip-type { color: var(--text-dim); font-size: 11px; }
+  </style>
+</head>
+<body>
+
+<div id="loading">
+  <div id="loading-logo">◈</div>
+  <div id="loading-text">Loading graph...</div>
+</div>
+
+<div id="topbar">
+  <div id="logo">◈ GoBP</div>
+  <div id="project-name">—</div>
+  <div id="stats">
+    <div>Nodes: <span id="stat-nodes">0</span></div>
+    <div>Edges: <span id="stat-edges">0</span></div>
+  </div>
+  <button id="refresh-btn" onclick="loadGraph()">↺ Refresh</button>
+</div>
+
+<div id="search-wrap">
+  <input id="search" type="text" placeholder="Search nodes..." oninput="onSearch(this.value)">
+</div>
+
+<div id="filters">
+  <div id="filter-title">Node Types</div>
+  <div id="filter-list"></div>
+</div>
+
+<div id="graph-container"></div>
+
+<div id="panel">
+  <div id="panel-header">
+    <div id="panel-title">Node Detail</div>
+    <button id="panel-close" onclick="closePanel()">×</button>
+  </div>
+  <div id="panel-body" id="panel-content"></div>
+</div>
+
+<div id="tooltip">
+  <div id="tooltip-name"></div>
+  <div id="tooltip-type"></div>
+</div>
+
+<!-- 3d-force-graph via CDN -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://unpkg.com/3d-force-graph@1/dist/3d-force-graph.min.js"></script>
+
+<script>
+// -- Color config --------------------------------------------------------------
+const TYPE_COLORS = {
+  Decision:  '#f59e0b',  // amber
+  Node:      '#06b6d4',  // cyan
+  Idea:      '#8b5cf6',  // violet
+  Session:   '#10b981',  // green
+  Document:  '#3b82f6',  // blue
+  Lesson:    '#ef4444',  // red
+  Concept:   '#eab308',  // gold
+  TestKind:  '#14b8a6',  // teal
+  TestCase:  '#f97316',  // orange
+};
+
+const PRIORITY_SIZE = {
+  critical: 8,
+  high: 5,
+  medium: 3,
+  low: 2,
+};
+
+const EDGE_COLORS = {
+  implements:    '#f59e0b88',
+  relates_to:    '#ffffff22',
+  supersedes:    '#ef444488',
+  discovered_in: '#10b98144',
+  references:    '#3b82f644',
+  covers:        '#8b5cf644',
+  of_kind:       '#14b8a644',
+};
+
+// -- State ---------------------------------------------------------------------
+let graph = null;
+let graphData = { nodes: [], links: [] };
+let activeFilters = new Set();
+let searchQuery = '';
+
+// -- Init graph ----------------------------------------------------------------
+function initGraph() {
+  graph = ForceGraph3D()(document.getElementById('graph-container'))
+    .backgroundColor('#0a0a0f')
+    .nodeId('id')
+    .nodeLabel(node => `${node.name} [${node.type}]`)
+    .nodeVal(node => PRIORITY_SIZE[node.priority] || 3)
+    .nodeColor(node => {
+      const color = TYPE_COLORS[node.type] || '#ffffff';
+      // Dim if filtered out
+      if (activeFilters.size > 0 && activeFilters.has(node.type)) {
+        return '#ffffff11';
+      }
+      if (searchQuery && !node.name.toLowerCase().includes(searchQuery)) {
+        return '#ffffff11';
+      }
+      return color;
+    })
+    .nodeOpacity(0.9)
+    .linkSource('source')
+    .linkTarget('target')
+    .linkColor(link => EDGE_COLORS[link.type] || '#ffffff22')
+    .linkWidth(link => link.type === 'implements' ? 1.5 : 0.5)
+    .linkDirectionalArrowLength(3)
+    .linkDirectionalArrowRelPos(1)
+    .linkDirectionalParticles(link => link.type === 'implements' ? 2 : 0)
+    .linkDirectionalParticleSpeed(0.004)
+    .onNodeClick(node => openPanel(node))
+    .onNodeHover(node => {
+      document.getElementById('graph-container').style.cursor = node ? 'pointer' : 'default';
+      showTooltip(node);
+    });
+}
+
+// -- Load data -----------------------------------------------------------------
+async function loadGraph() {
+  try {
+    const res = await fetch('/api/graph');
+    const data = await res.json();
+
+    graphData = data;
+
+    document.getElementById('project-name').textContent = data.meta?.project_name || '';
+    document.getElementById('stat-nodes').textContent = data.meta?.node_count || 0;
+    document.getElementById('stat-edges').textContent = data.meta?.link_count || 0;
+
+    buildFilters(data.nodes);
+    graph.graphData({ nodes: data.nodes, links: data.links });
+
+    document.getElementById('loading').style.display = 'none';
+  } catch (e) {
+    document.getElementById('loading-text').textContent = 'Error loading graph: ' + e.message;
+  }
+}
+
+// -- Filters -------------------------------------------------------------------
+function buildFilters(nodes) {
+  const types = [...new Set(nodes.map(n => n.type))].sort();
+  const list = document.getElementById('filter-list');
+  list.innerHTML = '';
+
+  types.forEach(type => {
+    const color = TYPE_COLORS[type] || '#ffffff';
+    const count = nodes.filter(n => n.type === type).length;
+    const item = document.createElement('label');
+    item.className = 'filter-item';
+    item.innerHTML = `
+      <input type="checkbox" checked onchange="toggleFilter('${type}', this.checked)">
+      <div class="filter-dot" style="background:${color}"></div>
+      <span>${type} <span style="color:#475569">(${count})</span></span>
+    `;
+    list.appendChild(item);
+  });
+}
+
+function toggleFilter(type, checked) {
+  if (checked) {
+    activeFilters.delete(type);
+  } else {
+    activeFilters.add(type);
+  }
+  graph.nodeColor(graph.nodeColor()); // force re-render
+}
+
+// -- Search --------------------------------------------------------------------
+function onSearch(value) {
+  searchQuery = value.toLowerCase();
+  graph.nodeColor(graph.nodeColor()); // force re-render
+
+  if (searchQuery) {
+    const match = graphData.nodes.find(n =>
+      n.name.toLowerCase().includes(searchQuery)
+    );
+    if (match) {
+      graph.centerAt(
+        match.x, match.y, match.z,
+        1000
+      );
+    }
+  }
+}
+
+// -- Panel ---------------------------------------------------------------------
+function openPanel(node) {
+  const panel = document.getElementById('panel');
+  const body = document.getElementById('panel-body');
+
+  const priorityClass = `priority-${node.priority || 'medium'}`;
+
+  body.innerHTML = `
+    <div class="field">
+      <div class="field-label">ID</div>
+      <div class="field-value" style="color:#64748b;font-size:11px">${node.id}</div>
+    </div>
+    <div class="field">
+      <div class="field-label">Name</div>
+      <div class="field-value">${node.name}</div>
+    </div>
+    <div class="field">
+      <div class="field-label">Type</div>
+      <div class="field-value">
+        <span style="color:${TYPE_COLORS[node.type] || '#fff'}">${node.type}</span>
+      </div>
+    </div>
+    <div class="field">
+      <div class="field-label">Priority</div>
+      <div class="field-value">
+        <span class="priority-badge ${priorityClass}">${node.priority || 'medium'}</span>
+      </div>
+    </div>
+    <div class="field">
+      <div class="field-label">Status</div>
+      <div class="field-value" style="color:#94a3b8">${node.status || '—'}</div>
+    </div>
+    ${node.description ? `
+    <div class="field">
+      <div class="field-label">Description</div>
+      <div class="field-value" style="color:#94a3b8;font-size:12px;line-height:1.5">${node.description}</div>
+    </div>` : ''}
+    ${node.topic ? `
+    <div class="field">
+      <div class="field-label">Topic</div>
+      <div class="field-value" style="color:#64748b;font-size:11px">${node.topic}</div>
+    </div>` : ''}
+    <div class="field" style="margin-top:16px;padding-top:16px;border-top:1px solid #1e1e2e">
+      <div class="field-label">GoBP Query</div>
+      <div class="field-value" style="color:#f59e0b;font-size:11px;background:#0a0a0f;padding:8px;border-radius:4px;margin-top:4px">
+        gobp(query="get: ${node.id}")
+      </div>
+    </div>
+  `;
+
+  panel.classList.add('open');
+
+  // Focus camera on node
+  graph.centerAt(node.x, node.y, node.z, 1000);
+  graph.zoom(2, 1000);
+}
+
+function closePanel() {
+  document.getElementById('panel').classList.remove('open');
+}
+
+// -- Tooltip -------------------------------------------------------------------
+function showTooltip(node) {
+  const tooltip = document.getElementById('tooltip');
+  if (!node) {
+    tooltip.style.display = 'none';
+    return;
+  }
+  document.getElementById('tooltip-name').textContent = node.name;
+  document.getElementById('tooltip-type').textContent = `${node.type} · ${node.priority || 'medium'}`;
+  tooltip.style.display = 'block';
+}
+
+document.addEventListener('mousemove', e => {
+  const tooltip = document.getElementById('tooltip');
+  if (tooltip.style.display !== 'none') {
+    tooltip.style.left = (e.clientX + 12) + 'px';
+    tooltip.style.top = (e.clientY - 8) + 'px';
+  }
+});
+
+// -- Boot ----------------------------------------------------------------------
+initGraph();
+loadGraph();
+</script>
+</body>
+</html>
