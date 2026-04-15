@@ -130,6 +130,26 @@ def parse_query(query: str) -> tuple[str, str, dict[str, Any]]:
     # Parse params: key='value' or key=value or bare value
     params: dict[str, Any] = dict(base_params)
 
+    # Special case: edge: from_id --type--> to_id
+    if action == "edge":
+        edge_pattern = re.compile(
+            r"^([\w:]+)\s+--(\w+)-->\s+([\w:]+)(.*)?$"
+        )
+        m = edge_pattern.match(rest)
+        if m:
+            params["from"] = m.group(1).strip()
+            params["edge_type"] = m.group(2).strip()
+            params["to"] = m.group(3).strip()
+            # Parse remaining key=value pairs
+            extra = m.group(4).strip() if m.group(4) else ""
+            if extra:
+                for km in re.finditer(r"(\w+)='([^']*)'|(\w+)=(\S+)", extra):
+                    if km.group(1):
+                        params[km.group(1)] = km.group(2)
+                    elif km.group(3):
+                        params[km.group(3)] = km.group(4)
+        return action, "", params
+
     # Try key=value parsing first
     kv_pattern = re.compile(r"(\w+)='([^']*)'|(\w+)=\"([^\"]*)\"|(\w+)=(\S+)")
     matches = list(kv_pattern.finditer(rest))
@@ -276,6 +296,63 @@ async def dispatch(
                 args["session_id"] = params["session_id"]
             result = tools_write.session_log(index, project_root, args)
 
+        elif action == "edge":
+            from_id = params.get("from", "")
+            to_id = params.get("to", "")
+            edge_type = params.get("edge_type", "relates_to")
+            reason = params.get("reason", "")
+
+            if not from_id or not to_id:
+                result = {
+                    "ok": False,
+                    "error": "edge: requires format: node:a --edge_type--> node:b",
+                    "hint": "Example: gobp(query=\"edge: node:flow_auth --implements--> node:pop_protocol\")",
+                }
+            else:
+                from gobp.core.loader import load_schema
+                from gobp.core.mutator import create_edge
+                from pathlib import Path as _Path
+
+                schema_dir = project_root / "gobp" / "schema"
+                edges_schema = load_schema(schema_dir / "core_edges.yaml")
+
+                edge = {
+                    "from": from_id,
+                    "to": to_id,
+                    "type": edge_type,
+                }
+                if reason:
+                    edge["reason"] = reason
+
+                # Validate both nodes exist
+                from_node = index.get_node(from_id)
+                to_node = index.get_node(to_id)
+                if not from_node:
+                    result = {"ok": False, "error": f"Node not found: {from_id}"}
+                elif not to_node:
+                    result = {"ok": False, "error": f"Node not found: {to_id}"}
+                else:
+                    try:
+                        create_edge(
+                            gobp_root=project_root,
+                            edge=edge,
+                            schema=edges_schema,
+                            actor="gobp-dispatcher",
+                            edge_file_name="semantic_edges.yaml",
+                        )
+                        result = {
+                            "ok": True,
+                            "edge_created": {
+                                "from": from_id,
+                                "from_name": from_node.get("name", ""),
+                                "type": edge_type,
+                                "to": to_id,
+                                "to_name": to_node.get("name", ""),
+                            }
+                        }
+                    except Exception as e:
+                        result = {"ok": False, "error": str(e)}
+
         # -- Import actions ----------------------------------------------------
         elif action == "import":
             source_path = params.get("query") or params.get("source_path", "")
@@ -358,6 +435,8 @@ PROTOCOL_GUIDE = {
         "lock:Decision topic='x' what='y' why='z'": "Lock a decision",
         "session:start actor='x' goal='y'": "Start a session",
         "session:end outcome='x' handoff='y'": "End a session",
+        "edge: node:a --relates_to--> node:b": "Create semantic edge",
+        "edge: node:a --implements--> node:b reason='x'": "Create edge with reason",
         "import: path/to/doc.md session_id='x'": "Propose doc import",
         "commit: imp:proposal-id": "Commit approved proposal",
         "validate: <scope>": "Validate graph (all|nodes|edges)",
