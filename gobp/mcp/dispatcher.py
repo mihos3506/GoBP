@@ -83,8 +83,27 @@ def parse_query(query: str) -> tuple[str, str, dict[str, Any]]:
     if not rest:
         return action, node_type, {}
 
+    # Action subcommand shorthand: "session:start actor=x" -> query=start
+    if action == "session" and node_type == "" and " " in rest:
+        maybe_sub, remainder = rest.split(" ", 1)
+        if "=" not in maybe_sub:
+            node_type = ""
+            rest = remainder
+            base_params: dict[str, Any] = {"query": maybe_sub}
+        else:
+            base_params = {}
+    else:
+        base_params = {}
+
+    # Typed find shorthand: "find:Decision auth" -> type=Decision, query=auth
+    if action == "find" and node_type == "" and " " in rest:
+        maybe_type, remainder = rest.split(" ", 1)
+        if "=" not in maybe_type:
+            node_type = maybe_type
+            return action, node_type, {"query": remainder.strip()}
+
     # Parse params: key='value' or key=value or bare value
-    params: dict[str, Any] = {}
+    params: dict[str, Any] = dict(base_params)
 
     # Try key=value parsing first
     kv_pattern = re.compile(r"(\w+)='([^']*)'|(\w+)=\"([^\"]*)\"|(\w+)=(\S+)")
