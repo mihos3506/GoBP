@@ -28,6 +28,7 @@ import mcp.types as types
 from mcp.server import Server
 from mcp.server.stdio import stdio_server
 
+from gobp.core.cache import get_cache
 from gobp.core.graph import GraphIndex
 from gobp.mcp.tools import advanced as tools_advanced
 from gobp.mcp.tools import import_ as tools_import
@@ -334,10 +335,24 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[types.TextCont
         result = {"ok": False, "error": f"Unknown tool: {name}"}
     else:
         try:
+            if name == "gobp_overview":
+                cache = get_cache()
+                cached = cache.get("gobp_overview")
+                if cached is not None:
+                    return [
+                        types.TextContent(
+                            type="text", text=json.dumps(cached, ensure_ascii=False)
+                        )
+                    ]
             if inspect.iscoroutinefunction(handler):
                 result = await handler(_index, _project_root, arguments)
             else:
                 result = handler(_index, _project_root, arguments)
+            if name == "gobp_overview" and isinstance(result, dict) and result.get("ok"):
+                get_cache().set("gobp_overview", result, ttl=60)
+            if name in ("node_upsert", "decision_lock", "session_log", "import_commit"):
+                if isinstance(result, dict) and result.get("ok"):
+                    get_cache().invalidate_all()
             if name in _WRITE_TOOLS and isinstance(result, dict) and result.get("ok"):
                 _index = _load_index(_project_root)
                 logger.info(f"Index reloaded after {name}")
