@@ -127,6 +127,21 @@ def gobp_overview(index: GraphIndex, project_root: Path, args: dict[str, Any]) -
         s = tc.get("status", "DRAFT")
         cases_by_status[s] = cases_by_status.get(s, 0) + 1
 
+    # Priority summary
+    priority_counts: dict[str, int] = {"critical": 0, "high": 0, "medium": 0, "low": 0}
+    for node in all_nodes:
+        p = node.get("priority", "medium")
+        if p in priority_counts:
+            priority_counts[p] += 1
+        else:
+            priority_counts["medium"] += 1
+
+    critical_nodes = [
+        {"id": n.get("id"), "type": n.get("type"), "name": n.get("name", "")}
+        for n in all_nodes
+        if n.get("priority") == "critical"
+    ][:10]
+
     return {
         "ok": True,
         "project": {
@@ -156,6 +171,13 @@ def gobp_overview(index: GraphIndex, project_root: Path, args: dict[str, Any]) -
             "kinds_by_group": kinds_by_group,
             "test_cases_total": len(test_case_nodes),
             "test_cases_by_status": cases_by_status,
+        },
+        "priority_summary": {
+            "critical": priority_counts["critical"],
+            "high": priority_counts["high"],
+            "medium": priority_counts["medium"],
+            "low": priority_counts["low"],
+            "critical_nodes": critical_nodes,
         },
         "interface": PROTOCOL_GUIDE,
     }
