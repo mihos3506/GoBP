@@ -38,18 +38,24 @@ def _truncate(text: str | None, max_chars: int = 100) -> str:
 
 def _node_summary(node: dict[str, Any], index: GraphIndex | None = None) -> dict[str, Any]:
     """Return lightweight node summary (~50 tokens)."""
+    import sys
+
     node_id = node.get("id", "")
     edge_count = 0
     if index and node_id:
         edge_count = len(index.get_edges_from(node_id)) + len(index.get_edges_to(node_id))
+    estimated_size = sys.getsizeof(str(node)) // 10
     return {
         "id": node_id,
         "type": node.get("type", ""),
         "name": node.get("name", ""),
         "status": node.get("status", ""),
         "priority": node.get("priority", "medium"),
+        "priority_score": node.get("priority_score"),
         "edge_count": edge_count,
         "detail_available": True,
+        "estimated_tokens": max(50, estimated_size),
+        "hint": f"gobp(query=\"get: {node_id} mode=brief\") for more detail",
     }
 
 
