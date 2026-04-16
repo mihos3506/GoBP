@@ -382,11 +382,15 @@ async def dispatch(
                 args["sort"] = params["sort"]
             if "direction" in params:
                 args["direction"] = params["direction"]
+            if "mode" in params:
+                args["mode"] = params["mode"]
             result = tools_read.find(index, project_root, args)
 
         elif action in ("get", "context"):
             node_id = params.get("query") or params.get("id") or params.get("node_id", "")
             ctx_args: dict[str, Any] = {"node_id": node_id}
+            if "mode" in params:
+                ctx_args["mode"] = params["mode"]
             if "brief" in params:
                 ctx_args["brief"] = params["brief"]
             if "edge_limit" in params:
@@ -453,6 +457,8 @@ async def dispatch(
             args = {"node_id": node_id, "direction": direction}
             if edge_type:
                 args["edge_type"] = edge_type
+            if "mode" in params:
+                args["mode"] = params["mode"]
             if "page_size" in params:
                 args["page_size"] = params["page_size"]
             if "cursor" in params:
@@ -901,8 +907,11 @@ PROTOCOL_GUIDE = {
         "overview:": "Project stats (slim); full_interface=true for full action catalog",
         "overview: full_interface=true": "Same as overview with full PROTOCOL_GUIDE (large JSON)",
         "find: <keyword>": "Search any node by keyword",
+        "find: <keyword> mode=summary": "Lightweight results (~50 tokens/node)",
+        "find: <keyword> mode=brief": "Medium results (~150 tokens/node)",
         "find:<NodeType> <keyword>": "Search by type + keyword",
         "get: <node_id>": "Full node + edges + decisions",
+        "get: <node_id> mode=brief": "Brief node detail",
         "signature: <node_id>": "Minimal node summary",
         "recent: <n>": "Latest N sessions",
         "decisions: <topic>": "Locked decisions for topic",
@@ -913,6 +922,7 @@ PROTOCOL_GUIDE = {
         "tests: <node_id>": "Linked TestCase nodes",
         "tests: <node_id> status='FAILING'": "Filter tests by status",
         "related: <node_id>": "Neighbor nodes summary",
+        "related: <node_id> mode=summary": "Lightweight neighbors",
         "related: <node_id> direction='outgoing'": "Only outgoing neighbors",
         "template: Flow": "Declaration template for Flow node",
         "template:": "All NodeType templates",

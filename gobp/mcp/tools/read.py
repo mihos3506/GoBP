@@ -433,7 +433,13 @@ def context(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> dict
     if not node:
         return {"ok": False, "error": f"Node not found: {node_id}"}
 
-    brief = _truthy(args.get("brief"))
+    mode = str(args.get("mode", "")).lower()
+    if not mode:
+        mode = "brief" if _truthy(args.get("brief")) else "full"
+    if mode not in {"summary", "brief", "full"}:
+        mode = "full"
+
+    brief = mode == "brief"
     if brief:
         edge_limit = int(args.get("edge_limit", 30))
         edge_limit = max(1, min(edge_limit, 200))
@@ -530,6 +536,26 @@ def context(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> dict
                 slim[tk] = _truncate(str(node[tk]), 400)
         node_out = slim
 
+    if mode == "summary":
+        return {
+            "ok": True,
+            "node": _node_summary(node, index),
+            "mode": mode,
+        }
+
+    if mode == "brief":
+        return {
+            "ok": True,
+            "node": _node_brief(node, index),
+            "mode": mode,
+            "brief": True,
+            "edge_count": len(outgoing_raw) + len(incoming_raw),
+            "outgoing_total": len(outgoing_raw),
+            "incoming_total": len(incoming_raw),
+            "outgoing_truncated": len(outgoing_raw) > len(outgoing),
+            "incoming_truncated": len(incoming_raw) > len(incoming),
+        }
+
     out: dict[str, Any] = {
         "ok": True,
         "node": node_out,
@@ -538,6 +564,7 @@ def context(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> dict
         "decisions": decisions,
         "invariants": [],  # Extension schemas; empty in core v1
         "references": references,
+        "mode": mode,
     }
     if brief:
         out["brief"] = True
@@ -886,6 +913,9 @@ def node_related(index: GraphIndex, project_root: Path, args: dict[str, Any]) ->
         return {"ok": False, "error": f"Node not found: {node_id}"}
 
     direction = args.get("direction", "both")
+    mode = str(args.get("mode", "summary")).lower()
+    if mode not in {"summary", "brief", "full"}:
+        mode = "summary"
     edge_type_filter = args.get("edge_type")
 
     outgoing = []
@@ -894,13 +924,22 @@ def node_related(index: GraphIndex, project_root: Path, args: dict[str, Any]) ->
             if edge_type_filter and edge.get("type") != edge_type_filter:
                 continue
             neighbor = index.get_node(edge.get("to", ""))
-            outgoing.append({
-                "edge_type": edge.get("type", ""),
-                "node_id": edge.get("to", ""),
-                "node_name": neighbor.get("name", "") if neighbor else "",
-                "node_type": neighbor.get("type", "") if neighbor else "",
-                "priority": neighbor.get("priority", "medium") if neighbor else "medium",
-            })
+            if mode == "summary" or neighbor is None:
+                outgoing.append({
+                    "edge_type": edge.get("type", ""),
+                    "node_id": edge.get("to", ""),
+                    "node_name": neighbor.get("name", "") if neighbor else "",
+                    "node_type": neighbor.get("type", "") if neighbor else "",
+                    "priority": neighbor.get("priority", "medium") if neighbor else "medium",
+                })
+            elif mode == "brief":
+                brief_neighbor = _node_summary(neighbor, index)
+                brief_neighbor["edge_type"] = edge.get("type", "")
+                outgoing.append(brief_neighbor)
+            else:
+                full_neighbor = dict(neighbor)
+                full_neighbor["edge_type"] = edge.get("type", "")
+                outgoing.append(full_neighbor)
 
     incoming = []
     if direction in ("incoming", "both"):
@@ -908,13 +947,22 @@ def node_related(index: GraphIndex, project_root: Path, args: dict[str, Any]) ->
             if edge_type_filter and edge.get("type") != edge_type_filter:
                 continue
             neighbor = index.get_node(edge.get("from", ""))
-            incoming.append({
-                "edge_type": edge.get("type", ""),
-                "node_id": edge.get("from", ""),
-                "node_name": neighbor.get("name", "") if neighbor else "",
-                "node_type": neighbor.get("type", "") if neighbor else "",
-                "priority": neighbor.get("priority", "medium") if neighbor else "medium",
-            })
+            if mode == "summary" or neighbor is None:
+                incoming.append({
+                    "edge_type": edge.get("type", ""),
+                    "node_id": edge.get("from", ""),
+                    "node_name": neighbor.get("name", "") if neighbor else "",
+                    "node_type": neighbor.get("type", "") if neighbor else "",
+                    "priority": neighbor.get("priority", "medium") if neighbor else "medium",
+                })
+            elif mode == "brief":
+                brief_neighbor = _node_summary(neighbor, index)
+                brief_neighbor["edge_type"] = edge.get("type", "")
+                incoming.append(brief_neighbor)
+            else:
+                full_neighbor = dict(neighbor)
+                full_neighbor["edge_type"] = edge.get("type", "")
+                incoming.append(full_neighbor)
 
     page_size = min(int(args.get("page_size", 50)), 200)
     if page_size < 1:
@@ -948,6 +996,7 @@ def node_related(index: GraphIndex, project_root: Path, args: dict[str, Any]) ->
 
     return {
         "ok": True,
+        "mode": mode,
         "node_id": node_id,
         "node_name": node.get("name", ""),
         "node_type": node.get("type", ""),
