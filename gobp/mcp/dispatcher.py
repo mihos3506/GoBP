@@ -485,12 +485,19 @@ async def dispatch(
         # -- Write actions -----------------------------------------------------
         elif action == "create":
             node_type = _normalize_type(node_type or params.pop("type", "Node"))
+            name = params.get("name", "")
+            testkind = params.get("testkind", params.get("kind_id", ""))
 
             # Auto-generate ID if not provided
             node_id = params.pop("id", params.pop("node_id", None))
             auto_generated_id = False
             if not node_id:
-                node_id = generate_external_id(node_type, project_root)
+                node_id = generate_external_id(
+                    node_type,
+                    name=name,
+                    testkind=testkind,
+                    gobp_root=project_root,
+                )
                 auto_generated_id = True
 
             create_fields = {
@@ -563,6 +570,8 @@ async def dispatch(
 
         elif action == "upsert":
             node_type = _normalize_type(node_type or params.pop("type", "Node"))
+            name = params.get("name", "")
+            testkind = params.get("testkind", params.get("kind_id", ""))
             dedupe_key = params.pop("dedupe_key", "name")
             dedupe_value = params.get(dedupe_key, "")
             session_id = params.get("session_id", "")
@@ -590,7 +599,12 @@ async def dispatch(
             else:
                 node_id = existing_node.get("id") if existing_node else None
                 if not node_id:
-                    node_id = generate_external_id(node_type, project_root)
+                    node_id = generate_external_id(
+                        node_type,
+                        name=name,
+                        testkind=testkind,
+                        gobp_root=project_root,
+                    )
                 args = {
                     "id": node_id,
                     "type": node_type,
