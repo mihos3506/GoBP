@@ -89,7 +89,7 @@ def _tokenize_rest(rest: str) -> list[str]:
     tokens: list[str] = []
     current: list[str] = []
     in_quote = False
-    quote_char = None
+    quote_char: str | None = None
 
     for char in rest:
         if not in_quote and char in ("'", '"'):
