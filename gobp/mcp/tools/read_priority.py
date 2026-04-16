@@ -61,6 +61,8 @@ def recompute_priorities(
                     "ok": False,
                     "error": "session_id required unless dry_run=true",
                 }
+            update_fields = {k: v for k, v in node.items() if k not in ("id", "type", "name", "created", "updated")}
+            update_fields.update({"priority_score": score, "priority": label})
             upsert_result = node_upsert(
                 index,
                 project_root,
@@ -68,10 +70,7 @@ def recompute_priorities(
                     "id": node_id,
                     "type": node.get("type", "Node"),
                     "name": node.get("name", ""),
-                    "fields": {
-                        "priority_score": score,
-                        "priority": label,
-                    },
+                    "fields": update_fields,
                     "session_id": session_id,
                 },
             )
