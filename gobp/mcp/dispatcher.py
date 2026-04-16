@@ -331,6 +331,24 @@ async def dispatch(
         if action == "overview":
             result = tools_read.gobp_overview(index, project_root, params)
 
+        elif action == "version":
+            import gobp as _gobp
+
+            result = {
+                "ok": True,
+                "protocol_version": "2.0",
+                "gobp_version": getattr(_gobp, "__version__", "0.1.0"),
+                "schema_version": "2.1",
+                "deprecated_actions": [],
+                "supported_actions": list(PROTOCOL_GUIDE.get("actions", {}).keys()),
+                "changelog": [
+                    "v2.0 (Wave 14): version: action, read-only mode, schema governance",
+                    "v1.5 (Wave 13): pagination, upsert:, stats:, guardrails",
+                    "v1.0 (Wave 10A): gobp() single tool, structured query protocol",
+                ],
+                "tip": "Call gobp(query='overview:') to see current project state.",
+            }
+
         elif action == "find":
             args: dict[str, Any] = {}
             if "query" in params:
@@ -826,9 +844,10 @@ def _get_hint(action: str, node_type: str) -> str:
 # -- Protocol guide (included in gobp_overview response) ----------------------
 
 PROTOCOL_GUIDE = {
-    "protocol": "gobp query protocol v1",
+    "protocol": "gobp query protocol v2",
     "format": "<action>:<NodeType> <key>='<value>' ...",
     "actions": {
+        "version:": "Protocol version + changelog + deprecations",
         "overview:": "Project stats and orientation",
         "find: <keyword>": "Search any node by keyword",
         "find:<NodeType> <keyword>": "Search by type + keyword",

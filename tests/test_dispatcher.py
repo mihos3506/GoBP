@@ -129,7 +129,7 @@ def test_dispatch_overview_has_interface(disp_root: Path):
     index = GraphIndex.load_from_disk(disp_root)
     result = asyncio.run(dispatch("overview:", index, disp_root))
     assert "interface" in result
-    assert result["interface"]["protocol"] == "gobp query protocol v1"
+    assert result["interface"]["protocol"] == "gobp query protocol v2"
 
 
 def test_dispatch_unknown_action_fallback(disp_root: Path):
