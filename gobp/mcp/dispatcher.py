@@ -48,7 +48,8 @@ from typing import Any
 from gobp.core.graph import GraphIndex
 
 
-_CANONICAL_NODE_TYPES: dict[str, str] = {
+# Canonical NodeType mapping — case-insensitive input → PascalCase output
+_TYPE_CANONICAL: dict[str, str] = {
     "node": "Node",
     "idea": "Idea",
     "decision": "Decision",
@@ -70,10 +71,21 @@ _CANONICAL_NODE_TYPES: dict[str, str] = {
 }
 
 
+def _normalize_type(raw: str) -> str:
+    """Normalize NodeType to canonical PascalCase.
+
+    Case-insensitive: "decision", "DECISION", "DeciSion" → "Decision"
+    Unknown types passed through unchanged.
+    """
+    cleaned = re.sub(r"[^a-zA-Z0-9]+", "", raw).casefold()
+    if not cleaned:
+        return raw
+    return _TYPE_CANONICAL.get(cleaned, raw)
+
+
 def _normalize_node_type(node_type: str) -> str:
     """Normalize user-provided node type to canonical schema casing."""
-    cleaned = re.sub(r"[^a-zA-Z0-9]+", "", node_type).casefold()
-    return _CANONICAL_NODE_TYPES.get(cleaned, node_type)
+    return _normalize_type(node_type)
 
 
 def _get_type_prefix(node_type: str) -> str:
@@ -259,7 +271,7 @@ def parse_query(query: str) -> tuple[str, str, dict[str, Any]]:
         first = tokens[0]
         first_value = first.strip("'\"")
         normalized_first = _normalize_node_type(first_value)
-        if "=" not in first and ":" not in first and normalized_first in _CANONICAL_NODE_TYPES.values():
+        if "=" not in first and ":" not in first and normalized_first in _TYPE_CANONICAL.values():
             node_type = normalized_first
             tokens = tokens[1:]
 
@@ -442,9 +454,32 @@ async def dispatch(
                 args["cursor"] = params["cursor"]
             result = tools_read.node_related(index, project_root, args)
 
+        elif action == "template":
+            node_type_arg = _normalize_type(
+                str(params.get("query") or params.get("node_type") or node_type or "")
+            )
+            result = tools_read.node_template(
+                index, project_root, {"query": node_type_arg}
+            )
+
+        elif action == "interview":
+            node_id = str(params.get("node_id") or params.get("query") or "")
+            answered_raw = params.get("answered", "")
+            if isinstance(answered_raw, list):
+                answered_list = [str(a).strip() for a in answered_raw if str(a).strip()]
+            elif answered_raw:
+                answered_list = [a.strip() for a in str(answered_raw).split(",") if a.strip()]
+            else:
+                answered_list = []
+            result = tools_read.node_interview(
+                index,
+                project_root,
+                {"node_id": node_id, "answered": answered_list},
+            )
+
         # -- Write actions -----------------------------------------------------
         elif action == "create":
-            node_type = node_type or params.pop("type", "Node")
+            node_type = _normalize_type(node_type or params.pop("type", "Node"))
 
             # Auto-generate ID if not provided
             node_id = params.pop("id", params.pop("node_id", None))
@@ -504,9 +539,11 @@ async def dispatch(
 
         elif action == "update":
             node_id = params.pop("id", params.pop("node_id", ""))
+            raw_update_type = node_type or params.pop("type", "")
+            update_type = _normalize_type(raw_update_type) if raw_update_type else ""
             args = {
                 "id": node_id,
-                "type": node_type or params.pop("type", ""),
+                "type": update_type,
                 "name": params.get("name", ""),
                 "fields": {k: v for k, v in params.items() if k not in ("name", "type")},
                 "session_id": params.get("session_id", ""),
@@ -526,7 +563,7 @@ async def dispatch(
                 result = tools_write.node_upsert(index, project_root, args)
 
         elif action == "upsert":
-            node_type = node_type or params.pop("type", "Node")
+            node_type = _normalize_type(node_type or params.pop("type", "Node"))
             dedupe_key = params.pop("dedupe_key", "name")
             dedupe_value = params.get(dedupe_key, "")
             session_id = params.get("session_id", "")
@@ -871,6 +908,12 @@ PROTOCOL_GUIDE = {
         "tests: <node_id> status='FAILING'": "Filter tests by status",
         "related: <node_id>": "Neighbor nodes summary",
         "related: <node_id> direction='outgoing'": "Only outgoing neighbors",
+        "template: Flow": "Declaration template for Flow node",
+        "template:": "All NodeType templates",
+        "interview: node:flow_auth": "Interview questions for node relationships",
+        "interview: node:x answered='implements,references'": (
+            "Continue interview, skip declared edges"
+        ),
         "create:<NodeType> name='x' session_id='y'": "Create a new node",
         "create:Node name='x' session_id='y' dry_run=true": "Preview without writing",
         "upsert:Node dedupe_key='name' name='x' session_id='y'": "Create or update by key",
