@@ -68,7 +68,7 @@ class GraphIndex:
 
         Expected folder structure:
             <gobp_root>/
-                gobp/schema/core_nodes.yaml
+                gobp/schema/core_nodes.yaml   (optional; if missing, uses installed package schema)
                 gobp/schema/core_edges.yaml
             <gobp_root>/.gobp/
                 nodes/*.md          (node files, optional)
@@ -94,8 +94,11 @@ class GraphIndex:
             except Exception:
                 index._legacy_id_map = {}
 
-        package_root = gobp_root / "gobp"
-        schema_dir = package_root / "schema"
+        schema_dir = gobp_root / "gobp" / "schema"
+        if not schema_dir.exists():
+            from gobp.core.loader import package_schema_dir
+
+            schema_dir = package_schema_dir()
         index._nodes_schema = load_schema(schema_dir / "core_nodes.yaml")
         index._edges_schema = load_schema(schema_dir / "core_edges.yaml")
 
