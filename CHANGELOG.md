@@ -5,6 +5,41 @@ Format: [Wave N — Title] with date, what was added/changed/fixed.
 
 ---
 
+## [Wave 16A01] — Response Tiers + Metadata Linter + Perf Fix + Priority System — 2026-04-16
+
+### Improvements (from Cursor production feedback)
+
+- **I1 — Response tiers**: mode=summary|brief|full for find/get/related
+  - summary: id/type/name/status/priority/edge_count (~50 tokens)
+  - brief: summary + key fields + edge types (~150 tokens)
+  - full: unchanged (current behavior)
+- **I2 — Batch detail**: get_batch: ids='a,b,c' mode=brief
+  - Fetch up to 50 nodes in one call
+- **I3 — Metadata linter**: validate: metadata
+  - Score 0-100 per node type
+  - Flags missing description/spec_source/rule etc.
+- **I4 — Perf test stability**:
+  - node_upsert: 500ms → 700ms
+  - gobp_overview: 100ms → 150ms
+  - test_perf_node_upsert_v2: median of 3 runs
+- **I5 — Numeric priority**:
+  - priority_score = edge_count + tier_weight
+  - TIER_WEIGHTS: Invariant=20, Decision=15, Engine/Flow/Entity=10...
+  - Threshold: 0-4=low, 5-9=medium, 10-19=high, 20+=critical
+  - recompute: priorities → batch update from graph topology
+- **I6 — Server hints**: estimated_tokens + detail_available in summary
+
+### Changed
+- tests/test_performance_v2.py: thresholds + median strategy
+- gobp/mcp/tools/read.py: _node_summary, _node_brief, get_batch,
+  metadata_lint, recompute_priorities, mode param on find/get/related
+- gobp/core/graph.py: TIER_WEIGHTS, priority_label, compute_priority_score
+- gobp/mcp/dispatcher.py: mode params, get_batch:, recompute:, validate: metadata
+
+### Total: 1 MCP tool, 32 actions, 367 tests
+
+---
+
 ## [Wave 14] — Schema Governance + Protocol Versioning + Access Model — 2026-04-15
 
 ### Problems solved

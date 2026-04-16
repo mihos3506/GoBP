@@ -35,6 +35,14 @@ gobp(query="<action>:<NodeType> <key>='<value>' ...")
 | `overview:` | Project stats (slim); small `interface_summary` + pagination hint |
 | `overview: full_interface=true` | Same stats + full `interface` / PROTOCOL_GUIDE (large) |
 | `get: <node_id> brief=true` | Node context with capped edges + truncated text fields |
+| `find: <keyword> mode=summary` | Lightweight results (~50 tokens/node) |
+| `find: <keyword> mode=brief` | Medium results (~150 tokens/node) |
+| `get: <node_id> mode=brief` | Brief node detail |
+| `get_batch: ids='a,b,c' mode=brief` | Fetch multiple nodes |
+| `validate: metadata` | Check nodes for missing required fields |
+| `validate: metadata type=Flow` | Check specific node type |
+| `recompute: priorities session_id='x'` | Recompute priorities from graph |
+| `recompute: priorities dry_run=true` | Preview priority changes |
 | `find: <keyword>` | Search any node |
 | `find: <keyword> page_size=50` | Paginated search |
 | `find: <keyword> cursor='node:x' page_size=50` | Next page |
