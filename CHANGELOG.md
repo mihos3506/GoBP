@@ -5,6 +5,52 @@ Format: [Wave N — Title] with date, what was added/changed/fixed.
 
 ---
 
+## [Wave 16A03] — New ID Format: slug.group.number — 2026-04-16
+
+### Why
+External IDs like `ops.flow:000001` are opaque.
+AI and humans cannot tell what a node is from its ID alone.
+
+### New format
+```
+Standard:  {slug}.{group}.{8digits}
+TestCase:  {slug}.test.{testkind}.{8digits}
+Session:   meta.session.{date}.{hash}
+
+Examples:
+  verify_gate.ops.00000002
+  registration_flow.ops.00000001
+  trustgate_engine.ops.00000001
+  traveller_identity.domain.00000001
+  use_otp_for_auth.core.00000001
+  auth_otp_valid.test.unit.00000001
+  verify_gate_e2e.test.e2e.00000001
+```
+
+### TestCase kinds
+unit, integration, e2e, smoke, performance, security,
+acceptance, regression, compatibility, contract, exploratory, accessibility
+
+### Query benefits
+```
+find: verify_gate          → verify_gate.ops.00000002
+find: test.unit            → all unit tests
+find: auth.test.unit       → unit tests about auth
+find: verify_gate.test     → all tests for verify gate
+```
+
+### Changed
+- id_config.py: `make_id_slug()`, `generate_external_id()`, `parse_external_id()`
+- dispatcher.py: passes name + testkind to ID generation
+- write.py: passes name + testkind to ID generation
+- read.py: FTS indexes slug from new ID format
+- migrate_ids.py: re-migration with name slugs
+- All existing nodes re-migrated
+
+### Total: 422+ tests
+
+---
+
 ## [Wave 16A02] — Snowflake ID + Group Namespace + Migration + Hierarchical Viewer — 2026-04-16
 
 ### Why

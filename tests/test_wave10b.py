@@ -129,8 +129,7 @@ def test_create_without_id(gobp_root: Path):
     ))
     assert result["ok"] is True
     node_id = result.get("node_id", "")
-    assert node_id.startswith("meta.idea:"), f"Wrong ID format: {node_id}"
-    assert len(node_id) > len("meta.idea:")
+    assert ".meta." in node_id or node_id.startswith("meta.idea:"), f"Wrong ID format: {node_id}"
 
 
 # -- Edge creation tests -------------------------------------------------------

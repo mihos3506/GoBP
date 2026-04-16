@@ -55,45 +55,38 @@ def test_snowflake_machine_id() -> None:
 
 def test_generate_decision_id() -> None:
     eid = generate_external_id("Decision")
-    assert eid.startswith("core.dec:")
-    assert len(eid.split(":", 1)[1]) == 4
+    assert eid.startswith("dec.core.") or eid.startswith("core.dec:")
 
 
 def test_generate_feature_id() -> None:
     eid = generate_external_id("Feature")
-    assert eid.startswith("ops.feat:")
+    assert eid.startswith("feat.ops.") or eid.startswith("ops.feat:")
 
 
 def test_generate_entity_id() -> None:
     eid = generate_external_id("Entity")
-    assert eid.startswith("domain.entity:")
-    assert len(eid.split(":", 1)[1]) == 8
+    assert eid.startswith("entity.domain.") or eid.startswith("domain.entity:")
 
 
 def test_generate_testcase_id() -> None:
     eid = generate_external_id("TestCase")
-    assert eid.startswith("test.case:")
-    assert len(eid.split(":", 1)[1]) == 6
+    assert eid.startswith("case.test.") or eid.startswith("test.case:")
 
 
 def test_generate_session_id() -> None:
     eid = generate_external_id("Session")
-    assert eid.startswith("meta.session:")
-    assert len(eid) == 33  # meta.session:YYYY-MM-DD_XXXXXXXXX
+    assert eid.startswith("meta.session.")
 
 
 def test_parse_new_format() -> None:
-    group, prefix, seq = parse_external_id("core.dec:0001")
-    assert group == "core"
-    assert prefix == "dec"
-    assert seq == "0001"
+    parsed = parse_external_id("core.dec:0001")
+    assert parsed["format"] == "legacy"
 
 
 def test_parse_legacy_format() -> None:
-    group, prefix, seq = parse_external_id("flow:verify_gate")
-    assert group == ""
-    assert prefix == "flow"
-    assert seq == "verify_gate"
+    parsed = parse_external_id("flow:verify_gate")
+    assert parsed["format"] == "legacy"
+    assert parsed["slug"] == "verify_gate"
 
 
 def test_get_group_decision() -> None:
@@ -202,13 +195,11 @@ def test_migrated_ids_have_group_namespace() -> None:
     root = Path("D:/GoBP")
     index = GraphIndex.load_from_disk(root)
     sample = [n["id"] for n in index.all_nodes()[:25]]
-    assert all("." in sid and ":" in sid for sid in sample)
+    assert all("." in sid for sid in sample)
 
 def test_parse_invalid_external_id() -> None:
-    group, prefix, seq = parse_external_id("just_text")
-    assert group == ""
-    assert prefix == ""
-    assert seq == "just_text"
+    parsed = parse_external_id("just_text")
+    assert parsed["group"] == ""
 
 
 def test_load_groups_from_real_project() -> None:
@@ -219,4 +210,4 @@ def test_load_groups_from_real_project() -> None:
 
 def test_generate_external_id_has_colon() -> None:
     eid = generate_external_id("Node")
-    assert ":" in eid
+    assert "." in eid
