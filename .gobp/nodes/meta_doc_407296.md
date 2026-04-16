@@ -1,0 +1,26 @@
+---
+content_hash: sha256:5f29cc4b7fe3f3a77eb77c9635804f09d30c0ffae2ca793986e670eeaf22cffa
+created: '2026-04-15T17:47:52.674347+00:00'
+description: Imported document from gobp/templates/idea.md with 2 indexed sections.
+id: meta.doc:407296
+last_verified: '2026-04-15T17:47:52.674276+00:00'
+legacy_id: doc:idea
+name: Idea
+priority: medium
+registered_at: '2026-04-15T17:47:52.674276+00:00'
+sections:
+- heading: Context
+  level: 2
+- heading: Related
+  level: 2
+session_id: session:2026-04-15_sequentially_import
+source_path: gobp/templates/idea.md
+spec_source: gobp/templates/idea.md
+status: ACTIVE
+tags:
+- document
+type: Document
+updated: '2026-04-15T17:47:52.674347+00:00'
+---
+
+(Auto-generated node file. Edit the YAML above or add body content below.)
