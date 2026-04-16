@@ -185,7 +185,7 @@ D:/GoBP/venv/Scripts/python.exe -m pytest tests/ -v -q
 | 2 | `gobp/mcp/tools/read.py` | Add mode param + batch |
 | 3 | `gobp/mcp/dispatcher.py` | Add mode + get_batch + recompute |
 | 4 | `gobp/core/graph.py` | Add compute_priority_score() |
-| 5 | `tests/test_performance_v2.py` | Fix flaky thresholds |
+| 5 | `tests/test_performance.py` | Fix flaky thresholds |
 | 6 | `waves/wave_16a01_brief.md` | This file |
 
 ---
@@ -198,7 +198,7 @@ D:/GoBP/venv/Scripts/python.exe -m pytest tests/ -v -q
 
 **Goal:** Stable thresholds + median strategy for node_upsert.
 
-**File to modify:** `tests/test_performance_v2.py`
+**File to modify:** `tests/test_performance.py`
 
 **Re-read file in full.**
 
@@ -1243,7 +1243,7 @@ D:/GoBP/venv/Scripts/python.exe -m pytest tests/ -v -q
 - **I6 — Server hints**: estimated_tokens + detail_available in summary
 
 ### Changed
-- tests/test_performance_v2.py: thresholds + median strategy
+- tests/test_performance.py: thresholds + median strategy
 - gobp/mcp/tools/read.py: _node_summary, _node_brief, get_batch,
   metadata_lint, recompute_priorities, mode param on find/get/related
 - gobp/core/graph.py: TIER_WEIGHTS, priority_label, compute_priority_score
@@ -1319,7 +1319,7 @@ git push origin main
 ```
 Read .cursorrules and waves/wave_16a01_brief.md first.
 Also read gobp/mcp/tools/read.py, gobp/mcp/dispatcher.py,
-gobp/core/graph.py, tests/test_performance_v2.py.
+gobp/core/graph.py, tests/test_performance.py.
 
 Set env:
   $env:GOBP_DB_URL = "postgresql://postgres:Hieu%408283%40@localhost/gobp"

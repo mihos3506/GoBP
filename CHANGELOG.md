@@ -18,6 +18,7 @@ Format: [Wave N — Title] with date, what was added/changed/fixed.
 ### Tests
 
 - `tests/test_wave16a04.py` — parser edge cases, ID/slug edge cases, session ID format, module import smoke tests, `create_edge` validation failures, `migrate_project` dry-run smoke.
+- Single `tests/test_performance.py` (merged former v2 module); docs and `.gobp` metadata updated to match.
 
 ### Docs
 
@@ -142,7 +143,7 @@ Format: [Wave N â€” Title] with date, what was added/changed/fixed.
 - **I4 â€” Perf test stability**:
   - node_upsert: 500ms â†’ 700ms
   - gobp_overview: 100ms â†’ 150ms
-  - test_perf_node_upsert_v2: median of 3 runs
+  - test_perf_node_upsert: median of 3 runs
 - **I5 â€” Numeric priority**:
   - priority_score = edge_count + tier_weight
   - TIER_WEIGHTS: Invariant=20, Decision=15, Engine/Flow/Entity=10...
@@ -151,7 +152,7 @@ Format: [Wave N â€” Title] with date, what was added/changed/fixed.
 - **I6 â€” Server hints**: estimated_tokens + detail_available in summary
 
 ### Changed
-- tests/test_performance_v2.py: thresholds + median strategy
+- tests/test_performance.py: thresholds + median strategy
 - gobp/mcp/tools/read.py: _node_summary, _node_brief, get_batch,
   metadata_lint, recompute_priorities, mode param on find/get/related
 - gobp/core/graph.py: TIER_WEIGHTS, priority_label, compute_priority_score

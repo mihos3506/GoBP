@@ -453,7 +453,7 @@
   legacy_to: meta.session:2026-04-16_c3762b1e2
   to: meta.session.2026-04-16.daad9206c
   type: discovered_in
-- from: test_performance_v2.meta.30139136
+- from: test_performance.meta.30139136
   legacy_from: meta.doc:420608
   legacy_to: meta.session:2026-04-16_c3762b1e2
   to: meta.session.2026-04-16.daad9206c
