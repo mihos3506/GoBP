@@ -876,6 +876,18 @@ async def dispatch(
                     "error": f"dedupe: scope '{scope}' not supported. Use 'edges' or 'all'.",
                 }
 
+        elif action == "recompute":
+            scope = params.get("query", params.get("scope", "priorities"))
+            if scope == "priorities":
+                args = {
+                    "dry_run": params.get("dry_run", False),
+                    "type": params.get("type", ""),
+                    "session_id": params.get("session_id", ""),
+                }
+                result = tools_read.recompute_priorities(index, project_root, args)
+            else:
+                result = {"ok": False, "error": f"recompute: unknown scope '{scope}'"}
+
         # -- Unknown action ----------------------------------------------------
         else:
             # Fallback: try find
@@ -963,6 +975,9 @@ PROTOCOL_GUIDE = {
         "commit: imp:proposal-id": "Commit approved proposal",
         "validate: <scope>": "Validate graph (all|nodes|edges)",
         "dedupe: edges": "Remove duplicate edges from file storage",
+        "recompute: priorities session_id='x'": "Recompute all node priorities from graph",
+        "recompute: priorities dry_run=true": "Preview priority changes without writing",
+        "recompute: priorities type=Flow session_id='x'": "Recompute only Flow nodes",
         "extract: lessons": "Extract lesson candidates",
     },
     "tip": "Always start with overview: to see project state",

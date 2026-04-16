@@ -16,6 +16,43 @@ from gobp.core.loader import load_edge_file, load_node_file, load_schema
 from gobp.core.validator import validate_edge, validate_node
 
 
+TIER_WEIGHTS: dict[str, int] = {
+    "Invariant": 20,
+    "Decision": 15,
+    "Engine": 10,
+    "Flow": 10,
+    "Entity": 10,
+    "Feature": 5,
+    "Screen": 5,
+    "APIEndpoint": 5,
+    "Document": 2,
+    "TestCase": 2,
+    "Lesson": 2,
+    "Session": 0,
+    "Wave": 0,
+    "Repository": 0,
+    "Node": 3,
+    "Idea": 3,
+    "Concept": 3,
+    "TestKind": 1,
+}
+
+PRIORITY_THRESHOLDS: list[tuple[int, str]] = [
+    (20, "critical"),
+    (10, "high"),
+    (5, "medium"),
+    (0, "low"),
+]
+
+
+def priority_label(score: int) -> str:
+    """Convert numeric priority score to enum label."""
+    for threshold, label in PRIORITY_THRESHOLDS:
+        if score >= threshold:
+            return label
+    return "low"
+
+
 class GraphIndex:
     """In-memory index of GoBP nodes and edges.
 
@@ -219,3 +256,14 @@ class GraphIndex:
             List of edges matching type.
         """
         return list(self._edges_by_type_idx.get(edge_type, []))
+
+    def compute_priority_score(self, node_id: str) -> int:
+        """Compute numeric priority = incoming + outgoing + tier_weight."""
+        node = self.get_node(node_id)
+        if not node:
+            return 0
+        incoming = len(self.get_edges_to(node_id))
+        outgoing = len(self.get_edges_from(node_id))
+        node_type = node.get("type", "Node")
+        tier_weight = TIER_WEIGHTS.get(node_type, 0)
+        return incoming + outgoing + tier_weight
