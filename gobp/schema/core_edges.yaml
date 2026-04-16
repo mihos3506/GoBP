@@ -143,3 +143,63 @@ edge_types:
       type:
         type: "str"
         enum_values: ["of_kind"]
+
+  enforces:
+    description: "Node enforces a constraint or rule"
+    directional: true
+    cardinality: "many_to_many"
+    allowed_node_types: ["Engine->Invariant", "Flow->Invariant", "Feature->Invariant", "Decision->Decision", "Decision->Node"]
+
+    required:
+      from:
+        type: "node_ref"
+      to:
+        type: "node_ref"
+      type:
+        type: "str"
+        enum_values: ["enforces"]
+
+  triggers:
+    description: "Node triggers another node or process"
+    directional: true
+    cardinality: "many_to_many"
+    allowed_node_types: ["Flow->Flow", "Flow->Engine", "Flow->Feature", "Flow->Node", "Engine->Flow", "Engine->Engine", "Engine->Feature", "Engine->Node", "Feature->Flow", "Feature->Engine", "Feature->Feature", "Feature->Node"]
+
+    required:
+      from:
+        type: "node_ref"
+      to:
+        type: "node_ref"
+      type:
+        type: "str"
+        enum_values: ["triggers"]
+
+  validates:
+    description: "Node validates another node"
+    directional: true
+    cardinality: "many_to_many"
+    allowed_node_types: ["Engine->Entity", "Engine->Node", "Engine->Feature", "Flow->Entity", "Flow->Node", "Flow->Feature", "TestCase->Entity", "TestCase->Node", "TestCase->Feature"]
+
+    required:
+      from:
+        type: "node_ref"
+      to:
+        type: "node_ref"
+      type:
+        type: "str"
+        enum_values: ["validates"]
+
+  produces:
+    description: "Node produces or outputs another node"
+    directional: true
+    cardinality: "many_to_many"
+    allowed_node_types: ["Flow->Entity", "Flow->Node", "Engine->Entity", "Engine->Node", "Feature->Entity", "Feature->Node"]
+
+    required:
+      from:
+        type: "node_ref"
+      to:
+        type: "node_ref"
+      type:
+        type: "str"
+        enum_values: ["produces"]

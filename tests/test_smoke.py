@@ -1,4 +1,4 @@
-"""Smoke tests for GoBP Wave 0 deliverables.
+﻿"""Smoke tests for GoBP Wave 0 deliverables.
 
 These tests verify:
 1. The gobp package can be imported
@@ -130,6 +130,10 @@ def test_core_edges_yaml_valid():
         "references",
         "covers",
         "of_kind",
+        "enforces",
+        "triggers",
+        "validates",
+        "produces",
     }
     actual_types = set(data["edge_types"].keys())
     assert actual_types == expected_types, f"Expected {expected_types}, got {actual_types}"
@@ -224,3 +228,4 @@ def test_templates_frontmatter_parseable():
         assert data is not None
         assert "id" in data, f"{template_file.name} frontmatter missing 'id'"
         assert "type" in data, f"{template_file.name} frontmatter missing 'type'"
+
