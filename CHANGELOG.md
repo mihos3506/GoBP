@@ -5,6 +5,31 @@ Format: [Wave N — Title] with date, what was added/changed/fixed.
 
 ---
 
+## [Wave 16A05] — MCP Generator + Project Identity + Task Queue — 2026-04-16
+
+### Added
+
+- **MCP Generator in Viewer**: MCP button in the left panel opens a config panel
+  - Auto-fills from `/api/config`: project root, name, Python path, suggested DB name, DB host
+  - Generates Claude CLI / Cursor / PowerShell snippets and a copy control
+- **Project identity** in `.gobp/config.yaml` (`project_name`, `project_id`, `project_description` on init)
+  - `overview:` includes `project.name`, `project.id`, `project.description`, and `project.root`
+- **Task queue**: `Task` node type; `tasks:` dispatch action (filter by assignee and status, sort by priority)
+- **`GET /api/config`** on the viewer server for the MCP panel
+
+### Changed
+
+- `gobp/viewer/server.py`, `gobp/viewer/index.html`, `gobp/core/init.py`, `gobp/mcp/tools/read.py`,
+  `gobp/mcp/dispatcher.py`, `gobp/mcp/parser.py`, `gobp/mcp/tools/write.py`, `gobp/schema/core_nodes.yaml`,
+  `gobp/core/id_config.py`
+- `tests/test_wave16a05.py` — project identity, Task CRUD smoke, `tasks:` action, `_suggest_db_name`
+
+### Tests
+
+- **477** tests passing (full suite).
+
+---
+
 ## [Wave 16A04] — Full test + refactor — 2026-04-16
 
 ### Refactor
