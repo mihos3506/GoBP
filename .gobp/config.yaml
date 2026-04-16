@@ -3,8 +3,9 @@ collaborators: []
 created_at: '2026-04-15T06:43:45.514129+00:00'
 gobp_version: 0.1.0
 owner: null
-project_id: null
+project_id: gobp
 project_name: GoBP
+project_description: Graph of Brainstorm Project — AI team memory layer
 schema_version: 2
 id_groups:
   core:
@@ -47,6 +48,7 @@ id_groups:
     - Node
     - Repository
     - Idea
+    - Task
     sequence_scale: medium
     tier_weight: 0
     tier_y: 300
