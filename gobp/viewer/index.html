@@ -1,9 +1,9 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>◈ GoBP Graph Viewer</title>
+<title>â—ˆ GoBP Graph Viewer</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;1,9..144,300&display=swap" rel="stylesheet">
 <style>
@@ -78,10 +78,10 @@
 </head>
 <body>
 
-<div id="loading"><div class="r">◈</div><p>Loading graph...</p></div>
+<div id="loading"><div class="r">â—ˆ</div><p>Loading graph...</p></div>
 
 <div id="header">
-  <h1><span class="r">◈</span>GoBP<em>graph viewer</em></h1>
+  <h1><span class="r">â—ˆ</span>GoBP<em>graph viewer</em></h1>
   <select id="project-switcher"></select>
 </div>
 
@@ -104,14 +104,14 @@
     <button id="btn-all">Show All</button>
     <button id="btn-labels">Labels</button>
     <button id="btn-reset">Reset Camera</button>
-    <button id="btn-refresh">↺ Refresh</button>
+    <button id="btn-refresh">â†º Refresh</button>
   </section>
 </div>
 
 <div id="graph-canvas"></div>
 
 <div id="detail">
-  <button class="close" onclick="document.getElementById('detail').classList.remove('visible')">×</button>
+  <button class="close" onclick="document.getElementById('detail').classList.remove('visible')">Ã—</button>
   <div id="detail-content"></div>
 </div>
 
@@ -149,6 +149,22 @@ const NODE_TIERS = {
   Flow: 3, Feature: 3, Screen: 3, UIComponent: 3, TestKind: 3,
   // Execution / validation layer
   TestCase: 4, Session: 4, Idea: 4, Node: 4, Lesson: 4,
+};
+
+const TIER_Y = {
+  core: -300,
+  domain: -150,
+  ops: 0,
+  test: 150,
+  meta: 300,
+};
+
+const TYPE_GROUP = {
+  Decision: "core", Invariant: "core", Concept: "core",
+  Entity: "domain",
+  Flow: "ops", Engine: "ops", Feature: "ops", Screen: "ops", APIEndpoint: "ops",
+  TestKind: "test", TestCase: "test",
+  Session: "meta", Wave: "meta", Document: "meta", Lesson: "meta", Node: "meta", Repository: "meta", Idea: "meta",
 };
 const EDGE_STATIC_COLORS = {
   implements: 'rgba(255, 214, 66, 0.92)',
@@ -219,7 +235,7 @@ async function loadGraph(root) {
     document.getElementById('loading').style.display = 'none';
     if (!GRAPH_DATA.nodes || GRAPH_DATA.nodes.length === 0) {
       document.getElementById('status-left').textContent =
-        '0 nodes — graph is empty. This viewer reads .gobp/ on disk (not MCP). ' +
+        '0 nodes â€” graph is empty. This viewer reads .gobp/ on disk (not MCP). ' +
         'Run: python -m gobp.cli init (or add nodes) in this project root.';
     }
   } catch(e) {
@@ -244,7 +260,7 @@ function initFilters() {
   Object.keys(typeCounts).sort().forEach(t => {
     const label = document.createElement('label');
     label.innerHTML = `<input type="checkbox" checked data-type="${t}">
-      <span style="color:${TYPE_COLORS[t]||'#fff'}">●</span>
+      <span style="color:${TYPE_COLORS[t]||'#fff'}">â—</span>
       <span>${t}</span><span class="count">${typeCounts[t]}</span>`;
     label.querySelector('input').addEventListener('change', e => {
       if(e.target.checked) VISIBLE_TYPES.add(t); else VISIBLE_TYPES.delete(t);
@@ -259,7 +275,7 @@ function initFilters() {
     if(s==='__none__') return;
     const label = document.createElement('label');
     label.innerHTML = `<input type="checkbox" checked data-status="${s}">
-      <span style="color:${STATUS_COLORS[s]||'#888'}">■</span>
+      <span style="color:${STATUS_COLORS[s]||'#888'}">â– </span>
       <span>${s}</span><span class="count">${statusCounts[s]}</span>`;
     label.querySelector('input').addEventListener('change', e => {
       if(e.target.checked) VISIBLE_STATUSES.add(s); else VISIBLE_STATUSES.delete(s);
@@ -345,6 +361,10 @@ function initGraph() {
 
   FG.d3Force('charge').strength(-120);
   FG.d3Force('link').distance(l => l.type==='belongs_to'?30:60);
+  FG.d3Force('y', d3.forceY(n => {
+    const group = TYPE_GROUP[n.type] || 'meta';
+    return TIER_Y[group] ?? 0;
+  }).strength(0.12));
 }
 
 function makeSprite(text, color) {
@@ -405,7 +425,7 @@ function showDetail(node) {
   if(node.status) html += `<div class="field"><div class="field-label">Status</div>
     <div class="field-value" style="color:${STATUS_COLORS[node.status]||'#888'}">${node.status}</div></div>`;
   primary.forEach(([k,v]) => {
-    let val = Array.isArray(v) ? v.map(i=>`• ${esc(String(i))}`).join('<br>')
+    let val = Array.isArray(v) ? v.map(i=>`â€¢ ${esc(String(i))}`).join('<br>')
             : typeof v==='object' ? `<pre style="font-size:9px;color:var(--text-dim);white-space:pre-wrap">${esc(JSON.stringify(v,null,2))}</pre>`
             : esc(String(v));
     html += `<div class="field"><div class="field-label">${k.replace(/_/g,' ')}</div>
@@ -414,7 +434,7 @@ function showDetail(node) {
   if(raw.length) {
     html += `<details class="relations"><summary style="cursor:pointer;color:var(--amber-soft);font-size:11px;">Show raw fields (${raw.length})</summary>`;
     raw.forEach(([k,v]) => {
-      const val = Array.isArray(v) ? v.map(i=>`• ${esc(String(i))}`).join('<br>')
+      const val = Array.isArray(v) ? v.map(i=>`â€¢ ${esc(String(i))}`).join('<br>')
               : typeof v==='object' ? `<pre style="font-size:9px;color:var(--text-dim);white-space:pre-wrap">${esc(JSON.stringify(v,null,2))}</pre>`
               : esc(String(v));
       html += `<div class="field"><div class="field-label">${k.replace(/_/g,' ')}</div>
@@ -423,7 +443,7 @@ function showDetail(node) {
     html += `</details>`;
   }
   if(out.length) {
-    html += '<div class="relations"><h4>→ Outgoing</h4>';
+    html += '<div class="relations"><h4>â†’ Outgoing</h4>';
     out.slice(0,30).forEach(e => {
       const name = nodesById[e.id]?.name||e.id;
       html += `<div class="rel-item" data-id="${e.id}">
@@ -433,7 +453,7 @@ function showDetail(node) {
     html += '</div>';
   }
   if(inc.length) {
-    html += '<div class="relations"><h4>← Incoming</h4>';
+    html += '<div class="relations"><h4>â† Incoming</h4>';
     inc.slice(0,30).forEach(e => {
       const name = nodesById[e.id]?.name||e.id;
       html += `<div class="rel-item" data-id="${e.id}">
@@ -511,3 +531,4 @@ boot();
 </script>
 </body>
 </html>
+
