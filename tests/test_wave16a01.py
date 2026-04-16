@@ -7,7 +7,8 @@ from pathlib import Path
 
 import pytest
 
-from gobp.core.graph import GraphIndex, TIER_WEIGHTS, priority_label
+from gobp.core.graph import GraphIndex, priority_label
+from gobp.core.id_config import DEFAULT_GROUPS, get_tier_weight
 from gobp.core.init import init_project
 from gobp.mcp.dispatcher import dispatch
 from gobp.mcp.tools import read as tools_read
@@ -144,10 +145,10 @@ def test_priority_label_thresholds() -> None:
 
 
 def test_tier_weights_defined() -> None:
-    assert "Decision" in TIER_WEIGHTS
-    assert "Engine" in TIER_WEIGHTS
-    assert TIER_WEIGHTS["Invariant"] >= TIER_WEIGHTS["Feature"]
-    assert TIER_WEIGHTS["Decision"] >= TIER_WEIGHTS["Document"]
+    assert "Decision" in DEFAULT_GROUPS["core"]["types"]
+    assert "Engine" in DEFAULT_GROUPS["ops"]["types"]
+    assert get_tier_weight("Invariant") >= get_tier_weight("Feature")
+    assert get_tier_weight("Decision") >= get_tier_weight("Document")
 
 
 def test_compute_priority_score(seeded_root: Path) -> None:

@@ -16,27 +16,6 @@ from gobp.core.loader import load_edge_file, load_node_file, load_schema
 from gobp.core.validator import validate_edge, validate_node
 
 
-TIER_WEIGHTS: dict[str, int] = {
-    "Invariant": 20,
-    "Decision": 15,
-    "Engine": 10,
-    "Flow": 10,
-    "Entity": 10,
-    "Feature": 5,
-    "Screen": 5,
-    "APIEndpoint": 5,
-    "Document": 2,
-    "TestCase": 2,
-    "Lesson": 2,
-    "Session": 0,
-    "Wave": 0,
-    "Repository": 0,
-    "Node": 3,
-    "Idea": 3,
-    "Concept": 3,
-    "TestKind": 1,
-}
-
 PRIORITY_THRESHOLDS: list[tuple[int, str]] = [
     (20, "critical"),
     (10, "high"),
@@ -258,12 +237,16 @@ class GraphIndex:
         return list(self._edges_by_type_idx.get(edge_type, []))
 
     def compute_priority_score(self, node_id: str) -> int:
-        """Compute numeric priority = incoming + outgoing + tier_weight."""
+        """Compute numeric priority: edge_count + tier_weight from config."""
+        from gobp.core.id_config import get_tier_weight, load_groups
+
         node = self.get_node(node_id)
         if not node:
             return 0
+
+        groups = load_groups(self._gobp_root) if self._gobp_root else None
         incoming = len(self.get_edges_to(node_id))
         outgoing = len(self.get_edges_from(node_id))
         node_type = node.get("type", "Node")
-        tier_weight = TIER_WEIGHTS.get(node_type, 0)
+        tier_weight = get_tier_weight(node_type, groups)
         return incoming + outgoing + tier_weight
