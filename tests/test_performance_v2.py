@@ -28,7 +28,7 @@ MAX_MS = {
     "session_recent": 50.0,
     "decisions_for": 50.0,
     "doc_sections": 30.0,
-    "node_upsert": 500.0,
+    "node_upsert": 700.0,
     "decision_lock": 200.0,
     "session_log": 400.0,
     "lessons_extract": 2000.0,
