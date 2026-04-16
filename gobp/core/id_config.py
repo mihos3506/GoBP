@@ -46,6 +46,7 @@ DEFAULT_GROUPS: dict[str, dict[str, Any]] = {
             "Node",
             "Repository",
             "Idea",
+            "Task",
         ],
         "sequence_scale": "medium",
         "tier_weight": 0,
@@ -73,6 +74,7 @@ TYPE_PREFIXES: dict[str, str] = {
     "Node": "node",
     "Repository": "repo",
     "Idea": "idea",
+    "Task": "task",
 }
 
 SEQUENCE_PADDING: dict[str, int] = {

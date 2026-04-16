@@ -615,3 +615,22 @@ node_types:
     optional:
       priority: {type: enum, enum_values: ["critical","high","medium","low"], default: "medium"}
       description: {type: str}
+
+  Task:
+    description: "Work item for AI agent communication queue"
+    id_prefix: "task"
+    required:
+      id: {type: str, pattern: '^([a-z0-9_]{1,40}\.meta\.[0-9]{8}|(?:meta)\.task:[0-9]+|task:.+)$'}
+      type: {type: str, enum_values: ["Task"]}
+      name: {type: str}
+      assignee: {type: enum, enum_values: ["cursor", "claude-cli", "haiku", "any"], default: "cursor"}
+      status: {type: enum, enum_values: ["PENDING", "RUNNING", "DONE", "FAILED", "BLOCKED"], default: "PENDING"}
+      created: {type: timestamp}
+      updated: {type: timestamp}
+    optional:
+      session_id: {type: node_ref}
+      brief_path: {type: str}
+      wave: {type: str}
+      priority: {type: enum, enum_values: ["critical", "high", "medium", "low"], default: "medium"}
+      error: {type: str}
+      result_summary: {type: str}
