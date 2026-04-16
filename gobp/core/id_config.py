@@ -85,6 +85,13 @@ SEQUENCE_PADDING: dict[str, int] = {
 # Special ID formats (not sequence-based)
 SPECIAL_ID_TYPES = {"Session", "Document"}
 
+# Valid TestKind values for TestCase IDs
+VALID_TESTKINDS: frozenset[str] = frozenset({
+    "unit", "integration", "e2e", "smoke", "performance",
+    "security", "acceptance", "regression", "compatibility",
+    "contract", "exploratory", "accessibility",
+})
+
 
 def load_groups(gobp_root: Path) -> dict[str, dict[str, Any]]:
     """Load id_groups from .gobp/config.yaml or return defaults."""
@@ -114,26 +121,39 @@ def get_type_prefix(node_type: str) -> str:
     return TYPE_PREFIXES.get(node_type, node_type.lower()[:6])
 
 
+def make_id_slug(name: str) -> str:
+    """Convert node name to slug for external ID.
+
+    Rules:
+    - Strip flow prefixes: "F1:", "F2:", "F10:" etc.
+    - Strip doc prefixes: "DOC-07", "DOC-07:"
+    - Strip wave prefixes: "WAVE 0", "Wave 16A03 -"
+    - Lowercase + replace non-alphanumeric with underscore
+    - Max 40 chars, no trailing underscores
+    """
+    import re as _re
+
+    if not name:
+        return ""
+    name = _re.sub(r"^F\d+:\s*", "", name)
+    name = _re.sub(r"^DOC-\d+[:\s]*", "", name)
+    name = _re.sub(r"^WAVE?\s*[\w]+\s*[—\-]+\s*", "", name, flags=_re.IGNORECASE)
+    slug = _re.sub(r"[^a-z0-9]+", "_", name.lower()).strip("_")
+    return slug[:40].rstrip("_")
+
+
 def generate_external_id(
     node_type: str,
+    name: str = "",
+    testkind: str = "",
     gobp_root: Path | None = None,
     groups: dict | None = None,
 ) -> str:
-    """Generate external ID with group namespace.
+    """Generate external ID in new format: {slug}.{group}.{8digits}.
 
-    Format: {group}.{type_prefix}:{sequence}
-
-    Special cases:
-      Session → meta.session:YYYYMMDD_XXXXXXXXX
-      Document → meta.doc:{slug}_{md5[:6]}
-
-    Args:
-        node_type: NodeType string
-        gobp_root: Project root (for loading group config)
-        groups: Pre-loaded groups dict (avoids re-reading config)
-
-    Returns:
-        External ID string like "core.dec:0001"
+    Special formats:
+      Session:  meta.session.YYYY-MM-DD.XXXXXXXXX
+      TestCase: {slug}.test.{testkind}.{8digits}
     """
     from gobp.core.snowflake import generate_snowflake
 
@@ -142,7 +162,8 @@ def generate_external_id(
     if groups is None:
         groups = DEFAULT_GROUPS
 
-    # Special formats
+    slug = make_id_slug(name) if name else get_type_prefix(node_type)
+
     if node_type == "Session":
         from datetime import datetime, timezone
 
@@ -150,44 +171,60 @@ def generate_external_id(
 
         date_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
         short_hash = _uuid.uuid4().hex[:9]
-        return f"meta.session:{date_str}_{short_hash}"
+        return f"meta.session.{date_str}.{short_hash}"
 
     group = get_group_for_type(node_type, groups)
-    prefix = get_type_prefix(node_type)
-    scale = groups.get(group, {}).get("sequence_scale", "medium")
-    padding = SEQUENCE_PADDING.get(scale, 6)
-
-    # Use Snowflake lower bits for sequence part (last N digits)
     sf = generate_snowflake()
-    seq = sf % (10**padding)
+    number = f"{sf % 100_000_000:08d}"
 
-    return f"{group}.{prefix}:{seq:0{padding}d}"
+    if node_type == "TestCase":
+        kind = testkind.lower()
+        if kind not in VALID_TESTKINDS:
+            kind = "unit"
+        return f"{slug}.test.{kind}.{number}"
+
+    return f"{slug}.{group}.{number}"
 
 
-def parse_external_id(external_id: str) -> tuple[str, str, str]:
-    """Parse external ID → (group, type_prefix, sequence).
+def parse_external_id(external_id: str) -> dict[str, str]:
+    """Parse any ID format into components.
 
-    Handles:
-      "core.dec:0001"           → ("core", "dec", "0001")
-      "meta.session:2026-04-16_abc" → ("meta", "session", "2026-04-16_abc")
-      "flow:verify_gate"        → ("", "flow", "verify_gate")  # legacy
-      "dec:d001"                → ("", "dec", "d001")           # legacy
+    Returns dict with: slug, group, testkind, number, format.
     """
-    if "." in external_id and ":" in external_id:
-        dot_idx = external_id.index(".")
-        colon_idx = external_id.index(":")
-        if dot_idx < colon_idx:
-            group = external_id[:dot_idx]
-            type_prefix = external_id[dot_idx + 1 : colon_idx]
-            sequence = external_id[colon_idx + 1 :]
-            return group, type_prefix, sequence
+    result = {"slug": "", "group": "", "testkind": "", "number": "", "format": "legacy"}
 
-    # Legacy format: "type:name"
     if ":" in external_id:
         parts = external_id.split(":", 1)
-        return "", parts[0], parts[1]
+        result["slug"] = parts[1] if len(parts) > 1 else ""
+        result["group"] = parts[0]
+        return result
 
-    return "", "", external_id
+    parts = external_id.split(".")
+    result["format"] = "new"
+
+    if len(parts) == 3:
+        result["slug"] = parts[0]
+        result["group"] = parts[1]
+        result["number"] = parts[2]
+    elif len(parts) == 4:
+        if parts[1] == "test" and parts[2] in VALID_TESTKINDS:
+            result["slug"] = parts[0]
+            result["group"] = "test"
+            result["testkind"] = parts[2]
+            result["number"] = parts[3]
+        elif parts[0] == "meta" and parts[1] == "session":
+            result["slug"] = "session"
+            result["group"] = "meta"
+            result["number"] = parts[3]
+        else:
+            result["slug"] = parts[0]
+            result["group"] = parts[1]
+            result["number"] = parts[-1]
+    elif len(parts) >= 2:
+        result["slug"] = parts[0]
+        result["group"] = parts[1]
+
+    return result
 
 
 def get_tier_y(node_type: str, groups: dict | None = None) -> float:
