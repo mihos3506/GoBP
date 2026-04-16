@@ -11,7 +11,8 @@ import yaml
 from gobp.core.graph import GraphIndex
 from gobp.core.init import init_project
 from gobp.core.mutator import create_edge, deduplicate_edges
-from gobp.mcp.dispatcher import _coerce_value, dispatch, parse_query
+from gobp.mcp.dispatcher import dispatch
+from gobp.mcp.parser import _coerce_value, parse_query
 
 
 def test_find_positional_no_params() -> None:

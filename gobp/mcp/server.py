@@ -205,7 +205,7 @@ async def call_tool(
 
     query = arguments.get("query", "overview:")
 
-    from gobp.mcp.dispatcher import parse_query
+    from gobp.mcp.parser import parse_query
 
     action, _, params = parse_query(query)
 

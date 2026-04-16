@@ -98,7 +98,7 @@ def gobp_overview(index: GraphIndex, project_root: Path, args: dict[str, Any]) -
         (PROTOCOL_GUIDE â€” large). Default is false: only ``interface_summary``
         plus a hint to load the full catalog when needed.
     """
-    from gobp.mcp.dispatcher import PROTOCOL_GUIDE
+    from gobp.mcp.parser import PROTOCOL_GUIDE
 
     full_interface = _truthy(args.get("full_interface")) or _truthy(
         args.get("include_interface")
