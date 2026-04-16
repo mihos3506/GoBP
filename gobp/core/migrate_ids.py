@@ -39,14 +39,25 @@ def _write_node_file(path: Path, node: dict[str, Any], body: str = "") -> None:
     path.write_text(content, encoding="utf-8")
 
 
-def _needs_migration(node_id: str) -> bool:
+def _needs_migration(node_id: str, node_name: str = "", node_type: str = "") -> bool:
     """Check if ID needs migration to new format."""
-    if "." in node_id and ":" in node_id:
-        dot_idx = node_id.index(".")
-        colon_idx = node_id.index(":")
-        if dot_idx < colon_idx:
+    from gobp.core.id_config import make_id_slug, parse_external_id, get_type_prefix
+
+    if ":" in node_id:
+        return True
+
+    parsed = parse_external_id(node_id)
+    if parsed["format"] == "new":
+        current_slug = parsed.get("slug", "")
+        default_slug = get_type_prefix(node_type or "Node")
+        if current_slug and current_slug != default_slug:
             return False
-    return True
+        if node_name:
+            expected_slug = make_id_slug(node_name)
+            if expected_slug and expected_slug != current_slug:
+                return True
+
+    return False
 
 
 def migrate_project(gobp_root: Path, dry_run: bool = True) -> dict[str, Any]:
@@ -78,13 +89,21 @@ def migrate_project(gobp_root: Path, dry_run: bool = True) -> dict[str, Any]:
                 errors.append(f"{node_file.name}: no id field")
                 continue
 
-            if not _needs_migration(old_id):
+            node_name = str(node.get("name", ""))
+            node_type = str(node.get("type", "Node"))
+            if not _needs_migration(old_id, node_name=node_name, node_type=node_type):
                 skipped += 1
                 id_mapping[old_id] = old_id
                 continue
 
-            node_type = node.get("type", "Node")
-            new_id = generate_external_id(node_type, gobp_root, groups)
+            testkind = str(node.get("kind_id", ""))
+            new_id = generate_external_id(
+                node_type,
+                name=node_name,
+                testkind=testkind,
+                gobp_root=gobp_root,
+                groups=groups,
+            )
             id_mapping[old_id] = new_id
         except Exception as e:
             errors.append(f"{node_file.name}: {e}")
