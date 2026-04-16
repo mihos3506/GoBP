@@ -11,6 +11,11 @@ content_hash: sha256:6d13be946a78d45fd8040cad32474e63fac8513e8c5ae79c83431f83b4f
 registered_at: '2026-04-16T02:36:48.710333+00:00'
 last_verified: '2026-04-16T02:36:48.710333+00:00'
 priority: high
+description: Imported document from waves/wave_14_brief.md with 20 indexed sections.
+tags:
+- document
+- wave
+spec_source: waves/wave_14_brief.md
 sections:
 - heading: WAVE 14 BRIEF — SCHEMA GOVERNANCE + PROTOCOL VERSIONING + ACCESS MODEL
   level: 1
