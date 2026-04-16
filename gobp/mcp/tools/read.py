@@ -13,6 +13,7 @@ import gobp
 import yaml
 
 from gobp.core.graph import GraphIndex
+from gobp.core.id_config import parse_external_id
 
 
 _FIND_PRIORITY: dict[str, int] = {"exact_id": 0, "exact_name": 1, "substring": 2}
@@ -41,6 +42,7 @@ def _node_summary(node: dict[str, Any], index: GraphIndex | None = None) -> dict
     import sys
 
     node_id = node.get("id", "")
+    parsed = parse_external_id(node_id)
     edge_count = 0
     if index and node_id:
         edge_count = len(index.get_edges_from(node_id)) + len(index.get_edges_to(node_id))
@@ -49,6 +51,8 @@ def _node_summary(node: dict[str, Any], index: GraphIndex | None = None) -> dict
         "id": node_id,
         "type": node.get("type", ""),
         "name": node.get("name", ""),
+        "group": parsed.get("group", ""),
+        "testkind": parsed.get("testkind", ""),
         "status": node.get("status", ""),
         "priority": node.get("priority", "medium"),
         "priority_score": node.get("priority_score"),
@@ -57,6 +61,12 @@ def _node_summary(node: dict[str, Any], index: GraphIndex | None = None) -> dict
         "estimated_tokens": max(50, estimated_size),
         "hint": f"gobp(query=\"get: {node_id} mode=brief\") for more detail",
     }
+
+
+def _extract_fts_slug(node_id: str) -> str:
+    """Extract slug from external ID for search indexing."""
+    parsed = parse_external_id(node_id)
+    return parsed.get("slug", "")
 
 
 def _node_brief(node: dict[str, Any], index: GraphIndex | None = None) -> dict[str, Any]:
@@ -298,7 +308,8 @@ def find(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> dict[st
         node_name_lower = node_name.lower()
 
         legacy_id = node.get("legacy_id", "")
-        searchable = f"{node_id} {node_name} {legacy_id}".lower()
+        fts_slug = _extract_fts_slug(node_id)
+        searchable = f"{node_id} {node_name} {legacy_id} {fts_slug}".lower()
         for field in ("topic", "subject", "title", "description", "definition", "group"):
             val = node.get(field, "")
             if val:
