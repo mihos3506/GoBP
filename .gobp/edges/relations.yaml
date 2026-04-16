@@ -523,3 +523,27 @@
 - from: doc:readme_212be8
   to: session:2026-04-15_success_benchmark3
   type: discovered_in
+- from: doc:wave_14_brief_79fc28
+  to: session:2026-04-16_update_gobp_with_wav
+  type: discovered_in
+- from: dec:d008
+  to: session:2026-04-16_update_gobp_with_wav
+  type: discovered_in
+- from: dec:d009
+  to: session:2026-04-16_update_gobp_with_wav
+  type: discovered_in
+- from: dec:d010
+  to: session:2026-04-16_update_gobp_with_wav
+  type: discovered_in
+- from: dec:d011
+  to: session:2026-04-16_update_gobp_with_wav
+  type: discovered_in
+- from: dec:d012
+  to: session:2026-04-16_update_gobp_with_wav
+  type: discovered_in
+- from: dec:d013
+  to: session:2026-04-16_update_gobp_with_wav
+  type: discovered_in
+- from: dec:d014
+  to: session:2026-04-16_update_gobp_with_wav
+  type: discovered_in

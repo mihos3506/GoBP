@@ -214,3 +214,21 @@
   to: api:gobp_query
   type: relates_to
   reason: perf-check
+- from: dec:d009
+  to: doc:wave_14_brief_79fc28
+  type: references
+- from: dec:d010
+  to: doc:wave_14_brief_79fc28
+  type: references
+- from: dec:d011
+  to: doc:wave_14_brief_79fc28
+  type: references
+- from: dec:d012
+  to: doc:wave_14_brief_79fc28
+  type: references
+- from: dec:d013
+  to: doc:wave_14_brief_79fc28
+  type: references
+- from: dec:d014
+  to: doc:wave_14_brief_79fc28
+  type: references

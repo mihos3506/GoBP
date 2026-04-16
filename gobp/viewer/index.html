@@ -380,19 +380,48 @@ function showDetail(node) {
   const skip = new Set(['id','type','name','status','__hit','__searchHit',
     'x','y','z','vx','vy','vz','index','fx','fy','fz']);
   const fields = Object.entries(node).filter(([k])=>!skip.has(k)&&node[k]!=null);
+  const primaryOrder = ['priority','description','topic','group','source_path','spec_source','created','updated'];
+  const primary = [];
+  const raw = [];
+  fields.forEach(([k,v]) => {
+    const isObj = Array.isArray(v) || (typeof v === 'object');
+    const text = isObj ? '' : String(v);
+    const isShortScalar = !isObj && text.length <= 220;
+    if (primaryOrder.includes(k) || isShortScalar) primary.push([k,v]);
+    else raw.push([k,v]);
+  });
+  primary.sort((a,b) => {
+    const ia = primaryOrder.indexOf(a[0]);
+    const ib = primaryOrder.indexOf(b[0]);
+    if (ia === -1 && ib === -1) return a[0].localeCompare(b[0]);
+    if (ia === -1) return 1;
+    if (ib === -1) return -1;
+    return ia - ib;
+  });
 
   let html = `<div class="node-type">${node.type}</div>
     <div class="node-id">${node.id}</div>
     <div class="node-name">${esc(node.name)}</div>`;
   if(node.status) html += `<div class="field"><div class="field-label">Status</div>
     <div class="field-value" style="color:${STATUS_COLORS[node.status]||'#888'}">${node.status}</div></div>`;
-  fields.forEach(([k,v]) => {
+  primary.forEach(([k,v]) => {
     let val = Array.isArray(v) ? v.map(i=>`• ${esc(String(i))}`).join('<br>')
             : typeof v==='object' ? `<pre style="font-size:9px;color:var(--text-dim);white-space:pre-wrap">${esc(JSON.stringify(v,null,2))}</pre>`
             : esc(String(v));
     html += `<div class="field"><div class="field-label">${k.replace(/_/g,' ')}</div>
       <div class="field-value">${val}</div></div>`;
   });
+  if(raw.length) {
+    html += `<details class="relations"><summary style="cursor:pointer;color:var(--amber-soft);font-size:11px;">Show raw fields (${raw.length})</summary>`;
+    raw.forEach(([k,v]) => {
+      const val = Array.isArray(v) ? v.map(i=>`• ${esc(String(i))}`).join('<br>')
+              : typeof v==='object' ? `<pre style="font-size:9px;color:var(--text-dim);white-space:pre-wrap">${esc(JSON.stringify(v,null,2))}</pre>`
+              : esc(String(v));
+      html += `<div class="field"><div class="field-label">${k.replace(/_/g,' ')}</div>
+        <div class="field-value">${val}</div></div>`;
+    });
+    html += `</details>`;
+  }
   if(out.length) {
     html += '<div class="relations"><h4>→ Outgoing</h4>';
     out.slice(0,30).forEach(e => {
@@ -413,7 +442,7 @@ function showDetail(node) {
     });
     html += '</div>';
   }
-  html += `<div class="gobp-query">gobp(query="get: ${node.id}")</div>`;
+  html += `<div class="gobp-query">gobp(query="get: ${node.id} brief=true")</div>`;
 
   const content = document.getElementById('detail-content');
   content.innerHTML = html;
