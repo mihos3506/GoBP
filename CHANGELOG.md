@@ -5,6 +5,26 @@ Format: [Wave N — Title] with date, what was added/changed/fixed.
 
 ---
 
+## [Wave 16A04] — Full test + refactor — 2026-04-16
+
+### Refactor
+
+- `dispatcher.py` split: query parsing lives in `gobp/mcp/parser.py` (`parse_query`, `_normalize_type`, `_coerce_value`, `PROTOCOL_GUIDE`); dispatcher keeps routing and `_classify_doc_priority`.
+- `tools/read.py` split into focused modules:
+  - `read_governance.py` — `schema_governance`, `metadata_lint`
+  - `read_priority.py` — `recompute_priorities`
+  - `read_interview.py` — `node_template`, `node_interview`, `_NODE_EDGE_REQUIREMENTS`
+
+### Tests
+
+- `tests/test_wave16a04.py` — parser edge cases, ID/slug edge cases, session ID format, module import smoke tests, `create_edge` validation failures, `migrate_project` dry-run smoke.
+
+### Docs
+
+- `docs/ARCHITECTURE.md` — MCP tools file layout (this wave).
+
+---
+
 ## [Wave 16A03] — New ID Format: slug.group.number — 2026-04-16
 
 ### Why

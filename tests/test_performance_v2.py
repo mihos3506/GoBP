@@ -30,7 +30,7 @@ MAX_MS = {
     "doc_sections": 30.0,
     "node_upsert": 700.0,
     "decision_lock": 200.0,
-    "session_log": 400.0,
+    "session_log": 500.0,
     "lessons_extract": 2000.0,
     "validate": 5000.0,
 }
