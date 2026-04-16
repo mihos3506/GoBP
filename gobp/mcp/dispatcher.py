@@ -792,9 +792,14 @@ async def dispatch(
         # -- Maintenance actions -----------------------------------------------
         elif action == "validate":
             scope = params.get("query", params.get("scope", "all"))
-            result = tools_maintain.validate(
-                index, project_root, {"scope": scope, "severity_filter": "all"}
-            )
+            if scope in ("schema-docs", "schema-tests", "schema"):
+                result = tools_read.schema_governance(
+                    index, project_root, {"scope": scope}
+                )
+            else:
+                result = tools_maintain.validate(
+                    index, project_root, {"scope": scope, "severity_filter": "all"}
+                )
 
         elif action == "extract":
             result = await lessons_extract(index, project_root, {})
@@ -848,6 +853,8 @@ PROTOCOL_GUIDE = {
     "format": "<action>:<NodeType> <key>='<value>' ...",
     "actions": {
         "version:": "Protocol version + changelog + deprecations",
+        "validate: schema-docs": "Cross-check schema vs SCHEMA.md documentation",
+        "validate: schema-tests": "Check tests reference valid node types",
         "overview:": "Project stats and orientation",
         "find: <keyword>": "Search any node by keyword",
         "find:<NodeType> <keyword>": "Search by type + keyword",

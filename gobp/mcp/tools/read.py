@@ -5,10 +5,12 @@ Implementations in Tasks 2-8 of Wave 3.
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 from typing import Any
 
 import gobp
+import yaml
 
 from gobp.core.graph import GraphIndex
 
@@ -833,4 +835,115 @@ def node_related(index: GraphIndex, project_root: Path, args: dict[str, Any]) ->
             "total_estimate": total_estimate,
             "page_size": page_size,
         },
+    }
+
+
+def schema_governance(
+    index: GraphIndex,
+    project_root: Path,
+    args: dict[str, Any],
+) -> dict[str, Any]:
+    """Cross-check schema vs documentation vs tests for drift.
+
+    Checks:
+      1. Every node type in schema has entry in SCHEMA.md
+      2. Every node type has id_prefix in schema
+      3. Priority field present on important types
+      4. Node types referenced in tests exist in schema (when scope allows)
+
+    Args:
+        scope: 'all' | 'schema-docs' | 'schema-tests' | 'schema' (default: 'all')
+
+    Returns:
+        ok, issues[], score (0-100), summary
+    """
+    del index  # Unused; signature kept for consistency with other read tools.
+    scope = args.get("scope", args.get("query", "all"))
+    issues: list[dict[str, Any]] = []
+
+    schema_path = project_root / "gobp" / "schema" / "core_nodes.yaml"
+
+    try:
+        schema = yaml.safe_load(schema_path.read_text(encoding="utf-8"))
+        node_types_in_schema = set(schema.get("node_types", {}).keys())
+    except Exception as e:
+        return {"ok": False, "error": f"Cannot load schema: {e}"}
+
+    schema_doc_path = project_root / "docs" / "SCHEMA.md"
+    if schema_doc_path.exists():
+        schema_doc = schema_doc_path.read_text(encoding="utf-8")
+        for node_type in node_types_in_schema:
+            if node_type not in schema_doc:
+                issues.append({
+                    "type": "schema_doc_drift",
+                    "severity": "warning",
+                    "message": f"Node type '{node_type}' in schema but not documented in SCHEMA.md",
+                    "node_type": node_type,
+                })
+    else:
+        issues.append({
+            "type": "missing_doc",
+            "severity": "error",
+            "message": "docs/SCHEMA.md not found",
+        })
+
+    for type_name, type_def in schema.get("node_types", {}).items():
+        if not type_def.get("id_prefix"):
+            issues.append({
+                "type": "missing_id_prefix",
+                "severity": "error",
+                "message": f"Node type '{type_name}' has no id_prefix in schema",
+                "node_type": type_name,
+            })
+
+    important_types = {"Node", "Idea", "Decision", "Document", "Feature", "Flow", "Engine", "Entity"}
+    for type_name in important_types:
+        if type_name in node_types_in_schema:
+            type_def = schema["node_types"][type_name]
+            optional = type_def.get("optional", {})
+            if "priority" not in optional:
+                issues.append({
+                    "type": "missing_priority_field",
+                    "severity": "warning",
+                    "message": f"Node type '{type_name}' missing optional priority field",
+                    "node_type": type_name,
+                })
+
+    scan_tests = scope in ("all", "schema-tests", "schema")
+    tests_dir = project_root / "tests"
+    if tests_dir.exists() and scan_tests:
+        for test_file in tests_dir.glob("test_*.py"):
+            content = test_file.read_text(encoding="utf-8", errors="replace")
+            type_refs = re.findall(r'"type":\s*"([A-Z][a-zA-Z]+)"', content)
+            type_refs += re.findall(r"type='([A-Z][a-zA-Z]+)'", content)
+            for ref in set(type_refs):
+                if ref not in node_types_in_schema and ref not in {
+                    "GET", "POST", "PUT", "DELETE", "str", "int", "bool",
+                }:
+                    issues.append({
+                        "type": "test_references_unknown_type",
+                        "severity": "info",
+                        "message": f"Test file '{test_file.name}' references type '{ref}' not in schema",
+                        "file": test_file.name,
+                        "node_type": ref,
+                    })
+
+    error_count = sum(1 for i in issues if i["severity"] == "error")
+    warning_count = sum(1 for i in issues if i["severity"] == "warning")
+    score = max(0, 100 - (error_count * 20) - (warning_count * 5))
+
+    return {
+        "ok": True,
+        "scope": scope,
+        "issues": issues,
+        "issue_count": len(issues),
+        "error_count": error_count,
+        "warning_count": warning_count,
+        "score": score,
+        "summary": (
+            f"Schema governance: {score}/100. "
+            f"{error_count} errors, {warning_count} warnings, "
+            f"{len(issues) - error_count - warning_count} info."
+        ),
+        "node_types_checked": len(node_types_in_schema),
     }
