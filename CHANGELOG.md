@@ -5,6 +5,37 @@ Format: [Wave N — Title] with date, what was added/changed/fixed.
 
 ---
 
+## [Wave 14] — Schema Governance + Protocol Versioning + Access Model — 2026-04-15
+
+### Problems solved
+- No cross-check between schema ↔ docs ↔ tests — silent drift
+- Protocol version implicit — AI clients couldn't detect breaking changes
+- Any AI could write to graph — no read-only mode for viewer/analyst agents
+
+### Added
+- **Protocol versioning**: `version:` action returns v2.0 info + changelog
+- **Schema governance**: `validate: schema-docs` cross-checks schema vs SCHEMA.md
+  - Detects: missing SCHEMA.md entries, missing id_prefix, missing priority field
+  - Returns: issues[], score (0-100), summary
+- **Read-only mode**: `GOBP_READ_ONLY=true` env var blocks all write actions
+  - Clear error message with hint to enable writes
+  - Read actions (find, get, overview, etc.) unaffected
+- **Session roles**: observer | contributor | admin stored in Session node
+  - Audit trail only — not enforced, just recorded
+- **Protocol field**: all responses include `_protocol: "2.0"`
+
+### Changed
+- dispatcher.py: version: action + validate: schema-docs/schema-tests routing
+- read.py: schema_governance() function
+- server.py: read-only mode + _protocol injection
+- write.py: session_log() stores role field
+- core_nodes.yaml: Session gets optional role field
+- docs/MCP_TOOLS.md: version/governance/role/read-only documented
+
+### Total: 1 MCP tool, 27 actions, 320+ tests
+
+---
+
 ## [Wave 15] — Parser Rewrite + Import Fix + Edge Dedupe — 2026-04-15
 
 ### Bugs fixed (from Cursor production testing)

@@ -6,6 +6,9 @@
 **Depends on:** ARCHITECTURE.md, SCHEMA.md
 **Audience:** Cursor implementing MCP server, AI agents calling tools
 
+> **Protocol version:** 2.0 — Call `gobp(query="version:")` for full version info.
+> **Read-only mode:** Set `GOBP_READ_ONLY=true` to prevent all write operations.
+
 ---
 
 ## gobp() - Primary Interface (v2)
@@ -25,6 +28,10 @@ gobp(query="<action>:<NodeType> <key>='<value>' ...")
 
 | Query | Capability |
 |---|---|
+| `version:` | Protocol version + changelog |
+| `validate: schema-docs` | Cross-check schema vs SCHEMA.md |
+| `validate: schema-tests` | Check tests reference valid types |
+| `session:start actor='x' goal='y' role='observer'` | Start read-only session |
 | `overview:` | Project stats, orientation, protocol guide |
 | `find: <keyword>` | Search any node |
 | `find: <keyword> page_size=50` | Paginated search |
