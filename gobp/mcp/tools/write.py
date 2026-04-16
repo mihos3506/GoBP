@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Any
 
 from gobp.core.graph import GraphIndex
+from gobp.core.id_config import generate_external_id
 from gobp.core.loader import load_schema, package_schema_dir
 from gobp.core.mutator import create_edge, create_node, update_node
 from gobp.core.validator import validate_node
@@ -96,10 +97,13 @@ def node_upsert(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> 
 
     node_id = args.get("id")
     if not node_id:
-        try:
-            node_id = _generate_node_id(node_type, index)
-        except ValueError as e:
-            return {"ok": False, "error": str(e)}
+        testkind = str(fields.get("kind_id", ""))
+        node_id = generate_external_id(
+            node_type,
+            name=name,
+            testkind=testkind,
+            gobp_root=project_root,
+        )
 
     now = datetime.now(timezone.utc).isoformat()
     node: dict[str, Any] = {
