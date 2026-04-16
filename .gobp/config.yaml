@@ -6,3 +6,47 @@ owner: null
 project_id: null
 project_name: GoBP
 schema_version: 2
+id_groups:
+  core:
+    types:
+    - Decision
+    - Invariant
+    - Concept
+    sequence_scale: small
+    tier_weight: 20
+    tier_y: -300
+  domain:
+    types:
+    - Entity
+    sequence_scale: large
+    tier_weight: 10
+    tier_y: -150
+  ops:
+    types:
+    - Flow
+    - Engine
+    - Feature
+    - Screen
+    - APIEndpoint
+    sequence_scale: small
+    tier_weight: 8
+    tier_y: 0
+  test:
+    types:
+    - TestKind
+    - TestCase
+    sequence_scale: medium
+    tier_weight: 2
+    tier_y: 150
+  meta:
+    types:
+    - Session
+    - Wave
+    - Document
+    - Lesson
+    - Node
+    - Repository
+    - Idea
+    sequence_scale: medium
+    tier_weight: 0
+    tier_y: 300

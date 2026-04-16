@@ -9,12 +9,15 @@ for MCP server connections.
 
 from __future__ import annotations
 
+import copy
 import shutil
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 import yaml
+
+from gobp.core.id_config import DEFAULT_GROUPS
 
 INIT_SCHEMA_VERSION = 2  # Wave 4 introduces schema v2
 
@@ -70,6 +73,7 @@ def init_project(
         "collaborators": [],
         "access_model": "open",
         "project_id": None,
+        "id_groups": copy.deepcopy(DEFAULT_GROUPS),
     }
     config_path = gobp_dir / "config.yaml"
     with open(config_path, "w", encoding="utf-8") as f:
