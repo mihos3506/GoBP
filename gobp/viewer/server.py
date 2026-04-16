@@ -1,15 +1,67 @@
 """GoBP Graph Viewer HTTP server.
 
-Serves index.html and /api/graph endpoint.
+Serves index.html, /api/graph, /api/projects, and /api/config.
 Read-only — never writes to GoBP data.
 """
 
 from __future__ import annotations
 
 import json
+import re as _re
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 from typing import Any
+
+
+def _suggest_db_name(project_root: str) -> str:
+    """Suggest DB name from project folder name."""
+    folder = Path(project_root).name.lower()
+    folder = _re.sub(r"[^a-z0-9]", "_", folder).strip("_")
+    folder = _re.sub(r"_v\d+$", "", folder)  # remove _v1, _v2
+    return f"gobp_{folder}" if folder != "gobp" else "gobp"
+
+
+def _get_python_path() -> str:
+    """Return current Python executable path with forward slashes."""
+    import sys
+
+    return sys.executable.replace("\\", "/")
+
+
+def _api_config_payload(gobp_root: Path) -> dict[str, Any]:
+    """Build JSON object for GET /api/config (MCP Generator)."""
+    import yaml as _yaml
+
+    config: dict[str, Any] = {}
+    config_path = gobp_root / ".gobp" / "config.yaml"
+    if config_path.exists():
+        try:
+            config = _yaml.safe_load(config_path.read_text(encoding="utf-8")) or {}
+        except Exception:
+            pass
+
+    root_str = str(gobp_root).replace("\\", "/")
+    return {
+        "project_root": root_str,
+        "project_name": config.get("project_name", gobp_root.name),
+        "project_id": config.get("project_id", gobp_root.name.lower()),
+        "project_description": config.get("project_description", ""),
+        "python_path": _get_python_path(),
+        "suggested_db": _suggest_db_name(root_str),
+        "suggested_mcp_key": "gobp-" + gobp_root.name.lower().replace("_", "-"),
+        "db_host": "postgresql://postgres:Hieu%408283%40@localhost",
+    }
+
+
+def _respond_json(handler: BaseHTTPRequestHandler, data: dict[str, Any]) -> None:
+    """Write a JSON response with CORS headers."""
+    body = json.dumps(data, ensure_ascii=False).encode("utf-8")
+    handler.send_response(200)
+    handler.send_header("Content-Type", "application/json; charset=utf-8")
+    handler.send_header("Content-Length", str(len(body)))
+    handler.send_header("Access-Control-Allow-Origin", "*")
+    handler.end_headers()
+    handler.wfile.write(body)
 
 
 def _load_graph_data(project_root: Path) -> dict[str, Any]:
@@ -99,6 +151,8 @@ def make_handler(project_root: Path, viewer_dir: Path):
                 self.send_header("Access-Control-Allow-Origin", "*")
                 self.end_headers()
                 self.wfile.write(body)
+            elif path_only == "/api/config":
+                _respond_json(self, _api_config_payload(project_root))
             elif self.path == "/api/graph" or self.path == "/api/graph?refresh=1":
                 self._serve_graph()
             elif self.path in ("/", "/index.html"):
@@ -155,6 +209,13 @@ def make_multi_handler(projects: list[dict[str, str]], viewer_dir: Path):
 
             if path == "/api/projects":
                 self._serve_json(projects)
+            elif path == "/api/config":
+                root_param = params.get("root", [None])[0]
+                if root_param:
+                    cfg_root = Path(root_param)
+                else:
+                    cfg_root = Path(projects[0]["root"]) if projects else Path.cwd()
+                _respond_json(self, _api_config_payload(cfg_root))
             elif path == "/api/graph":
                 root_param = params.get("root", [None])[0]
                 if root_param:
