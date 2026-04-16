@@ -28,17 +28,17 @@ _EDGE_DEDUPE_CACHE: dict[str, tuple[int, int, int, int]] = {}
 
 
 def _generate_session_id(goal: str = "") -> str:
-    """Generate short, unique session ID.
+    """Generate session ID using new group namespace format.
 
-    Format: session:YYYY-MM-DD_XXXXXXXXX
-    where XXXXXXXXX = first 9 chars of UUID4 hex
-    Never truncated, always exactly 28 chars.
+    Format: meta.session:YYYY-MM-DD_XXXXXXXXX
+    where XXXXXXXXX = first 9 chars of UUID4 hex.
+    Always exactly 37 chars.
     """
     from datetime import datetime, timezone
 
     date_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     short_hash = _uuid.uuid4().hex[:9]
-    return f"session:{date_str}_{short_hash}"
+    return f"meta.session:{date_str}_{short_hash}"
 
 
 def _atomic_write(target_path: Path, content: str) -> None:
@@ -93,7 +93,9 @@ def _node_file_path(gobp_root: Path, node_id: str) -> Path:
     Returns:
         Path to the ``.md`` file inside ``.gobp/nodes/``.
     """
-    safe_name = node_id.replace(":", "_").replace("/", "_")
+    safe_name = (
+        node_id.replace(":", "_").replace("/", "_").replace(".", "_")
+    )
     return gobp_root / ".gobp" / "nodes" / f"{safe_name}.md"
 
 

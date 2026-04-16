@@ -46,6 +46,7 @@ from pathlib import Path
 from typing import Any
 
 from gobp.core.graph import GraphIndex
+from gobp.core.id_config import generate_external_id
 
 
 # Canonical NodeType mapping — case-insensitive input → PascalCase output
@@ -86,22 +87,6 @@ def _normalize_type(raw: str) -> str:
 def _normalize_node_type(node_type: str) -> str:
     """Normalize user-provided node type to canonical schema casing."""
     return _normalize_type(node_type)
-
-
-def _get_type_prefix(node_type: str) -> str:
-    """Get ID prefix for node type."""
-    prefix_map = {
-        "Node": "node",
-        "Idea": "idea",
-        "Decision": "dec",
-        "Session": "session",
-        "Document": "doc",
-        "Lesson": "lesson",
-        "Concept": "concept",
-        "TestKind": "testkind",
-        "TestCase": "tc",
-    }
-    return prefix_map.get(node_type, "node")
 
 
 def _classify_doc_priority(content: str, path: str) -> str:
@@ -212,7 +197,7 @@ def _tokenize_rest(rest: str) -> list[str]:
 
 def _parse_edge_rest(rest: str) -> dict[str, Any]:
     """Parse edge arrow syntax: 'node:a --type--> node:b [key=val]'."""
-    edge_pattern = re.compile(r"^([\w:]+)\s+--(\w+)-->\s+([\w:]+)(.*)?$")
+    edge_pattern = re.compile(r"^([\w.:\-]+)\s+--(\w+)-->\s+([\w.:\-]+)(.*)?$")
     m = edge_pattern.match(rest)
     if m:
         params: dict[str, Any] = {
@@ -505,13 +490,7 @@ async def dispatch(
             node_id = params.pop("id", params.pop("node_id", None))
             auto_generated_id = False
             if not node_id:
-                import uuid as _uuid
-
-                type_prefix = _get_type_prefix(node_type)
-                short_hash = _uuid.uuid4().hex[:6]
-                if type_prefix == "node" and short_hash[0].isdigit():
-                    short_hash = f"n{short_hash[:5]}"
-                node_id = f"{type_prefix}:{short_hash}"
+                node_id = generate_external_id(node_type, project_root)
                 auto_generated_id = True
 
             create_fields = {
@@ -611,13 +590,7 @@ async def dispatch(
             else:
                 node_id = existing_node.get("id") if existing_node else None
                 if not node_id:
-                    import uuid as _uuid
-
-                    type_prefix = _get_type_prefix(node_type)
-                    short_hash = _uuid.uuid4().hex[:6]
-                    if type_prefix == "node" and short_hash[0].isdigit():
-                        short_hash = f"n{short_hash[:5]}"
-                    node_id = f"{type_prefix}:{short_hash}"
+                    node_id = generate_external_id(node_type, project_root)
                 args = {
                     "id": node_id,
                     "type": node_type,

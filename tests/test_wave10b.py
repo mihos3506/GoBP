@@ -19,8 +19,8 @@ def test_session_id_length():
     from gobp.core.mutator import _generate_session_id
     for _ in range(10):
         sid = _generate_session_id("Very long goal string that used to cause truncation issues in MIHOS Phase 2 import session")
-        assert len(sid) == 28, f"Wrong length: {len(sid)}"
-        assert sid.startswith("session:20")
+        assert len(sid) == 33, f"Wrong length: {len(sid)}"
+        assert sid.startswith("meta.session:20")
 
 
 def test_session_id_unique():
@@ -129,8 +129,8 @@ def test_create_without_id(gobp_root: Path):
     ))
     assert result["ok"] is True
     node_id = result.get("node_id", "")
-    assert node_id.startswith("idea:"), f"Wrong ID format: {node_id}"
-    assert len(node_id) == len("idea:") + 6
+    assert node_id.startswith("meta.idea:"), f"Wrong ID format: {node_id}"
+    assert len(node_id) > len("meta.idea:")
 
 
 # -- Edge creation tests -------------------------------------------------------
