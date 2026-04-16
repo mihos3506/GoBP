@@ -2683,3 +2683,108 @@
   legacy_to: doc:wave_16a01_brief_575ef8
   to: meta.doc:216192
   type: references
+- from: meta.wave:088128
+  legacy_to: doc:wave_0_brief_20b063
+  reason: wave brief source document
+  to: meta.doc:759168
+  type: references
+- from: meta.wave:430336
+  legacy_to: doc:wave_10a_brief_7a12b9
+  reason: wave brief source document
+  to: meta.doc:147776
+  type: references
+- from: meta.wave:545216
+  legacy_to: doc:wave_10b_brief_3470ef
+  reason: wave brief source document
+  to: meta.doc:730688
+  type: references
+- from: meta.wave:174080
+  legacy_to: doc:wave_10c_brief_f5fd26
+  reason: wave brief source document
+  to: meta.doc:313600
+  type: references
+- from: meta.wave:047808
+  legacy_to: doc:wave_11a_brief_02c9da
+  reason: wave brief source document
+  to: meta.doc:896512
+  type: references
+- from: meta.wave:492480
+  legacy_to: doc:wave_11b_brief_528a0d
+  reason: wave brief source document
+  to: meta.doc:479424
+  type: references
+- from: meta.wave:987712
+  legacy_to: doc:wave_12_brief_b727f4
+  reason: wave brief source document
+  to: meta.doc:062336
+  type: references
+- from: meta.wave:903744
+  legacy_to: doc:wave_13_brief_f19f8f
+  reason: wave brief source document
+  to: meta.doc:645248
+  type: references
+- from: meta.wave:489472
+  legacy_to: doc:wave_15_brief_b2833b
+  reason: wave brief source document
+  to: meta.doc:228160
+  type: references
+- from: meta.wave:497856
+  legacy_to: doc:wave_16a02_brief_f7a348
+  reason: wave brief source document
+  to: meta.doc:616768
+  type: references
+- from: meta.wave:698688
+  legacy_to: doc:wave_1_brief_417c52
+  reason: wave brief source document
+  to: meta.doc:199680
+  type: references
+- from: meta.wave:298240
+  legacy_to: doc:wave_2_brief_e53534
+  reason: wave brief source document
+  to: meta.doc:782592
+  type: references
+- from: meta.wave:088384
+  legacy_to: doc:wave_3_brief_57ec02
+  reason: wave brief source document
+  to: meta.doc:365504
+  type: references
+- from: meta.wave:499520
+  legacy_to: doc:wave_4_brief_98553a
+  reason: wave brief source document
+  to: meta.doc:948416
+  type: references
+- from: meta.wave:342912
+  legacy_to: doc:wave_5_brief_e8f163
+  reason: wave brief source document
+  to: meta.doc:337024
+  type: references
+- from: meta.wave:314880
+  legacy_to: doc:wave_6_brief_75d161
+  reason: wave brief source document
+  to: meta.doc:919936
+  type: references
+- from: meta.wave:590528
+  legacy_to: doc:wave_7_brief_263c85
+  reason: wave brief source document
+  to: meta.doc:891456
+  type: references
+- from: meta.wave:507904
+  legacy_to: doc:wave_8_brief_c74899
+  reason: wave brief source document
+  to: meta.doc:474368
+  type: references
+- from: meta.wave:800064
+  legacy_to: doc:wave_9a_brief_bc298a
+  reason: wave brief source document
+  to: meta.doc:057280
+  type: references
+- from: meta.wave:277760
+  legacy_to: doc:wave_h_brief_c1e886
+  reason: wave brief source document
+  to: meta.doc:445888
+  type: references
+- from: meta.idea:522112
+  legacy_to: doc:gobp_id_design_c76679
+  reason: idea grounded in design document
+  to: meta.doc:176256
+  type: references

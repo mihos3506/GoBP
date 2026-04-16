@@ -1,0 +1,12 @@
+---
+id: meta.wave:507904
+type: Wave
+name: Wave 8
+status: ACTIVE
+created: '2026-04-16T06:42:59.651986+00:00'
+updated: '2026-04-16T06:42:59.651986+00:00'
+session_id: session:2026-04-16_import_all_wave_docs2
+description: Imported from wave_8_brief.md
+---
+
+(Auto-generated node file. Edit the YAML above or add body content below.)
