@@ -2,6 +2,22 @@
 
 ---
 
+## MCP tools structure (Wave 16A04)
+
+Runtime layout under `gobp/mcp/`:
+
+- `parser.py` — Query parsing (`parse_query`, `_normalize_type`, coercion helpers).
+- `dispatcher.py` — Routes parsed actions to tool implementations.
+- `server.py` — MCP stdio server entrypoint.
+- `tools/read.py` — Core reads: `find`, `get`/`context`, `related`, `sections`, batch helpers, etc.
+- `tools/read_governance.py` — `schema_governance`, `metadata_lint`.
+- `tools/read_priority.py` — `recompute_priorities`.
+- `tools/read_interview.py` — `node_template`, `node_interview` and edge-declaration templates.
+- `tools/write.py` — Node upsert, sessions, decision lock.
+- `tools/maintain.py` — Validate, prune, stats.
+
+---
+
 # FOUNDATIONAL DOCS UPDATES — 2026-04-14
 
 These are additions to existing foundational docs. CEO (or Cursor) pastes each section into the corresponding file at the indicated location.
