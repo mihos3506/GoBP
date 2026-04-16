@@ -217,6 +217,11 @@ node_types:
         type: "bool"
       handoff_notes:
         type: "str"
+      role:
+        type: "enum"
+        enum_values: ["observer", "contributor", "admin"]
+        default: "contributor"
+        description: "Agent role for this session (audit trail only)"
 
   Document:
     description: "Pointer to external doc file with metadata"

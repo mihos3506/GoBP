@@ -612,6 +612,7 @@ async def dispatch(
                 "outcome": params.get("outcome", ""),
                 "pending": params.get("pending", "").split(",") if params.get("pending") else [],
                 "handoff_notes": params.get("handoff", params.get("handoff_notes", "")),
+                "role": params.get("role", "contributor"),
             }
             if "session_id" in params:
                 args["session_id"] = params["session_id"]
@@ -879,6 +880,8 @@ PROTOCOL_GUIDE = {
         "update: id='x' name='y' session_id='z'": "Update existing node",
         "lock:Decision topic='x' what='y' why='z'": "Lock a decision",
         "session:start actor='x' goal='y'": "Start a session",
+        "session:start actor='x' goal='y' role='observer'": "Start read-only session",
+        "session:start actor='x' goal='y' role='admin'": "Start admin session",
         "session:end outcome='x' handoff='y'": "End a session",
         "edge: node:a --relates_to--> node:b": "Create semantic edge",
         "edge: node:a --implements--> node:b reason='x'": "Create edge with reason",

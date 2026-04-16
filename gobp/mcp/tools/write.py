@@ -335,6 +335,11 @@ def session_log(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> 
             counter += 1
             session_id = f"{base_id}{counter}"
 
+        role = args.get("role", "contributor")
+        valid_roles = {"observer", "contributor", "admin"}
+        if role not in valid_roles:
+            role = "contributor"
+
         session_node: dict[str, Any] = {
             "id": session_id,
             "type": "Session",
@@ -345,6 +350,7 @@ def session_log(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> 
             "status": "IN_PROGRESS",
             "created": now,
             "updated": now,
+            "role": role,
         }
 
         result = validate_node(session_node, schema)
