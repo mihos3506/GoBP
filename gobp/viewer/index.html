@@ -111,7 +111,7 @@
 <div id="graph-canvas"></div>
 
 <div id="detail">
-  <button class="close" onclick="document.getElementById('detail').classList.remove('visible')">Ã—</button>
+  <button class="close" onclick="document.getElementById('detail').classList.remove('visible')">×</button>
   <div id="detail-content"></div>
 </div>
 
@@ -235,7 +235,7 @@ async function loadGraph(root) {
     document.getElementById('loading').style.display = 'none';
     if (!GRAPH_DATA.nodes || GRAPH_DATA.nodes.length === 0) {
       document.getElementById('status-left').textContent =
-        '0 nodes â€” graph is empty. This viewer reads .gobp/ on disk (not MCP). ' +
+        '0 nodes — graph is empty. This viewer reads .gobp/ on disk (not MCP). ' +
         'Run: python -m gobp.cli init (or add nodes) in this project root.';
     }
   } catch(e) {
@@ -260,7 +260,7 @@ function initFilters() {
   Object.keys(typeCounts).sort().forEach(t => {
     const label = document.createElement('label');
     label.innerHTML = `<input type="checkbox" checked data-type="${t}">
-      <span style="color:${TYPE_COLORS[t]||'#fff'}">●</span>
+      <span style="color:${TYPE_COLORS[t]||'#fff'}">●</span>
       <span>${t}</span><span class="count">${typeCounts[t]}</span>`;
     label.querySelector('input').addEventListener('change', e => {
       if(e.target.checked) VISIBLE_TYPES.add(t); else VISIBLE_TYPES.delete(t);
@@ -275,7 +275,7 @@ function initFilters() {
     if(s==='__none__') return;
     const label = document.createElement('label');
     label.innerHTML = `<input type="checkbox" checked data-status="${s}">
-      <span style="color:${STATUS_COLORS[s]||'#888'}">â– </span>
+      <span style="color:${STATUS_COLORS[s]||'#888'}">■</span>
       <span>${s}</span><span class="count">${statusCounts[s]}</span>`;
     label.querySelector('input').addEventListener('change', e => {
       if(e.target.checked) VISIBLE_STATUSES.add(s); else VISIBLE_STATUSES.delete(s);
@@ -443,7 +443,7 @@ function showDetail(node) {
     html += `</details>`;
   }
   if(out.length) {
-    html += '<div class="relations"><h4>â†’ Outgoing</h4>';
+    html += '<div class="relations"><h4>→ Outgoing</h4>';
     out.slice(0,30).forEach(e => {
       const name = nodesById[e.id]?.name||e.id;
       html += `<div class="rel-item" data-id="${e.id}">
@@ -453,7 +453,7 @@ function showDetail(node) {
     html += '</div>';
   }
   if(inc.length) {
-    html += '<div class="relations"><h4>â† Incoming</h4>';
+    html += '<div class="relations"><h4>← Incoming</h4>';
     inc.slice(0,30).forEach(e => {
       const name = nodesById[e.id]?.name||e.id;
       html += `<div class="rel-item" data-id="${e.id}">
