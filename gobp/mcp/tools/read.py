@@ -110,7 +110,15 @@ def gobp_overview(index: GraphIndex, project_root: Path, args: dict[str, Any]) -
     all_nodes = index.all_nodes()
     all_edges = index.all_edges()
 
-    # Project metadata from charter Document node if exists
+    # Project metadata: .gobp/config.yaml overrides charter / first Document
+    cfg: dict[str, Any] = {}
+    cfg_path = project_root / ".gobp" / "config.yaml"
+    if cfg_path.exists():
+        try:
+            cfg = yaml.safe_load(cfg_path.read_text(encoding="utf-8")) or {}
+        except Exception:
+            cfg = {}
+
     project_name = "Unknown"
     project_description = "GoBP-managed project"
 
@@ -123,6 +131,12 @@ def gobp_overview(index: GraphIndex, project_root: Path, args: dict[str, Any]) -
         docs = index.nodes_by_type("Document")
         if docs:
             project_name = docs[0].get("name", project_name)
+
+    resolved_name = cfg["project_name"] if "project_name" in cfg else project_name
+    resolved_description = (
+        cfg["project_description"] if "project_description" in cfg else project_description
+    )
+    project_id = str(cfg.get("project_id", "") or "")
 
     # Stats
     nodes_by_type: dict[str, int] = {}
@@ -219,8 +233,10 @@ def gobp_overview(index: GraphIndex, project_root: Path, args: dict[str, Any]) -
     base: dict[str, Any] = {
         "ok": True,
         "project": {
-            "name": project_name,
-            "description": project_description,
+            "name": resolved_name,
+            "id": project_id,
+            "description": resolved_description,
+            "root": str(project_root),
             "gobp_version": getattr(gobp, "__version__", "0.1.0"),
             "schema_version": "1.0",
             "pattern": "per_project",

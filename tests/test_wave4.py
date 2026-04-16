@@ -40,7 +40,9 @@ def test_init_config_multiuser_placeholders(tmp_path: Path) -> None:
     assert "owner" in config and config["owner"] is None
     assert "collaborators" in config and config["collaborators"] == []
     assert "access_model" in config and config["access_model"] == "open"
-    assert "project_id" in config and config["project_id"] is None
+    assert "project_id" in config
+    assert config["project_id"] == str(config["project_name"]).lower().replace(" ", "-")
+    assert "project_description" in config and config["project_description"] == ""
 
 
 def test_init_seeds_17_nodes(gobp_root: Path) -> None:

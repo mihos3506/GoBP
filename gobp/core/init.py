@@ -63,8 +63,11 @@ def init_project(
 
     # config.yaml with v2 multi-user placeholders
     name = project_name or project_root.name
+    project_id = name.lower().replace(" ", "-")
     config = {
         "project_name": name,
+        "project_id": project_id,
+        "project_description": "",
         "schema_version": INIT_SCHEMA_VERSION,
         "created_at": datetime.now(timezone.utc).isoformat(),
         "gobp_version": "0.1.0",
@@ -72,7 +75,6 @@ def init_project(
         "owner": None,
         "collaborators": [],
         "access_model": "open",
-        "project_id": None,
         "id_groups": copy.deepcopy(DEFAULT_GROUPS),
     }
     config_path = gobp_dir / "config.yaml"
