@@ -5,7 +5,9 @@ Claude CLI, Continue, etc.) via standard MCP protocol over stdio.
 
 Server loads .gobp/ data on startup. Single tool `gobp()` accepts the
 query protocol (v2): reads/writes, `version:`, schema governance
-(`validate: schema-docs` / `schema-tests`), `template:` / `interview:`,
+(`validate: schema-docs` / `schema-tests` / `metadata`), response tiers
+(`find`/`get`/`related` with `mode=summary|brief|full`), `get_batch:`,
+`recompute: priorities`, `template:` / `interview:`,
 and optional `GOBP_READ_ONLY=true` to block writes.
 
 Usage:
@@ -35,6 +37,15 @@ from gobp.core.graph import GraphIndex
 
 
 logger = logging.getLogger("gobp.mcp.server")
+
+
+def _query_truthy(val: Any) -> bool:
+    """Coerce query param to bool (same semantics as read tools)."""
+    if val is True:
+        return True
+    if val is False or val is None:
+        return False
+    return str(val).strip().lower() in ("true", "1", "yes", "on")
 
 _READ_ONLY_ACTIONS: frozenset[str] = frozenset({
     "create", "update", "upsert", "lock",
@@ -137,6 +148,9 @@ async def list_tools() -> list[types.Tool]:
                 "Structured query: '<action>:<NodeType> <key>=\\'<value>\\' ...'. "
                 "Start with gobp(query='version:') for protocol/schema info or "
                 "gobp(query='overview:') for project state. "
+                "Response tiers: find/get/related support mode=summary|brief|full; "
+                "get_batch: ids='a,b,c' mode=brief; validate: metadata; "
+                "recompute: priorities (dry_run=true preview). "
                 "Set env GOBP_READ_ONLY=true to block writes (viewer/analyst mode)."
             ),
             inputSchema={
@@ -148,14 +162,21 @@ async def list_tools() -> list[types.Tool]:
                             "Structured query (gobp query protocol v2). "
                             "Format: '<action>:<NodeType> <key>=\\'<value>\\''. "
                             "Discovery: 'version:' | 'overview:' | 'validate: schema-docs' | "
-                            "'validate: schema-tests' | 'template:' | 'template: Flow' | "
+                            "'validate: schema-tests' | 'validate: metadata' | "
+                            "'validate: metadata type=Flow' | "
+                            "'template:' | 'template: Flow' | "
                             "'interview: node:x' | 'interview: node:x answered=implements,references'. "
-                            "Read: 'find: …' | 'get: node:… brief=true' (slim) | 'related: …' | 'stats:'. "
+                            "Read: 'find: … mode=summary|brief' | "
+                            "'get: node:… mode=brief|full' | 'get: node:… brief=true' (slim) | "
+                            "'related: node:… mode=summary' | "
+                            "'get_batch: ids=\\'node:a,node:b\\' mode=brief' | 'stats:'. "
                             "Overview defaults to slim (no full protocol dump); "
                             "'overview: full_interface=true' for full catalog. "
                             "Write (blocked when GOBP_READ_ONLY=true): "
                             "'session:start actor=\\'…\\' goal=\\'…\\' role=\\'observer|contributor|admin\\'' | "
-                            "'create:…' | 'upsert:…' | 'edge: …' | 'import: …'. "
+                            "'create:…' | 'upsert:…' | 'edge: …' | 'import: …' | "
+                            "'recompute: priorities session_id=\\'…\\'' (not dry_run). "
+                            "Read-only still allows 'recompute: priorities dry_run=true'. "
                             "Other: 'validate: all' | 'extract: lessons'."
                         ),
                     }
@@ -186,13 +207,23 @@ async def call_tool(
 
     from gobp.mcp.dispatcher import parse_query
 
-    action, _, _ = parse_query(query)
+    action, _, params = parse_query(query)
 
     if _READ_ONLY and action in _READ_ONLY_ACTIONS:
         result = _inject_protocol({
             "ok": False,
             "error": f"Read-only mode: '{action}' is a write action.",
             "hint": "Set GOBP_READ_ONLY=false (or unset) to enable writes.",
+            "read_only": True,
+            "blocked_action": action,
+        })
+        return [types.TextContent(type="text", text=json.dumps(result, ensure_ascii=False))]
+
+    if _READ_ONLY and action == "recompute" and not _query_truthy(params.get("dry_run", False)):
+        result = _inject_protocol({
+            "ok": False,
+            "error": "Read-only mode: 'recompute' without dry_run=true writes nodes.",
+            "hint": "Use recompute: priorities dry_run=true to preview, or disable GOBP_READ_ONLY.",
             "read_only": True,
             "blocked_action": action,
         })
@@ -237,7 +268,15 @@ async def call_tool(
             error = True
 
         # Reload index after write operations
-        if action in ("create", "update", "upsert", "lock", "session", "commit", "edge", "import"):
+        reload_writes = action in (
+            "create", "update", "upsert", "lock", "session", "commit", "edge", "import",
+        )
+        reload_recompute = (
+            action == "recompute"
+            and isinstance(result, dict)
+            and result.get("dry_run") is not True
+        )
+        if reload_writes or reload_recompute:
             _index = _load_index(_project_root)
             # Invalidate cache
             try:
