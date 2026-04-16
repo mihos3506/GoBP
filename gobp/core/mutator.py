@@ -28,11 +28,10 @@ _EDGE_DEDUPE_CACHE: dict[str, tuple[int, int, int, int]] = {}
 
 
 def _generate_session_id(goal: str = "") -> str:
-    """Generate session ID using new group namespace format.
+    """Generate session ID in new format.
 
     Format: meta.session.YYYY-MM-DD.XXXXXXXXX
-    where XXXXXXXXX = first 9 chars of UUID4 hex.
-    Always exactly 32 chars.
+    where XXXXXXXXX = first 9 chars of UUID4 hex (33 chars total).
     """
     from datetime import datetime, timezone
 

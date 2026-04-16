@@ -86,7 +86,7 @@ def test_full_ai_session_workflow(mihos_root: Path) -> None:
     )
     assert sess["ok"] is True
     session_id = sess["session_id"]
-    assert session_id.startswith("session:")
+    assert session_id.startswith("meta.session.")
 
     # Reload index after write
     index = _load(root)

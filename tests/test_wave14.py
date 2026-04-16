@@ -29,7 +29,7 @@ def session_id(seeded_root: Path) -> str:
 
 
 def test_session_fixture_wave14(session_id: str) -> None:
-    assert session_id.startswith("session:")
+    assert session_id.startswith("meta.session.")
 
 
 # ── Protocol version tests ────────────────────────────────────────────────────
