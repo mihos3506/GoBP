@@ -3,7 +3,9 @@
 Exposes GoBP graph data to MCP-capable AI clients (Cursor, Claude Desktop,
 Claude CLI, Continue, etc.) via standard MCP protocol over stdio.
 
-Server loads .gobp/ data on startup. Single tool `gobp()` accepts the
+Server loads .gobp/ data at startup for warm-up; each `gobp()` call reloads
+the graph from disk so long-lived MCP processes always see the latest writes
+(sessions, imports, etc.). Single tool `gobp()` accepts the
 query protocol (v2): reads/writes, `version:`, schema governance
 (`validate: schema-docs` / `schema-tests` / `metadata`), response tiers
 (`find`/`get`/`related` with `mode=summary|brief|full`), `get_batch:`,
@@ -198,11 +200,6 @@ async def call_tool(
         result = _inject_protocol({"ok": False, "error": f"Unknown tool: {name}. Use gobp()."})
         return [types.TextContent(type="text", text=json.dumps(result, ensure_ascii=False))]
 
-    # Lazy load index
-    if _index is None or _project_root is None:
-        _project_root = _get_project_root()
-        _index = _load_index(_project_root)
-
     query = arguments.get("query", "overview:")
 
     from gobp.mcp.parser import parse_query
@@ -262,14 +259,29 @@ async def call_tool(
     try:
         from gobp.mcp.dispatcher import dispatch
 
+        # Reload graph from disk before every query. The MCP stdio server stays
+        # alive across many tool calls; without this, in-memory _index misses
+        # nodes written by the previous call (e.g. session:start then create:).
+        _project_root = _get_project_root()
+        _index = _load_index(_project_root)
+
         result = await dispatch(query, _index, _project_root)
         _inject_protocol(result)
         if not result.get("ok"):
             error = True
 
-        # Reload index after write operations
+        # Invalidate optional caches after mutations (SQLite / memory layers).
         reload_writes = action in (
-            "create", "update", "upsert", "lock", "session", "commit", "edge", "import",
+            "create",
+            "update",
+            "upsert",
+            "lock",
+            "session",
+            "commit",
+            "edge",
+            "import",
+            "dedupe",
+            "extract",
         )
         reload_recompute = (
             action == "recompute"
@@ -277,8 +289,6 @@ async def call_tool(
             and result.get("dry_run") is not True
         )
         if reload_writes or reload_recompute:
-            _index = _load_index(_project_root)
-            # Invalidate cache
             try:
                 from gobp.core.cache import get_cache
 
