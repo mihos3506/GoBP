@@ -1,0 +1,7 @@
+Wave 10B Task 6: enhance import action — Document node + priority auto-classify
+
+- import: creates Document node with source_path, content_hash, sections
+- _classify_doc_priority(): deterministic keyword-based priority assignment
+- Returns suggestion for creating related nodes
+- Fixes B3: import created 0 nodes
+- Fixes B5: no Document nodes in graph

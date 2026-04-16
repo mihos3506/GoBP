@@ -5,7 +5,8 @@
       "args": ["-m", "gobp.mcp.server"],
       "cwd": "D:\\GoBP",
       "env": {
-        "GOBP_PROJECT_ROOT": "D:\\GoBP"
+        "GOBP_PROJECT_ROOT": "D:\\GoBP",
+        "GOBP_READ_ONLY": "false"
       }
     }
   }

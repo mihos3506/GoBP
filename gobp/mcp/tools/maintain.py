@@ -7,10 +7,20 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Any
+from functools import lru_cache
 
 from gobp.core.graph import GraphIndex
 from gobp.core.loader import load_schema, package_schema_dir
 from gobp.core.validator import validate_edge, validate_node
+
+
+@lru_cache(maxsize=1)
+def _cached_schemas() -> tuple[dict[str, Any], dict[str, Any]]:
+    """Load and cache node/edge schemas for validate calls."""
+    schema_dir = package_schema_dir()
+    nodes_schema = load_schema(schema_dir / "core_nodes.yaml")
+    edges_schema = load_schema(schema_dir / "core_edges.yaml")
+    return nodes_schema, edges_schema
 
 
 def validate(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> dict[str, Any]:
@@ -28,11 +38,9 @@ def validate(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> dic
     if severity_filter not in ("all", "hard", "warning"):
         return {"ok": False, "error": "severity_filter must be all, hard, or warning"}
 
-    # Load schemas
+    # Load schemas (cached after first call)
     try:
-        schema_dir = package_schema_dir()
-        nodes_schema = load_schema(schema_dir / "core_nodes.yaml")
-        edges_schema = load_schema(schema_dir / "core_edges.yaml")
+        nodes_schema, edges_schema = _cached_schemas()
     except Exception as e:
         return {"ok": False, "error": f"Failed to load schemas: {e}"}
 

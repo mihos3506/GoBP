@@ -1,0 +1,7 @@
+Wave H Task 7: final verification — all tests pass, no encoding bugs
+
+- 200 tests passing
+- Zero encoding bugs in init.py
+- All 9 templates valid YAML
+- CHANGELOG accurate
+- Docs aligned with implementation

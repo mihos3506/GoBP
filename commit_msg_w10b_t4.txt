@@ -1,0 +1,5 @@
+Wave 10B Task 4: add priority field to schema
+
+- Node, Idea, Decision, Document, Lesson, Concept: add optional priority field
+- Enum: critical | high | medium | low (default: medium)
+- Enables: create:Node name='x' priority='critical'

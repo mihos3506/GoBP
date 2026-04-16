@@ -217,6 +217,11 @@ async function loadGraph(root) {
     initFilters();
     applyFilters();
     document.getElementById('loading').style.display = 'none';
+    if (!GRAPH_DATA.nodes || GRAPH_DATA.nodes.length === 0) {
+      document.getElementById('status-left').textContent =
+        '0 nodes — graph is empty. This viewer reads .gobp/ on disk (not MCP). ' +
+        'Run: python -m gobp.cli init (or add nodes) in this project root.';
+    }
   } catch(e) {
     document.getElementById('loading').style.display = 'none';
     document.getElementById('status-left').textContent = 'Error: ' + e.message;

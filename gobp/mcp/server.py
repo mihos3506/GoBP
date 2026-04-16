@@ -3,8 +3,10 @@
 Exposes GoBP graph data to MCP-capable AI clients (Cursor, Claude Desktop,
 Claude CLI, Continue, etc.) via standard MCP protocol over stdio.
 
-Server loads .gobp/ data on startup and serves read tools. Write tools
-are added in Wave 5.
+Server loads .gobp/ data on startup. Single tool `gobp()` accepts the
+query protocol (v2): reads/writes, `version:`, schema governance
+(`validate: schema-docs` / `schema-tests`), `template:` / `interview:`,
+and optional `GOBP_READ_ONLY=true` to block writes.
 
 Usage:
     python -m gobp.mcp.server
@@ -131,9 +133,11 @@ async def list_tools() -> list[types.Tool]:
         types.Tool(
             name="gobp",
             description=(
-                "GoBP knowledge graph — create, query, and manage project knowledge. "
-                "Pass a structured query: '<action>:<NodeType> <key>=\\'<value>\\' ...'. "
-                "Call gobp(query='overview:') first to see all actions and project state."
+                "GoBP knowledge graph (protocol v2) — query and update project knowledge. "
+                "Structured query: '<action>:<NodeType> <key>=\\'<value>\\' ...'. "
+                "Start with gobp(query='version:') for protocol/schema info or "
+                "gobp(query='overview:') for project state. "
+                "Set env GOBP_READ_ONLY=true to block writes (viewer/analyst mode)."
             ),
             inputSchema={
                 "type": "object",
@@ -141,12 +145,18 @@ async def list_tools() -> list[types.Tool]:
                     "query": {
                         "type": "string",
                         "description": (
-                            "Structured query. Format: '<action>:<type> <key>=\\'<value>\\''. "
-                            "Examples: 'overview:' | 'find: login' | 'find:Decision auth' | "
-                            "'create:Idea name=\\'x\\' session_id=\\'y\\'' | "
-                            "'lock:Decision topic=\\'x\\' what=\\'y\\' why=\\'z\\'' | "
-                            "'session:start actor=\\'x\\' goal=\\'y\\'' | "
-                            "'validate: nodes' | 'extract: lessons'"
+                            "Structured query (gobp query protocol v2). "
+                            "Format: '<action>:<NodeType> <key>=\\'<value>\\''. "
+                            "Discovery: 'version:' | 'overview:' | 'validate: schema-docs' | "
+                            "'validate: schema-tests' | 'template:' | 'template: Flow' | "
+                            "'interview: node:x' | 'interview: node:x answered=implements,references'. "
+                            "Read: 'find: …' | 'get: node:… brief=true' (slim) | 'related: …' | 'stats:'. "
+                            "Overview defaults to slim (no full protocol dump); "
+                            "'overview: full_interface=true' for full catalog. "
+                            "Write (blocked when GOBP_READ_ONLY=true): "
+                            "'session:start actor=\\'…\\' goal=\\'…\\' role=\\'observer|contributor|admin\\'' | "
+                            "'create:…' | 'upsert:…' | 'edge: …' | 'import: …'. "
+                            "Other: 'validate: all' | 'extract: lessons'."
                         ),
                     }
                 },

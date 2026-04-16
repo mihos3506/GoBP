@@ -1,0 +1,6 @@
+Wave 10B Task 8: update SCHEMA.md + MCP_TOOLS.md
+
+- SCHEMA.md: priority field documented for all node types
+- SCHEMA.md: session ID v2 format documented
+- MCP_TOOLS.md: edge: action added to quick reference
+- MCP_TOOLS.md: import: description updated

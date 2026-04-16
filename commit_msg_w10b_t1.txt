@@ -1,0 +1,5 @@
+Wave 10B Task 1: fix session ID truncation — use UUID hash format
+
+- _generate_session_id(): session:YYYY-MM-DD_XXXXXX (always 28 chars)
+- UUID4 hex[:6] ensures uniqueness without length dependency on goal
+- Fixes B1: session IDs truncated when goal string was long

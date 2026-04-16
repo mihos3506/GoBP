@@ -85,7 +85,21 @@ def make_handler(project_root: Path, viewer_dir: Path):
             pass
 
         def do_GET(self):
-            if self.path == "/api/graph" or self.path == "/api/graph?refresh=1":
+            path_only = self.path.split("?", 1)[0]
+            if path_only == "/api/projects":
+                # Same shape as multi-project server so index.html boots cleanly.
+                one = {
+                    "name": project_root.name,
+                    "root": str(project_root.resolve()),
+                }
+                body = json.dumps([one], ensure_ascii=False).encode("utf-8")
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.send_header("Content-Length", str(len(body)))
+                self.send_header("Access-Control-Allow-Origin", "*")
+                self.end_headers()
+                self.wfile.write(body)
+            elif self.path == "/api/graph" or self.path == "/api/graph?refresh=1":
                 self._serve_graph()
             elif self.path in ("/", "/index.html"):
                 self._serve_file(viewer_dir / "index.html", "text/html")

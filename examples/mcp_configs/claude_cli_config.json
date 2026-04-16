@@ -4,7 +4,8 @@
       "command": "python",
       "args": ["-m", "gobp.mcp.server"],
       "env": {
-        "GOBP_PROJECT_ROOT": "D:\\GoBP"
+        "GOBP_PROJECT_ROOT": "D:\\GoBP",
+        "GOBP_READ_ONLY": "false"
       }
     }
   }

@@ -190,7 +190,19 @@ def test_gobp_overview_recent_decisions(index: GraphIndex, populated_root: Path)
 
 def test_gobp_overview_suggestions(index: GraphIndex, populated_root: Path) -> None:
     out = tools_read.gobp_overview(index, populated_root, {})
-    assert len(out["suggested_next_queries"]) == 3
+    assert len(out["suggested_next_queries"]) == 4
+
+
+def test_gobp_overview_default_is_slim_interface(index: GraphIndex, populated_root: Path) -> None:
+    out = tools_read.gobp_overview(index, populated_root, {})
+    assert "interface" not in out
+    assert out["interface_summary"]["documented_actions"] >= 10
+
+
+def test_gobp_overview_full_interface_flag(index: GraphIndex, populated_root: Path) -> None:
+    out = tools_read.gobp_overview(index, populated_root, {"full_interface": True})
+    assert "interface" in out
+    assert "actions" in out["interface"]
 
 
 # find (5)
@@ -259,6 +271,16 @@ def test_context_includes_references_and_invariants(index: GraphIndex, populated
     out = tools_read.context(index, populated_root, {"node_id": "node:feature_login"})
     assert out["invariants"] == []
     assert len(out["references"]) == 1
+
+
+def test_context_brief_reduces_payload(index: GraphIndex, populated_root: Path) -> None:
+    out = tools_read.context(
+        index, populated_root, {"node_id": "node:feature_login", "brief": True},
+    )
+    assert out["ok"] is True
+    assert out.get("brief") is True
+    assert "outgoing_total" in out
+    assert isinstance(out["node"], dict)
 
 
 # session_recent (3)

@@ -109,6 +109,19 @@ def test_index_html_returns_200(viewer_server) -> None:
         assert "3d-force-graph" in content
 
 
+def test_api_projects_single_root_returns_one_entry(viewer_server, gobp_root: Path) -> None:
+    """GET /api/projects works in single-project mode (matches multi-server shape)."""
+    import urllib.request
+    port = viewer_server
+    with urllib.request.urlopen(f"http://localhost:{port}/api/projects") as resp:
+        assert resp.status == 200
+        data = json.loads(resp.read())
+        assert isinstance(data, list)
+        assert len(data) == 1
+        assert data[0]["name"] == gobp_root.name
+        assert Path(data[0]["root"]).resolve() == gobp_root.resolve()
+
+
 def test_unknown_path_returns_404(viewer_server) -> None:
     """GET /unknown returns 404."""
     import urllib.request

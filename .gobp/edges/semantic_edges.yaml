@@ -1,0 +1,216 @@
+- from: engine:mcp_runtime
+  reason: runtime executes read dispatch path
+  to: flow:mcp_read_query
+  type: implements
+- from: engine:mcp_runtime
+  reason: runtime executes guarded write dispatch path
+  to: flow:mcp_write_query
+  type: implements
+- from: engine:graph_storage
+  reason: storage engine persists writes and revisions
+  to: flow:mcp_write_query
+  type: implements
+- from: api:gobp_query
+  reason: gobp query API serves read actions
+  to: flow:mcp_read_query
+  type: implements
+- from: api:gobp_query
+  reason: gobp query API serves write actions
+  to: flow:mcp_write_query
+  type: implements
+- from: feat:mcp_cursor_pagination
+  reason: pagination feature ships read flow paging
+  to: flow:mcp_read_query
+  type: implements
+- from: feat:mcp_upsert_dedupe
+  reason: upsert feature ships dedupe write behavior
+  to: flow:mcp_write_query
+  type: implements
+- from: feat:mcp_dry_run_preview
+  reason: dry-run preview for safe write flow
+  to: flow:mcp_write_query
+  type: implements
+- from: feat:mcp_stats_observability
+  reason: stats action exposed through gobp query endpoint
+  to: api:gobp_query
+  type: implements
+- from: screen:viewer_main
+  reason: viewer screen consumes graph endpoint
+  to: api:viewer_graph
+  type: references
+- from: wave:13
+  reason: wave includes pagination delivery
+  to: feat:mcp_cursor_pagination
+  type: relates_to
+- from: wave:13
+  reason: wave includes upsert delivery
+  to: feat:mcp_upsert_dedupe
+  type: relates_to
+- from: wave:13
+  reason: wave includes dry-run delivery
+  to: feat:mcp_dry_run_preview
+  type: relates_to
+- from: wave:13
+  reason: wave includes stats delivery
+  to: feat:mcp_stats_observability
+  type: relates_to
+- from: inv:query_before_create
+  reason: governance invariant for write flow
+  to: flow:mcp_write_query
+  type: relates_to
+- from: inv:write_guardrails_required
+  reason: guardrail invariant applies to write flow
+  to: flow:mcp_write_query
+  type: relates_to
+- from: inv:session_required_for_write
+  reason: session invariant applies to write flow
+  to: flow:mcp_write_query
+  type: relates_to
+- from: tc:wave13_find_page_info
+  reason: testcase belongs to test kind
+  to: testkind:contract
+  type: of_kind
+- from: tc:wave13_find_page_info
+  reason: testcase validates target behavior
+  to: feat:mcp_cursor_pagination
+  type: covers
+- from: tc:wave13_find_cursor
+  reason: testcase belongs to test kind
+  to: testkind:integration
+  type: of_kind
+- from: tc:wave13_find_cursor
+  reason: testcase validates target behavior
+  to: feat:mcp_cursor_pagination
+  type: covers
+- from: tc:wave13_related_page_info
+  reason: testcase belongs to test kind
+  to: testkind:contract
+  type: of_kind
+- from: tc:wave13_related_page_info
+  reason: testcase validates target behavior
+  to: flow:mcp_read_query
+  type: covers
+- from: tc:wave13_tests_page_info
+  reason: testcase belongs to test kind
+  to: testkind:contract
+  type: of_kind
+- from: tc:wave13_tests_page_info
+  reason: testcase validates target behavior
+  to: flow:mcp_read_query
+  type: covers
+- from: tc:wave13_upsert_create_update
+  reason: testcase belongs to test kind
+  to: testkind:integration
+  type: of_kind
+- from: tc:wave13_upsert_create_update
+  reason: testcase validates target behavior
+  to: feat:mcp_upsert_dedupe
+  type: covers
+- from: tc:wave13_dry_run_no_write
+  reason: testcase belongs to test kind
+  to: testkind:security_input
+  type: of_kind
+- from: tc:wave13_dry_run_no_write
+  reason: testcase validates target behavior
+  to: feat:mcp_dry_run_preview
+  type: covers
+- from: tc:wave13_guardrail_fields
+  reason: testcase belongs to test kind
+  to: testkind:contract
+  type: of_kind
+- from: tc:wave13_guardrail_fields
+  reason: testcase validates target behavior
+  to: inv:write_guardrails_required
+  type: covers
+- from: tc:wave13_stats_action
+  reason: testcase belongs to test kind
+  to: testkind:performance
+  type: of_kind
+- from: tc:wave13_stats_action
+  reason: testcase validates target behavior
+  to: feat:mcp_stats_observability
+  type: covers
+- from: dec:d004
+  reason: wave13 locked decision applied to target node
+  to: flow:mcp_read_query
+  type: implements
+- from: dec:d005
+  reason: wave13 locked decision applied to target node
+  to: flow:mcp_write_query
+  type: implements
+- from: dec:d006
+  reason: wave13 locked decision applied to target node
+  to: inv:write_guardrails_required
+  type: implements
+- from: dec:d007
+  reason: wave13 locked decision applied to target node
+  to: feat:mcp_stats_observability
+  type: implements
+- from: lesson:ll130
+  reason: operational learning linked to wave13 write path
+  to: wave:13
+  type: relates_to
+- from: lesson:ll130
+  reason: operational learning linked to wave13 write path
+  to: flow:mcp_write_query
+  type: relates_to
+- from: lesson:ll131
+  reason: operational learning linked to wave13 write path
+  to: wave:13
+  type: relates_to
+- from: lesson:ll131
+  reason: operational learning linked to wave13 write path
+  to: flow:mcp_write_query
+  type: relates_to
+- from: lesson:ll132
+  reason: operational learning linked to wave13 write path
+  to: wave:13
+  type: relates_to
+- from: lesson:ll132
+  reason: operational learning linked to wave13 write path
+  to: flow:mcp_write_query
+  type: relates_to
+- from: wave:10a
+  reason: wave timeline progression
+  to: wave:10b
+  type: supersedes
+- from: wave:10b
+  reason: wave timeline progression
+  to: wave:10c
+  type: supersedes
+- from: wave:10c
+  reason: wave timeline progression
+  to: wave:11a
+  type: supersedes
+- from: wave:11a
+  reason: wave timeline progression
+  to: wave:11b
+  type: supersedes
+- from: wave:11b
+  reason: wave timeline progression
+  to: wave:12
+  type: supersedes
+- from: wave:12
+  reason: wave timeline progression
+  to: wave:13
+  type: supersedes
+- from: wave:10a
+  reason: wave delivers this capability
+  to: api:gobp_query
+  type: relates_to
+- from: wave:10c
+  reason: wave delivers this capability
+  to: entity:db_nodes
+  type: relates_to
+- from: wave:11b
+  reason: wave delivers this capability
+  to: screen:viewer_main
+  type: relates_to
+- from: wave:12
+  reason: wave delivers this capability
+  to: api:viewer_projects
+  type: relates_to
+- from: flow:mcp_read_query
+  to: api:gobp_query
+  type: relates_to
+  reason: perf-check

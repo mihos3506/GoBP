@@ -1,0 +1,5 @@
+Wave 10B Task 10: full suite green + CHANGELOG updated
+
+- 258+ tests passing
+- All 6 bugs fixed
+- 4 features added

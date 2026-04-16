@@ -1,0 +1,38 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git --version)",
+      "Bash(python -c \"import gobp; print\\(gobp.__version__\\)\")",
+      "Bash(python -m py_compile gobp/__init__.py gobp/core/__init__.py gobp/core/graph.py gobp/core/loader.py gobp/core/validator.py gobp/core/mutator.py gobp/core/history.py gobp/schema/__init__.py gobp/mcp/__init__.py gobp/mcp/server.py gobp/mcp/tools/__init__.py gobp/mcp/tools/read.py gobp/mcp/tools/write.py gobp/mcp/tools/import_.py gobp/mcp/tools/maintain.py gobp/cli/__init__.py gobp/cli/__main__.py gobp/cli/commands.py tests/__init__.py)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(python:*)",
+      "Bash(D:/GoBP/venv/Scripts/python.exe -c \"import gobp; print\\(gobp.__version__\\)\")",
+      "Bash(D:/GoBP/venv/Scripts/python.exe -c \"import yaml; print\\(yaml.__version__\\)\")",
+      "Bash(D:/GoBP/venv/Scripts/python.exe -c \"import mcp; print\\('mcp OK'\\)\")",
+      "Bash(D:/GoBP/venv/Scripts/python.exe -c \"import pytest; print\\('pytest OK'\\)\")",
+      "Bash(D:/GoBP/venv/Scripts/pip.exe list:*)",
+      "Bash(git check-ignore:*)",
+      "Bash(D:/GoBP/venv/Scripts/python.exe:*)",
+      "Bash(D:/GoBP/venv/Scripts/pytest.exe tests/test_smoke.py -v)",
+      "Bash(git push:*)",
+      "Bash(D:/GoBP/venv/Scripts/pytest.exe tests/ -v)",
+      "Bash(D:\\\\GoBP\\\\venv\\\\Scripts\\\\python.exe:*)",
+      "Bash(./venv/Scripts/python.exe -m pytest tests/ -v)",
+      "Bash(./venv/Scripts/python.exe -m pytest tests/ --tb=no -q)",
+      "Bash(./venv/Scripts/python.exe -m pytest tests/ --tb=no -q --durations=10)",
+      "Bash(./venv/Scripts/python.exe -m pytest tests/ -v --tb=short)",
+      "Bash(venv/Scripts/python.exe -c ' *)",
+      "Bash(venv/Scripts/python.exe -m pytest tests/ -q --tb=short)",
+      "Bash(venv/Scripts/python.exe -m pytest tests/test_dispatcher.py -v)",
+      "Bash(venv/Scripts/python.exe -m pytest tests/test_wave10b.py -v)",
+      "Bash(GOBP_DB_URL=\"postgresql://postgres:Hieu%408283%40@localhost/gobp\" D:/GoBP/venv/Scripts/python.exe -m pytest tests/test_db_cache.py -v)",
+      "Bash(GOBP_DB_URL=\"postgresql://postgres:Hieu%408283%40@localhost/gobp\" D:/GoBP/venv/Scripts/python.exe -m pytest tests/ -v)",
+      "Bash(GOBP_DB_URL=\"postgresql://postgres:Hieu%408283%40@localhost/gobp\" D:/GoBP/venv/Scripts/python.exe -m pytest tests/ --tb=short)",
+      "Bash(export GOBP_DB_URL=\"postgresql://postgres:Hieu%408283%40@localhost/gobp\")",
+      "Bash(GOBP_DB_URL=\"postgresql://postgres:Hieu%408283%40@localhost/gobp\" D:/GoBP/venv/Scripts/python.exe -m pytest tests/ -q --tb=short)",
+      "Bash(GOBP_DB_URL=\"postgresql://postgres:Hieu%408283%40@localhost/gobp\" D:/GoBP/venv/Scripts/python.exe -m pytest tests/test_performance_v2.py::test_perf_session_log_start_v2 -v)",
+      "Bash(GOBP_DB_URL=\"postgresql://postgres:Hieu%408283%40@localhost/gobp\" D:/GoBP/venv/Scripts/python.exe -m pytest tests/test_wave14.py -v --tb=short)"
+    ]
+  }
+}

@@ -1,0 +1,6 @@
+Wave 10B Task 7: gobp_overview adds priority_summary
+
+- priority_counts: critical/high/medium/low node counts
+- critical_nodes: list of up to 10 critical nodes
+- Nodes without priority field default to medium
+- AI sees project health at a glance

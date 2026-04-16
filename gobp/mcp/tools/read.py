@@ -18,6 +18,15 @@ from gobp.core.graph import GraphIndex
 _FIND_PRIORITY: dict[str, int] = {"exact_id": 0, "exact_name": 1, "substring": 2}
 
 
+def _truthy(val: Any) -> bool:
+    """Coerce MCP/query args to bool for feature flags."""
+    if val is True:
+        return True
+    if val is False or val is None:
+        return False
+    return str(val).strip().lower() in ("true", "1", "yes", "on")
+
+
 def _truncate(text: str | None, max_chars: int = 100) -> str:
     """Truncate text to max_chars, appending '...' if truncated."""
     if not text:
@@ -31,9 +40,17 @@ def gobp_overview(index: GraphIndex, project_root: Path, args: dict[str, Any]) -
     """Return project metadata, stats, main topics, and suggested next queries.
 
     First tool AI should call when connecting to a new GoBP instance.
-    Takes no arguments.
+
+    Args:
+        full_interface / include_interface: if true, include full ``interface``
+        (PROTOCOL_GUIDE — large). Default is false: only ``interface_summary``
+        plus a hint to load the full catalog when needed.
     """
     from gobp.mcp.dispatcher import PROTOCOL_GUIDE
+
+    full_interface = _truthy(args.get("full_interface")) or _truthy(
+        args.get("include_interface")
+    )
 
     all_nodes = index.all_nodes()
     all_edges = index.all_edges()
@@ -144,7 +161,7 @@ def gobp_overview(index: GraphIndex, project_root: Path, args: dict[str, Any]) -
         if n.get("priority") == "critical"
     ][:10]
 
-    return {
+    base: dict[str, Any] = {
         "ok": True,
         "project": {
             "name": project_name,
@@ -166,6 +183,7 @@ def gobp_overview(index: GraphIndex, project_root: Path, args: dict[str, Any]) -
             "gobp(query='find: <keyword>') to search nodes",
             "gobp(query='find:Decision <topic>') to find decisions",
             "gobp(query='session:start actor=<name> goal=<goal>') to start session",
+            "gobp(query='overview: full_interface=true') for full action catalog (large)",
         ],
         "concepts": concepts,
         "test_coverage": {
@@ -181,8 +199,23 @@ def gobp_overview(index: GraphIndex, project_root: Path, args: dict[str, Any]) -
             "low": priority_counts["low"],
             "critical_nodes": critical_nodes,
         },
-        "interface": PROTOCOL_GUIDE,
     }
+    if full_interface:
+        base["interface"] = PROTOCOL_GUIDE
+    else:
+        actions = PROTOCOL_GUIDE.get("actions", {})
+        base["interface_summary"] = {
+            "protocol": PROTOCOL_GUIDE.get("protocol", ""),
+            "format": PROTOCOL_GUIDE.get("format", ""),
+            "documented_actions": len(actions),
+            "tip": PROTOCOL_GUIDE.get("tip", ""),
+            "load_full_protocol": 'gobp(query="overview: full_interface=true")',
+        }
+        base["pagination_hint"] = (
+            "List reads use page_info: use next_cursor with same query for next page "
+            "(find / related / tests)."
+        )
+    return base
 
 
 def find(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> dict[str, Any]:
@@ -340,10 +373,14 @@ def context(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> dict
     Args:
         node_id: str (required)
         depth: int (optional, default 1) - hop depth, v1 max 2
+        brief: if true, return a smaller node payload and cap edges per direction
+            (default cap 30 each; override with edge_limit, max 200).
+        edge_limit: max edges per direction when brief is true.
 
     Returns:
-        Full node, edges, decisions, references.
+        Full node, edges, decisions, references (or slimmed when brief).
     """
+    del project_root
     node_id = args.get("node_id")
     if not node_id:
         return {"ok": False, "error": "node_id parameter required"}
@@ -352,10 +389,18 @@ def context(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> dict
     if not node:
         return {"ok": False, "error": f"Node not found: {node_id}"}
 
+    brief = _truthy(args.get("brief"))
+    if brief:
+        edge_limit = int(args.get("edge_limit", 30))
+        edge_limit = max(1, min(edge_limit, 200))
+    else:
+        edge_limit = None
+
     # Outgoing edges
     outgoing_raw = index.get_edges_from(node_id)
+    out_slice = outgoing_raw if edge_limit is None else outgoing_raw[:edge_limit]
     outgoing = []
-    for edge in outgoing_raw:
+    for edge in out_slice:
         to_node = index.get_node(edge.get("to", ""))
         outgoing.append(
             {
@@ -368,8 +413,9 @@ def context(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> dict
 
     # Incoming edges
     incoming_raw = index.get_edges_to(node_id)
+    in_slice = incoming_raw if edge_limit is None else incoming_raw[:edge_limit]
     incoming = []
-    for edge in incoming_raw:
+    for edge in in_slice:
         from_node = index.get_node(edge.get("from", ""))
         incoming.append(
             {
@@ -390,11 +436,16 @@ def context(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> dict
         if target and target.get("type") == "Decision":
             dec_id = target.get("id")
             if dec_id not in seen_decision_ids:
+                what_txt = target.get("what", "")
+                why_txt = target.get("why", "")
+                if brief:
+                    what_txt = _truncate(str(what_txt), 240)
+                    why_txt = _truncate(str(why_txt), 240)
                 decisions.append(
                     {
                         "id": dec_id,
-                        "what": target.get("what", ""),
-                        "why": target.get("why", ""),
+                        "what": what_txt,
+                        "why": why_txt,
                         "status": target.get("status", ""),
                     }
                 )
@@ -402,6 +453,7 @@ def context(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> dict
 
     # References (via 'references' edges to Document nodes)
     references = []
+    ref_cap = 15 if brief else None
     for edge in outgoing_raw:
         if edge.get("type") != "references":
             continue
@@ -414,16 +466,45 @@ def context(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> dict
                     "lines": edge.get("lines", []),
                 }
             )
+            if ref_cap is not None and len(references) >= ref_cap:
+                break
 
-    return {
+    node_out: dict[str, Any] = dict(node)
+    if brief:
+        slim: dict[str, Any] = {}
+        for k in (
+            "id", "type", "name", "status", "priority", "topic", "subject",
+            "group", "session_id", "dedupe_key", "maturity", "confidence",
+        ):
+            if k in node and node[k] not in (None, ""):
+                slim[k] = node[k]
+        for tk in (
+            "description", "definition", "goal", "what", "why",
+            "raw_quote", "interpretation", "handoff_notes", "outcome",
+        ):
+            if tk in node and node[tk]:
+                slim[tk] = _truncate(str(node[tk]), 400)
+        node_out = slim
+
+    out: dict[str, Any] = {
         "ok": True,
-        "node": node,
+        "node": node_out,
         "outgoing": outgoing,
         "incoming": incoming,
         "decisions": decisions,
         "invariants": [],  # Extension schemas; empty in core v1
         "references": references,
     }
+    if brief:
+        out["brief"] = True
+        out["outgoing_total"] = len(outgoing_raw)
+        out["incoming_total"] = len(incoming_raw)
+        out["outgoing_truncated"] = len(outgoing_raw) > len(outgoing)
+        out["incoming_truncated"] = len(incoming_raw) > len(incoming)
+        out["hint"] = (
+            "Slim context: omit brief= or use brief=false for full node body and all edges."
+        )
+    return out
 
 
 def session_recent(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> dict[str, Any]:

@@ -54,12 +54,14 @@ def extract_candidates(
         - evidence: list[str] (node IDs or session IDs that triggered this)
         - suggested_tags: list[str]
     """
+    nodes = index.all_nodes()
+    edges = index.all_edges()
     candidates: list[dict[str, Any]] = []
 
-    candidates.extend(_scan_p1_failed_sessions(index, gobp_root))
-    candidates.extend(_scan_p2_recurring_uncertainty(index))
-    candidates.extend(_scan_p3_premature_decisions(index))
-    candidates.extend(_scan_p4_orphan_nodes(index))
+    candidates.extend(_scan_p1_failed_sessions(nodes, gobp_root))
+    candidates.extend(_scan_p2_recurring_uncertainty(nodes))
+    candidates.extend(_scan_p3_premature_decisions(nodes))
+    candidates.extend(_scan_p4_orphan_nodes(nodes, edges))
 
     # Deduplicate by title, cap at max_candidates
     seen_titles: set[str] = set()
@@ -75,12 +77,12 @@ def extract_candidates(
 
 
 def _scan_p1_failed_sessions(
-    index: GraphIndex,
+    nodes: list[dict[str, Any]],
     gobp_root: Path,
 ) -> list[dict[str, Any]]:
     """P1: Sessions that ended INTERRUPTED or FAILED."""
     candidates = []
-    sessions = [n for n in index.all_nodes() if n.get("type") == "Session"]
+    sessions = [n for n in nodes if n.get("type") == "Session"]
 
     for s in sessions:
         status = s.get("status", "")
@@ -115,14 +117,14 @@ def _scan_p1_failed_sessions(
 
 
 def _scan_p2_recurring_uncertainty(
-    index: GraphIndex,
+    nodes: list[dict[str, Any]],
 ) -> list[dict[str, Any]]:
     """P2: Topics appearing in 3+ Idea nodes without a locking Decision."""
     from collections import Counter
 
     # Count topics across Idea nodes
     idea_topics: list[str] = []
-    for n in index.all_nodes():
+    for n in nodes:
         if n.get("type") != "Idea":
             continue
         subject = n.get("subject", "")
@@ -133,7 +135,7 @@ def _scan_p2_recurring_uncertainty(
 
     # Get topics that have a locked Decision
     decided_topics: set[str] = set()
-    for n in index.all_nodes():
+    for n in nodes:
         if n.get("type") == "Decision" and n.get("status") == "LOCKED":
             t = n.get("topic", "")
             if t:
@@ -160,7 +162,7 @@ def _scan_p2_recurring_uncertainty(
                 ),
                 "severity": "high" if count >= 5 else "medium",
                 "evidence": [
-                    n.get("id", "") for n in index.all_nodes()
+                    n.get("id", "") for n in nodes
                     if n.get("type") == "Idea" and n.get("subject") == topic
                 ][:5],
                 "suggested_tags": ["decision-debt", topic.replace(":", "-")],
@@ -170,13 +172,13 @@ def _scan_p2_recurring_uncertainty(
 
 
 def _scan_p3_premature_decisions(
-    index: GraphIndex,
+    nodes: list[dict[str, Any]],
 ) -> list[dict[str, Any]]:
     """P3: Decisions superseded within 7 days of being locked."""
     from datetime import datetime, timezone
 
     candidates = []
-    for n in index.all_nodes():
+    for n in nodes:
         if n.get("type") != "Decision":
             continue
         if n.get("status") != "SUPERSEDED":
@@ -230,19 +232,20 @@ def _scan_p3_premature_decisions(
 
 
 def _scan_p4_orphan_nodes(
-    index: GraphIndex,
+    nodes: list[dict[str, Any]],
+    edges: list[dict[str, Any]],
 ) -> list[dict[str, Any]]:
     """P4: Non-Session nodes with 0 edges after creation."""
     from datetime import datetime, timezone
 
     # Build set of all node IDs that appear in any edge
     connected_ids: set[str] = set()
-    for edge in index.all_edges():
+    for edge in edges:
         connected_ids.add(edge.get("from", ""))
         connected_ids.add(edge.get("to", ""))
 
     candidates = []
-    for n in index.all_nodes():
+    for n in nodes:
         node_type = n.get("type", "")
         # Skip Session nodes (they start orphaned by design)
         if node_type in ("Session",):

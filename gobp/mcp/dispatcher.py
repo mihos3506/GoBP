@@ -386,7 +386,12 @@ async def dispatch(
 
         elif action in ("get", "context"):
             node_id = params.get("query") or params.get("id") or params.get("node_id", "")
-            result = tools_read.context(index, project_root, {"node_id": node_id})
+            ctx_args: dict[str, Any] = {"node_id": node_id}
+            if "brief" in params:
+                ctx_args["brief"] = params["brief"]
+            if "edge_limit" in params:
+                ctx_args["edge_limit"] = params["edge_limit"]
+            result = tools_read.context(index, project_root, ctx_args)
 
         elif action == "signature":
             node_id = params.get("query") or params.get("id") or params.get("node_id", "")
@@ -884,7 +889,7 @@ def _get_hint(action: str, node_type: str) -> str:
     return hints.get(action, "Call gobp(query='overview:') to see all available actions")
 
 
-# -- Protocol guide (included in gobp_overview response) ----------------------
+# -- Protocol guide (optional full copy via overview: full_interface=true) -----
 
 PROTOCOL_GUIDE = {
     "protocol": "gobp query protocol v2",
@@ -893,7 +898,8 @@ PROTOCOL_GUIDE = {
         "version:": "Protocol version + changelog + deprecations",
         "validate: schema-docs": "Cross-check schema vs SCHEMA.md documentation",
         "validate: schema-tests": "Check tests reference valid node types",
-        "overview:": "Project stats and orientation",
+        "overview:": "Project stats (slim); full_interface=true for full action catalog",
+        "overview: full_interface=true": "Same as overview with full PROTOCOL_GUIDE (large JSON)",
         "find: <keyword>": "Search any node by keyword",
         "find:<NodeType> <keyword>": "Search by type + keyword",
         "get: <node_id>": "Full node + edges + decisions",

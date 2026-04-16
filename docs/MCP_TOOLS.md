@@ -32,7 +32,9 @@ gobp(query="<action>:<NodeType> <key>='<value>' ...")
 | `validate: schema-docs` | Cross-check schema vs SCHEMA.md |
 | `validate: schema-tests` | Check tests reference valid types |
 | `session:start actor='x' goal='y' role='observer'` | Start read-only session |
-| `overview:` | Project stats, orientation, protocol guide |
+| `overview:` | Project stats (slim); small `interface_summary` + pagination hint |
+| `overview: full_interface=true` | Same stats + full `interface` / PROTOCOL_GUIDE (large) |
+| `get: <node_id> brief=true` | Node context with capped edges + truncated text fields |
 | `find: <keyword>` | Search any node |
 | `find: <keyword> page_size=50` | Paginated search |
 | `find: <keyword> cursor='node:x' page_size=50` | Next page |
@@ -69,10 +71,15 @@ gobp(query="<action>:<NodeType> <key>='<value>' ...")
 
 ### First call
 
-Always call `gobp(query="overview:")` first. Response includes:
+Always call `gobp(query="overview:")` first. Default response includes:
 - Project state (nodes, edges, recent decisions)
-- Full protocol guide in `interface` field
+- **`interface_summary`** (protocol line, format, action count, tip) — not the full catalog
+- **`pagination_hint`** for `find` / `related` / `tests` cursor paging
 - Suggested next queries in gobp() syntax
+
+Use `gobp(query="overview: full_interface=true")` only when you need every action string + description (large JSON; Cursor tree view gets heavy).
+
+For a single node, prefer `gobp(query="signature: <id>")` or `gobp(query="get: <id> brief=true")` before loading full `get:` / `context` payloads.
 
 ### Notes
 - `locked_by` in lock action: comma-separated string e.g. `locked_by='CEO,Claude'`

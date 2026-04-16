@@ -6,7 +6,12 @@ Example configs for connecting MCP-capable AI clients to GoBP.
 
 - GoBP installed: `pip install -e .` in a GoBP repo clone
 - Python 3.10+ available in PATH
-- GOBP_PROJECT_ROOT set to the folder containing `.gobp/` data
+- `GOBP_PROJECT_ROOT` set to the folder containing `.gobp/` data (see `env` in each JSON example)
+
+### Optional environment (Wave 14+)
+
+- **`GOBP_READ_ONLY`** — examples set `"false"` (writes allowed). Set to `"true"` to block writes (`create`, `session`, `edge`, …); reads still work. Use for viewer/audit agents.
+- **`GOBP_DB_URL`** — only if you use the optional PostgreSQL cache layer; not required for file-based `.gobp/`. Omit from `env` unless you need it.
 
 ## Cursor IDE
 
@@ -34,10 +39,13 @@ Copy `continue_config.json` content into `~/.continue/config.json`
 
 ## Verification
 
-After connecting, the AI client should be able to call:
-- `gobp_overview()` to see project info
-- `find(query='...')` to search nodes
-- Other read tools listed in `docs/MCP_TOOLS.md`
+After connecting, the client exposes a single tool **`gobp`** with a `query` string. Try:
+
+- `gobp(query="version:")` — protocol v2, schema version, changelog
+- `gobp(query="overview:")` — project stats and full action list
+- `gobp(query="find: login")` — search nodes
+
+Full syntax and actions: **`docs/MCP_TOOLS.md`**.
 
 ## Notes
 

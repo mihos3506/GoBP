@@ -28,6 +28,10 @@ from gobp.mcp.tools.advanced import lessons_extract
 
 from tests.fixtures.mihos_fixture import _populate_mihos_project
 
+pytestmark = pytest.mark.skip(
+    reason="Deprecated. Use tests/test_performance_v2.py instead."
+)
+
 
 @pytest.fixture(scope="module")
 def mihos_perf_root(tmp_path_factory: pytest.TempPathFactory) -> Path:
