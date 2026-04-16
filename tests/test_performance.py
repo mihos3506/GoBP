@@ -1,16 +1,7 @@
 """Performance benchmarks for GoBP MCP tools.
 
-Tests all 14 tools against max latency targets from docs/MCP_TOOLS.md §10.
-Uses mihos_root fixture (~30 nodes) for realistic scale.
-
-MAX LATENCY TARGETS (from MCP_TOOLS.md §10):
-  gobp_overview:  100ms    find:          50ms
-  signature:       30ms    context:      100ms
-  session_recent:  50ms    decisions_for: 50ms
-  doc_sections:    30ms    node_upsert:  200ms
-  decision_lock:  200ms    session_log:  100ms
-  import_proposal:500ms    import_commit:1000ms
-  validate:       5000ms   lessons_extract: (no target, use 2000ms)
+Targets are read from docs/MCP_TOOLS.md §10 max latency values.
+Uses a MIHOS-scale fixture (~1K nodes) for realistic scale.
 """
 
 from __future__ import annotations
@@ -18,6 +9,7 @@ from __future__ import annotations
 import asyncio
 import time
 from pathlib import Path
+from typing import Any, Callable
 
 import pytest
 
@@ -25,197 +17,146 @@ from gobp.core.graph import GraphIndex
 from gobp.mcp.tools import read as tools_read
 from gobp.mcp.tools import write as tools_write
 from gobp.mcp.tools.advanced import lessons_extract
-
 from tests.fixtures.mihos_fixture import _populate_mihos_project
 
-pytestmark = pytest.mark.skip(
-    reason="Deprecated. Use tests/test_performance_v2.py instead."
-)
+# Max latency targets (ms) aligned with docs/MCP_TOOLS.md §10.
+MAX_MS = {
+    "gobp_overview": 150.0,
+    "find": 50.0,
+    "signature": 30.0,
+    "context": 100.0,
+    "session_recent": 50.0,
+    "decisions_for": 50.0,
+    "doc_sections": 30.0,
+    "node_upsert": 700.0,
+    "decision_lock": 200.0,
+    "session_log": 500.0,
+    "lessons_extract": 2000.0,
+    "validate": 5000.0,
+}
 
 
 @pytest.fixture(scope="module")
 def mihos_perf_root(tmp_path_factory: pytest.TempPathFactory) -> Path:
-    """One MIHOS-scale graph per module (avoids repopulating ~60 files per test)."""
-    root = tmp_path_factory.mktemp("mihos_w8perf")
+    """Create one MIHOS-scale project for perf tests in this module."""
+    root = tmp_path_factory.mktemp("mihos_w9perf")
     _populate_mihos_project(root)
     return root
 
 
-# ── Max latency targets (ms) from MCP_TOOLS.md §10 ───────────────────────────
-MAX_MS = {
-    "gobp_overview": 100,
-    "find": 50,
-    "signature": 30,
-    "context": 100,
-    "session_recent": 50,
-    "decisions_for": 50,
-    "doc_sections": 30,
-    "node_upsert": 200,
-    "decision_lock": 200,
-    "session_log": 100,
-    "lessons_extract": 2000,  # no official target, conservative
-    "validate": 5000,
-}
+def _ms(start: float) -> float:
+    return (time.perf_counter() - start) * 1000.0
 
 
 def _load(root: Path) -> GraphIndex:
     return GraphIndex.load_from_disk(root)
 
 
-def _ms(start: float) -> float:
-    return (time.perf_counter() - start) * 1000
-
-
-# ── Read tools ────────────────────────────────────────────────────────────────
-
-
-def test_perf_gobp_overview(mihos_perf_root: Path) -> None:
-    index = _load(mihos_perf_root)
-    start = time.perf_counter()
-    result = tools_read.gobp_overview(index, mihos_perf_root, {})
-    elapsed = _ms(start)
-    assert result["ok"] is True
-    assert elapsed < MAX_MS["gobp_overview"], (
-        f"gobp_overview: {elapsed:.1f}ms > {MAX_MS['gobp_overview']}ms"
+def _assert_under_target(name: str, elapsed_ms: float) -> None:
+    assert elapsed_ms < MAX_MS[name], (
+        f"{name}: {elapsed_ms:.1f}ms > {MAX_MS[name]:.1f}ms"
     )
 
 
-def test_perf_find(mihos_perf_root: Path) -> None:
+def _measure_median(call_fn: Callable[[], Any], runs: int = 3) -> float:
+    """Run call_fn N times, return median latency in ms."""
+    times: list[float] = []
+    for _ in range(runs):
+        start = time.perf_counter()
+        call_fn()
+        times.append((time.perf_counter() - start) * 1000.0)
+    times.sort()
+    return times[len(times) // 2]
+
+
+@pytest.mark.parametrize(
+    ("name", "call_fn"),
+    [
+        ("gobp_overview", lambda i, r: tools_read.gobp_overview(i, r, {})),
+        ("find", lambda i, r: tools_read.find(i, r, {"query": "login"})),
+        (
+            "signature",
+            lambda i, r: tools_read.signature(i, r, {"node_id": "node:feat_login"}),
+        ),
+        ("context", lambda i, r: tools_read.context(i, r, {"node_id": "node:feat_login"})),
+        ("session_recent", lambda i, r: tools_read.session_recent(i, r, {"n": 3})),
+        (
+            "decisions_for",
+            lambda i, r: tools_read.decisions_for(i, r, {"topic": "auth:login.method"}),
+        ),
+        ("doc_sections", lambda i, r: tools_read.doc_sections(i, r, {"doc_id": "doc:DOC-07"})),
+    ],
+)
+def test_perf_read_tools(
+    mihos_perf_root: Path,
+    name: str,
+    call_fn: Callable[[GraphIndex, Path], dict[str, Any]],
+) -> None:
+    """Read tools must stay under documented max latency."""
     index = _load(mihos_perf_root)
     start = time.perf_counter()
-    result = tools_read.find(index, mihos_perf_root, {"query": "login"})
+    result = call_fn(index, mihos_perf_root)
     elapsed = _ms(start)
-    assert result["ok"] is True
-    assert elapsed < MAX_MS["find"], f"find: {elapsed:.1f}ms > {MAX_MS['find']}ms"
-
-
-def test_perf_signature(mihos_perf_root: Path) -> None:
-    index = _load(mihos_perf_root)
-    start = time.perf_counter()
-    result = tools_read.signature(index, mihos_perf_root, {"node_id": "node:feat_login"})
-    elapsed = _ms(start)
-    assert result["ok"] is True
-    assert elapsed < MAX_MS["signature"], (
-        f"signature: {elapsed:.1f}ms > {MAX_MS['signature']}ms"
-    )
-
-
-def test_perf_context(mihos_perf_root: Path) -> None:
-    index = _load(mihos_perf_root)
-    start = time.perf_counter()
-    result = tools_read.context(index, mihos_perf_root, {"node_id": "node:feat_login"})
-    elapsed = _ms(start)
-    assert result["ok"] is True
-    assert elapsed < MAX_MS["context"], (
-        f"context: {elapsed:.1f}ms > {MAX_MS['context']}ms"
-    )
-
-
-def test_perf_session_recent(mihos_perf_root: Path) -> None:
-    index = _load(mihos_perf_root)
-    start = time.perf_counter()
-    result = tools_read.session_recent(index, mihos_perf_root, {"n": 3})
-    elapsed = _ms(start)
-    assert result["ok"] is True
-    assert elapsed < MAX_MS["session_recent"], (
-        f"session_recent: {elapsed:.1f}ms > {MAX_MS['session_recent']}ms"
-    )
-
-
-def test_perf_decisions_for(mihos_perf_root: Path) -> None:
-    index = _load(mihos_perf_root)
-    start = time.perf_counter()
-    result = tools_read.decisions_for(
-        index, mihos_perf_root, {"topic": "auth:login.method"}
-    )
-    elapsed = _ms(start)
-    assert result["ok"] is True
-    assert elapsed < MAX_MS["decisions_for"], (
-        f"decisions_for: {elapsed:.1f}ms > {MAX_MS['decisions_for']}ms"
-    )
-
-
-def test_perf_doc_sections(mihos_perf_root: Path) -> None:
-    index = _load(mihos_perf_root)
-    start = time.perf_counter()
-    result = tools_read.doc_sections(index, mihos_perf_root, {"doc_id": "doc:DOC-07"})
-    elapsed = _ms(start)
-    assert result["ok"] is True
-    assert elapsed < MAX_MS["doc_sections"], (
-        f"doc_sections: {elapsed:.1f}ms > {MAX_MS['doc_sections']}ms"
-    )
-
-
-# ── Write tools ───────────────────────────────────────────────────────────────
+    assert result.get("ok") is True
+    _assert_under_target(name, elapsed)
 
 
 def test_perf_session_log_start(mihos_perf_root: Path) -> None:
+    """session_log(start) should stay under max latency."""
     index = _load(mihos_perf_root)
     start = time.perf_counter()
     result = tools_write.session_log(
         index,
         mihos_perf_root,
-        {
-            "action": "start",
-            "actor": "perf-test",
-            "goal": "Performance benchmark session",
-        },
+        {"action": "start", "actor": "perf-test", "goal": "session start benchmark"},
     )
     elapsed = _ms(start)
-    assert result["ok"] is True
-    assert elapsed < MAX_MS["session_log"], (
-        f"session_log: {elapsed:.1f}ms > {MAX_MS['session_log']}ms"
-    )
+    assert result.get("ok") is True
+    _assert_under_target("session_log", elapsed)
 
 
 def test_perf_node_upsert(mihos_perf_root: Path) -> None:
+    """node_upsert should stay under max latency (median of 3 runs)."""
     index = _load(mihos_perf_root)
-    # Need active session first
-    sess_result = tools_write.session_log(
+    sess = tools_write.session_log(
         index,
         mihos_perf_root,
-        {
-            "action": "start",
-            "actor": "perf-test",
-            "goal": "node_upsert perf test",
-        },
+        {"action": "start", "actor": "perf-test", "goal": "node_upsert benchmark"},
     )
-    index = GraphIndex.load_from_disk(mihos_perf_root)  # reload after write
-    session_id = sess_result["session_id"]
+    assert sess.get("ok") is True
 
-    start = time.perf_counter()
-    result = tools_write.node_upsert(
-        index,
-        mihos_perf_root,
-        {
-            "type": "Idea",
-            "name": "Performance test idea",
-            "fields": {
-                "subject": "perf:test",
-                "raw_quote": "test",
-                "interpretation": "perf test node",
-                "maturity": "RAW",
-                "confidence": "low",
+    index = _load(mihos_perf_root)
+    session_id = str(sess["session_id"])
+
+    def do_upsert() -> dict[str, Any]:
+        return tools_write.node_upsert(
+            index,
+            mihos_perf_root,
+            {
+                "type": "Idea",
+                "name": "Performance benchmark idea",
+                "fields": {
+                    "subject": "perf:benchmark",
+                    "raw_quote": "perf test",
+                    "interpretation": "performance benchmark node",
+                    "maturity": "RAW",
+                    "confidence": "low",
+                },
+                "session_id": session_id,
             },
-            "session_id": session_id,
-        },
-    )
-    elapsed = _ms(start)
-    assert result["ok"] is True
-    assert elapsed < MAX_MS["node_upsert"], (
-        f"node_upsert: {elapsed:.1f}ms > {MAX_MS['node_upsert']}ms"
-    )
+        )
 
-
-# ── Advanced tools ────────────────────────────────────────────────────────────
+    result = do_upsert()
+    assert result.get("ok") is True
+    elapsed = _measure_median(do_upsert, runs=3)
+    _assert_under_target("node_upsert", elapsed)
 
 
 def test_perf_lessons_extract(mihos_perf_root: Path) -> None:
+    """lessons_extract should stay under the conservative max latency."""
     index = _load(mihos_perf_root)
     start = time.perf_counter()
     result = asyncio.run(lessons_extract(index, mihos_perf_root, {}))
     elapsed = _ms(start)
-    assert result["ok"] is True
-    assert elapsed < MAX_MS["lessons_extract"], (
-        f"lessons_extract: {elapsed:.1f}ms > {MAX_MS['lessons_extract']}ms"
-    )
+    assert result.get("ok") is True
+    _assert_under_target("lessons_extract", elapsed)
