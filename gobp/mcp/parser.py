@@ -29,6 +29,7 @@ _TYPE_CANONICAL: dict[str, str] = {
     "apiendpoint": "APIEndpoint",
     "repository": "Repository",
     "wave": "Wave",
+    "task": "Task",
 }
 
 
@@ -278,6 +279,12 @@ PROTOCOL_GUIDE = {
         "recompute: priorities dry_run=true": "Preview priority changes without writing",
         "recompute: priorities type=Flow session_id='x'": "Recompute only Flow nodes",
         "extract: lessons": "Extract lesson candidates",
+        "tasks:": "Pending tasks for cursor",
+        "tasks: assignee='haiku'": "Pending tasks for haiku",
+        "tasks: status='ALL'": "All tasks",
+        "create:Task name='...' assignee='cursor' wave='8B' brief_path='waves/...' session_id='x'": (
+            "Create task"
+        ),
     },
     "tip": "Always start with overview: to see project state",
 }

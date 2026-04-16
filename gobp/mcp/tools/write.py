@@ -106,11 +106,12 @@ def node_upsert(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> 
         )
 
     now = datetime.now(timezone.utc).isoformat()
+    status_default = "PENDING" if node_type == "Task" else "ACTIVE"
     node: dict[str, Any] = {
         "id": node_id,
         "type": node_type,
         "name": name,
-        "status": fields.get("status", "ACTIVE"),
+        "status": fields.get("status", status_default),
         "created": now,
         "updated": now,
         "session_id": session_id,
@@ -121,6 +122,9 @@ def node_upsert(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> 
     node["type"] = node_type
     node["name"] = name
     node["session_id"] = session_id
+    if node_type == "Task":
+        if not node.get("assignee"):
+            node["assignee"] = "cursor"
 
     try:
         nodes_schema = load_schema(package_schema_dir() / "core_nodes.yaml")

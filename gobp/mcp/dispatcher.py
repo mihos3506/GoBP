@@ -442,6 +442,52 @@ async def dispatch(
             else:
                 result = tools_write.decision_lock(index, project_root, args)
 
+        elif action == "tasks":
+            assignee = params.get("assignee", params.get("query", "cursor"))
+            status_filter = str(params.get("status", "PENDING"))
+
+            all_nodes = index.all_nodes()
+            tasks = [n for n in all_nodes if n.get("type") == "Task"]
+
+            filtered: list[dict[str, Any]] = []
+            for t in tasks:
+                t_status = str(t.get("status", "PENDING"))
+                t_assignee = str(t.get("assignee", "cursor"))
+                status_ok = status_filter == "ALL" or t_status == status_filter
+                assignee_ok = (
+                    assignee == "any"
+                    or t_assignee == assignee
+                    or t_assignee == "any"
+                )
+                if status_ok and assignee_ok:
+                    filtered.append(
+                        {
+                            "id": t.get("id"),
+                            "name": t.get("name"),
+                            "status": t_status,
+                            "assignee": t_assignee,
+                            "wave": t.get("wave", ""),
+                            "brief_path": t.get("brief_path", ""),
+                            "priority": t.get("priority", "medium"),
+                        }
+                    )
+
+            priority_order = {"critical": 0, "high": 1, "medium": 2, "low": 3}
+            filtered.sort(
+                key=lambda item: priority_order.get(item.get("priority", "medium"), 2)
+            )
+
+            result = {
+                "ok": True,
+                "tasks": filtered,
+                "count": len(filtered),
+                "filter": {"assignee": assignee, "status": status_filter},
+                "hint": (
+                    "Use upsert: to update task status. Example: "
+                    "upsert: id='task:x' status='RUNNING' session_id='y'"
+                ),
+            }
+
         elif action == "session":
             sub = params.get("query", "start")
             args = {
