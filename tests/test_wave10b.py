@@ -20,7 +20,7 @@ def test_session_id_length():
     for _ in range(10):
         sid = _generate_session_id("Very long goal string that used to cause truncation issues in MIHOS Phase 2 import session")
         assert len(sid) == 33, f"Wrong length: {len(sid)}"
-        assert sid.startswith("meta.session:20")
+        assert sid.startswith("meta.session.20")
 
 
 def test_session_id_unique():

@@ -30,15 +30,15 @@ _EDGE_DEDUPE_CACHE: dict[str, tuple[int, int, int, int]] = {}
 def _generate_session_id(goal: str = "") -> str:
     """Generate session ID using new group namespace format.
 
-    Format: meta.session:YYYY-MM-DD_XXXXXXXXX
+    Format: meta.session.YYYY-MM-DD.XXXXXXXXX
     where XXXXXXXXX = first 9 chars of UUID4 hex.
-    Always exactly 37 chars.
+    Always exactly 32 chars.
     """
     from datetime import datetime, timezone
 
     date_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     short_hash = _uuid.uuid4().hex[:9]
-    return f"meta.session:{date_str}_{short_hash}"
+    return f"meta.session.{date_str}.{short_hash}"
 
 
 def _atomic_write(target_path: Path, content: str) -> None:

@@ -328,11 +328,8 @@ def session_log(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> 
             return {"ok": False, "error": "goal required for start"}
 
         date_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-        slug_base = "".join(c if c.isalnum() else "_" for c in goal.lower())[:20].strip("_")
-        if not slug_base:
-            slug_base = "session"
-
-        base_id = f"session:{date_str}_{slug_base}"
+        short_hash = __import__("uuid").uuid4().hex[:9]
+        base_id = f"meta.session.{date_str}.{short_hash}"
         session_id = base_id
         counter = 1
         while index.get_node(session_id):

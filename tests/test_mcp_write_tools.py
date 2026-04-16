@@ -203,7 +203,7 @@ def test_session_log_start(populated_root):
         },
     )
     assert result["ok"] is True, result
-    assert result["session_id"].startswith("session:")
+    assert result["session_id"].startswith("meta.session.")
 
 
 def test_session_log_end(populated_root):
