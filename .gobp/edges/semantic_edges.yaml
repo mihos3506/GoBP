@@ -1444,3 +1444,295 @@
   to: wave:4
   type: relates_to
   reason: testcase belongs to wave
+- from: wave:10a
+  to: doc:wave_10a_brief
+  type: references
+  reason: canonical wave brief document
+- from: wave:10b
+  to: doc:wave_10b_brief
+  type: references
+  reason: canonical wave brief document
+- from: wave:10c
+  to: doc:wave_10c_brief
+  type: references
+  reason: canonical wave brief document
+- from: wave:11a
+  to: doc:wave_11a_brief
+  type: references
+  reason: canonical wave brief document
+- from: wave:11b
+  to: doc:wave_11b_brief
+  type: references
+  reason: canonical wave brief document
+- from: wave:12
+  to: doc:wave_12_brief
+  type: references
+  reason: canonical wave brief document
+- from: wave:13
+  to: doc:wave_13_brief
+  type: references
+  reason: canonical wave brief document
+- from: wave:14
+  to: doc:wave_14_brief_79fc28
+  type: references
+  reason: canonical wave brief document
+- from: wave:15
+  to: doc:wave_15_brief
+  type: references
+  reason: canonical wave brief document
+- from: wave:16a01
+  to: doc:wave_16a01_brief
+  type: references
+  reason: canonical wave brief document
+- from: wave:4
+  to: doc:wave_4_brief
+  type: references
+  reason: canonical wave brief document
+- from: feat:mcp_cursor_pagination
+  to: wave:13
+  type: relates_to
+  reason: feature belongs to wave
+- from: feat:mcp_dry_run_preview
+  to: wave:13
+  type: relates_to
+  reason: feature belongs to wave
+- from: feat:mcp_stats_observability
+  to: wave:13
+  type: relates_to
+  reason: feature belongs to wave
+- from: feat:mcp_upsert_dedupe
+  to: wave:13
+  type: relates_to
+  reason: feature belongs to wave
+- from: feat:w14_protocol_version_action
+  to: wave:14
+  type: relates_to
+  reason: feature belongs to wave
+- from: feat:w14_read_only_mode_flag
+  to: wave:14
+  type: relates_to
+  reason: feature belongs to wave
+- from: feat:w14_schema_governance_score
+  to: wave:14
+  type: relates_to
+  reason: feature belongs to wave
+- from: feat:w14_session_role_field
+  to: wave:14
+  type: relates_to
+  reason: feature belongs to wave
+- from: feat:w14_template_action
+  to: wave:14
+  type: relates_to
+  reason: feature belongs to wave
+- from: feat:w14_validate_schema_docs
+  to: wave:14
+  type: relates_to
+  reason: feature belongs to wave
+- from: feat:w15_edge_deduplication
+  to: wave:15
+  type: relates_to
+  reason: feature belongs to wave
+- from: feat:w15_import_unique_docids
+  to: wave:15
+  type: relates_to
+  reason: feature belongs to wave
+- from: feat:w15_parse_query_positional
+  to: wave:15
+  type: relates_to
+  reason: feature belongs to wave
+- from: feat:w15_parser_smoke_matrix
+  to: wave:15
+  type: relates_to
+  reason: feature belongs to wave
+- from: feat:w15_value_coercion
+  to: wave:15
+  type: relates_to
+  reason: feature belongs to wave
+- from: feat:w4_cli_commands
+  to: wave:4
+  type: relates_to
+  reason: feature belongs to wave
+- from: feat:w4_find_type_filter
+  to: wave:4
+  type: relates_to
+  reason: feature belongs to wave
+- from: feat:w4_gobp_overview_concepts
+  to: wave:4
+  type: relates_to
+  reason: feature belongs to wave
+- from: feat:w4_init_idempotency
+  to: wave:4
+  type: relates_to
+  reason: feature belongs to wave
+- from: feat:w4_init_project_structure
+  to: wave:4
+  type: relates_to
+  reason: feature belongs to wave
+- from: feat:w4_init_seeded_nodes
+  to: wave:4
+  type: relates_to
+  reason: feature belongs to wave
+- from: feat:wave13_regression_tests
+  to: wave:13
+  type: relates_to
+  reason: feature belongs to wave
+- from: feat:wcore_ai_session_workflow
+  to: wave:core
+  type: relates_to
+  reason: feature belongs to wave
+- from: feat:wcore_atomic_writes
+  to: wave:core
+  type: relates_to
+  reason: feature belongs to wave
+- from: feat:wcore_cache_ttl_lru
+  to: wave:core
+  type: relates_to
+  reason: feature belongs to wave
+- from: feat:wcore_context_read_tool
+  to: wave:core
+  type: relates_to
+  reason: feature belongs to wave
+- from: feat:wcore_create_node_mutation
+  to: wave:core
+  type: relates_to
+  reason: feature belongs to wave
+- from: feat:wcore_db_operations
+  to: wave:core
+  type: relates_to
+  reason: feature belongs to wave
+- from: feat:wcore_decision_lock_write
+  to: wave:core
+  type: relates_to
+  reason: feature belongs to wave
+- from: feat:wcore_decisions_for_tool
+  to: wave:core
+  type: relates_to
+  reason: feature belongs to wave
+- from: feat:wcore_delete_node_mutation
+  to: wave:core
+  type: relates_to
+  reason: feature belongs to wave
+- from: feat:wcore_dispatcher_parse_query
+  to: wave:core
+  type: relates_to
+  reason: feature belongs to wave
+- from: feat:wcore_dispatcher_routing
+  to: wave:core
+  type: relates_to
+  reason: feature belongs to wave
+- from: feat:wcore_doc_sections_tool
+  to: wave:core
+  type: relates_to
+  reason: feature belongs to wave
+- from: feat:wcore_edge_mutations
+  to: wave:core
+  type: relates_to
+  reason: feature belongs to wave
+- from: feat:wcore_edge_validation
+  to: wave:core
+  type: relates_to
+  reason: feature belongs to wave
+- from: feat:wcore_event_history
+  to: wave:core
+  type: relates_to
+  reason: feature belongs to wave
+- from: feat:wcore_find_read_tool
+  to: wave:core
+  type: relates_to
+  reason: feature belongs to wave
+- from: feat:wcore_frontmatter_parsing
+  to: wave:core
+  type: relates_to
+  reason: feature belongs to wave
+- from: feat:wcore_gobp_overview_read
+  to: wave:core
+  type: relates_to
+  reason: feature belongs to wave
+- from: feat:wcore_graph_index_construction
+  to: wave:core
+  type: relates_to
+  reason: feature belongs to wave
+- from: feat:wcore_graph_index_queries
+  to: wave:core
+  type: relates_to
+  reason: feature belongs to wave
+- from: feat:wcore_import_commit
+  to: wave:core
+  type: relates_to
+  reason: feature belongs to wave
+- from: feat:wcore_import_proposal
+  to: wave:core
+  type: relates_to
+  reason: feature belongs to wave
+- from: feat:wcore_lessons_extraction
+  to: wave:core
+  type: relates_to
+  reason: feature belongs to wave
+- from: feat:wcore_migration_check
+  to: wave:core
+  type: relates_to
+  reason: feature belongs to wave
+- from: feat:wcore_migration_execution
+  to: wave:core
+  type: relates_to
+  reason: feature belongs to wave
+- from: feat:wcore_node_upsert_write
+  to: wave:core
+  type: relates_to
+  reason: feature belongs to wave
+- from: feat:wcore_node_validation
+  to: wave:core
+  type: relates_to
+  reason: feature belongs to wave
+- from: feat:wcore_performance_read
+  to: wave:core
+  type: relates_to
+  reason: feature belongs to wave
+- from: feat:wcore_performance_write
+  to: wave:core
+  type: relates_to
+  reason: feature belongs to wave
+- from: feat:wcore_prune_operations
+  to: wave:core
+  type: relates_to
+  reason: feature belongs to wave
+- from: feat:wcore_schema_loading
+  to: wave:core
+  type: relates_to
+  reason: feature belongs to wave
+- from: feat:wcore_session_log_write
+  to: wave:core
+  type: relates_to
+  reason: feature belongs to wave
+- from: feat:wcore_session_recent_tool
+  to: wave:core
+  type: relates_to
+  reason: feature belongs to wave
+- from: feat:wcore_signature_read_tool
+  to: wave:core
+  type: relates_to
+  reason: feature belongs to wave
+- from: feat:wcore_smoke_tests
+  to: wave:core
+  type: relates_to
+  reason: feature belongs to wave
+- from: feat:wcore_update_node_mutation
+  to: wave:core
+  type: relates_to
+  reason: feature belongs to wave
+- from: feat:wcore_validate_tool
+  to: wave:core
+  type: relates_to
+  reason: feature belongs to wave
+- from: feat:wcore_viewer_graph_data
+  to: wave:core
+  type: relates_to
+  reason: feature belongs to wave
+- from: feat:wcore_viewer_http_server
+  to: wave:core
+  type: relates_to
+  reason: feature belongs to wave
+- from: feat:wcore_viewer_multi_project
+  to: wave:core
+  type: relates_to
+  reason: feature belongs to wave
