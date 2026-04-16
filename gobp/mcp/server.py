@@ -34,6 +34,12 @@ from gobp.core.graph import GraphIndex
 
 logger = logging.getLogger("gobp.mcp.server")
 
+_READ_ONLY_ACTIONS: frozenset[str] = frozenset({
+    "create", "update", "upsert", "lock",
+    "session", "edge", "import", "commit", "batch",
+})
+_READ_ONLY: bool = os.environ.get("GOBP_READ_ONLY", "").lower() in ("true", "1", "yes")
+
 
 def _get_project_root() -> Path:
     """Determine project root from env var or cwd."""
@@ -85,7 +91,7 @@ def _record_stat(action: str, elapsed_ms: float, error: bool = False, query: str
         s["recent_queries"] = ([query] + s["recent_queries"])[:5]
 
 
-def _get_stats_summary() -> dict[str, Any]:
+def _get_stats_summary(include_recent_queries: bool = False) -> dict[str, Any]:
     """Return stats summary for all actions."""
     result: dict[str, Any] = {}
     total_calls = 0
@@ -98,8 +104,9 @@ def _get_stats_summary() -> dict[str, Any]:
             "avg_ms": avg_ms,
             "errors": s["errors"],
             "last_called": s["last_called"],
-            "recent_queries": s["recent_queries"],
         }
+        if include_recent_queries:
+            result[action]["recent_queries"] = s["recent_queries"]
     return {
         "stats": result,
         "session": {
@@ -163,6 +170,17 @@ async def call_tool(
     from gobp.mcp.dispatcher import parse_query
 
     action, _, _ = parse_query(query)
+
+    if _READ_ONLY and action in _READ_ONLY_ACTIONS:
+        result = {
+            "ok": False,
+            "error": f"Read-only mode: '{action}' is a write action.",
+            "hint": "Set GOBP_READ_ONLY=false (or unset) to enable writes.",
+            "read_only": True,
+            "blocked_action": action,
+        }
+        return [types.TextContent(type="text", text=json.dumps(result, ensure_ascii=False))]
+
     if action == "stats":
         parts = query.split(":", 1)
         sub = parts[1].strip() if len(parts) > 1 else ""
@@ -187,7 +205,8 @@ async def call_tool(
                 },
             }
         else:
-            result = {"ok": True, **_get_stats_summary()}
+            # Keep stats: lightweight for low-latency polling.
+            result = {"ok": True, **_get_stats_summary(include_recent_queries=False)}
         return [types.TextContent(type="text", text=json.dumps(result, ensure_ascii=False))]
 
     start = _time.time()
@@ -200,7 +219,7 @@ async def call_tool(
             error = True
 
         # Reload index after write operations
-        if action in ("create", "update", "upsert", "lock", "session", "commit"):
+        if action in ("create", "update", "upsert", "lock", "session", "commit", "edge", "import"):
             _index = _load_index(_project_root)
             # Invalidate cache
             try:
