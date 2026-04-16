@@ -1198,6 +1198,85 @@ _NODE_EDGE_REQUIREMENTS: dict[str, dict[str, list[dict[str, str]]]] = {
 }
 
 
+_METADATA_REQUIREMENTS: dict[str, list[str]] = {
+    "Flow": ["description", "spec_source"],
+    "Engine": ["description", "spec_source"],
+    "Entity": ["description", "spec_source"],
+    "Feature": ["description", "spec_source"],
+    "Invariant": ["description", "rule"],
+    "Screen": ["description"],
+    "APIEndpoint": ["description", "spec_source"],
+    "Document": ["source_path"],
+    "Decision": ["what", "why"],
+    "Lesson": ["description"],
+    "Node": ["description"],
+    "Idea": ["description"],
+}
+
+
+def metadata_lint(
+    index: GraphIndex,
+    project_root: Path,
+    args: dict[str, Any],
+) -> dict[str, Any]:
+    """Check all nodes for missing required metadata fields."""
+    del project_root
+    node_type_filter = args.get("type") or args.get("query") or None
+    all_nodes = index.all_nodes()
+
+    if node_type_filter:
+        all_nodes = [n for n in all_nodes if n.get("type") == node_type_filter]
+
+    missing_list: list[dict[str, Any]] = []
+    by_type: dict[str, dict[str, Any]] = {}
+    total_checked = 0
+    total_complete = 0
+
+    for node in all_nodes:
+        node_type = node.get("type", "Node")
+        required = _METADATA_REQUIREMENTS.get(node_type)
+        if not required:
+            continue
+
+        total_checked += 1
+        missing_fields = [f for f in required if not node.get(f)]
+
+        type_stats = by_type.setdefault(node_type, {"total": 0, "complete": 0, "missing": []})
+        type_stats["total"] += 1
+
+        if missing_fields:
+            missing_list.append({
+                "node_id": node.get("id"),
+                "node_type": node_type,
+                "node_name": node.get("name", ""),
+                "missing_fields": missing_fields,
+            })
+            type_stats["missing"].append(node.get("id"))
+        else:
+            total_complete += 1
+            type_stats["complete"] += 1
+
+    for t, stats in by_type.items():
+        stats["score"] = round(stats["complete"] / stats["total"] * 100) if stats["total"] else 100
+        del stats["missing"]
+
+    overall_score = round(total_complete / total_checked * 100) if total_checked else 100
+
+    return {
+        "ok": True,
+        "score": overall_score,
+        "total_checked": total_checked,
+        "total_complete": total_complete,
+        "missing_count": len(missing_list),
+        "missing": missing_list[:20],
+        "by_type": by_type,
+        "summary": (
+            f"Metadata score: {overall_score}/100. "
+            f"{len(missing_list)} nodes missing required fields."
+        ),
+    }
+
+
 def node_template(
     index: GraphIndex,
     project_root: Path,

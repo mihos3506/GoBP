@@ -854,6 +854,8 @@ async def dispatch(
                 result = tools_read.schema_governance(
                     index, project_root, {"scope": scope}
                 )
+            elif scope == "metadata":
+                result = tools_read.metadata_lint(index, project_root, params)
             else:
                 result = tools_maintain.validate(
                     index, project_root, {"scope": scope, "severity_filter": "all"}
@@ -913,6 +915,8 @@ PROTOCOL_GUIDE = {
         "version:": "Protocol version + changelog + deprecations",
         "validate: schema-docs": "Cross-check schema vs SCHEMA.md documentation",
         "validate: schema-tests": "Check tests reference valid node types",
+        "validate: metadata": "Check all nodes for missing required fields",
+        "validate: metadata type=Flow": "Check only Flow nodes",
         "overview:": "Project stats (slim); full_interface=true for full action catalog",
         "overview: full_interface=true": "Same as overview with full PROTOCOL_GUIDE (large JSON)",
         "find: <keyword>": "Search any node by keyword",
