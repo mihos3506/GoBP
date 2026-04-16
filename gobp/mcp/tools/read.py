@@ -1,4 +1,4 @@
-"""GoBP MCP read tools.
+﻿"""GoBP MCP read tools.
 
 Implementations in Tasks 2-8 of Wave 3.
 """
@@ -85,7 +85,7 @@ def gobp_overview(index: GraphIndex, project_root: Path, args: dict[str, Any]) -
 
     Args:
         full_interface / include_interface: if true, include full ``interface``
-        (PROTOCOL_GUIDE — large). Default is false: only ``interface_summary``
+        (PROTOCOL_GUIDE â€” large). Default is false: only ``interface_summary``
         plus a hint to load the full catalog when needed.
     """
     from gobp.mcp.dispatcher import PROTOCOL_GUIDE
@@ -162,7 +162,7 @@ def gobp_overview(index: GraphIndex, project_root: Path, args: dict[str, Any]) -
         for n in session_nodes[:3]
     ]
 
-    # Concepts — for AI orientation
+    # Concepts â€” for AI orientation
     concept_nodes = [n for n in index.all_nodes() if n.get("type") == "Concept"]
     concepts = [
         {
@@ -297,7 +297,8 @@ def find(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> dict[st
         node_name = node.get("name", "")
         node_name_lower = node_name.lower()
 
-        searchable = f"{node_id} {node_name}".lower()
+        legacy_id = node.get("legacy_id", "")
+        searchable = f"{node_id} {node_name} {legacy_id}".lower()
         for field in ("topic", "subject", "title", "description", "definition", "group"):
             val = node.get(field, "")
             if val:
@@ -734,11 +735,11 @@ def code_refs(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> di
     """Get code references for a node.
 
     Returns list of code files implementing or related to this node.
-    Only returns code_refs field — much cheaper than full context().
+    Only returns code_refs field â€” much cheaper than full context().
 
     Args:
         node_id: str (required)
-        add: dict (optional) — add a new code ref
+        add: dict (optional) â€” add a new code ref
              {path, description, language}
 
     Returns:
@@ -771,8 +772,8 @@ def code_refs(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> di
 def node_invariants(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> dict[str, Any]:
     """Get invariants (hard constraints) for a node.
 
-    Returns list of invariant strings — constraints that must always be true.
-    Only returns invariants field — much cheaper than full context().
+    Returns list of invariant strings â€” constraints that must always be true.
+    Only returns invariants field â€” much cheaper than full context().
 
     Args:
         node_id: str (required)
@@ -807,11 +808,11 @@ def node_tests(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> d
     """Get TestCase nodes linked to this node.
 
     Finds TestCase nodes where covers field = node_id.
-    No schema change needed — uses existing covers edges.
+    No schema change needed â€” uses existing covers edges.
 
     Args:
         node_id: str (required)
-        status: str (optional) — filter by status: PASSING, FAILING, DRAFT, etc.
+        status: str (optional) â€” filter by status: PASSING, FAILING, DRAFT, etc.
 
     Returns:
         ok, node_id, node_name, test_cases, count
@@ -897,15 +898,15 @@ def node_tests(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> d
 
 
 def node_related(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> dict[str, Any]:
-    """Get related nodes summary — neighbor names without full data.
+    """Get related nodes summary â€” neighbor names without full data.
 
     Returns lightweight list of connected nodes.
     Much cheaper than context() which loads full node data.
 
     Args:
         node_id: str (required)
-        direction: str (optional) — 'outgoing', 'incoming', 'both' (default: 'both')
-        edge_type: str (optional) — filter by edge type
+        direction: str (optional) â€” 'outgoing', 'incoming', 'both' (default: 'both')
+        edge_type: str (optional) â€” filter by edge type
 
     Returns:
         ok, node_id, node_name, outgoing, incoming, count
@@ -1077,12 +1078,12 @@ _NODE_EDGE_REQUIREMENTS: dict[str, dict[str, list[dict[str, str]]]] = {
             {
                 "type": "implements",
                 "target": "Protocol or Node",
-                "description": "Protocol này Flow thực hiện",
+                "description": "Protocol nÃ y Flow thá»±c hiá»‡n",
             },
             {
                 "type": "references",
                 "target": "Document",
-                "description": "DOC source của Flow",
+                "description": "DOC source cá»§a Flow",
             },
         ],
         "optional_edges": [
@@ -1103,14 +1104,14 @@ _NODE_EDGE_REQUIREMENTS: dict[str, dict[str, list[dict[str, str]]]] = {
             {
                 "type": "implements",
                 "target": "Flow or Node",
-                "description": "Flow Engine này phục vụ",
+                "description": "Flow Engine nÃ y phá»¥c vá»¥",
             },
         ],
         "optional_edges": [
             {
                 "type": "depends_on",
                 "target": "Entity",
-                "description": "Entity Engine cần",
+                "description": "Entity Engine cáº§n",
             },
             {
                 "type": "references",
@@ -1124,14 +1125,14 @@ _NODE_EDGE_REQUIREMENTS: dict[str, dict[str, list[dict[str, str]]]] = {
             {
                 "type": "references",
                 "target": "Document",
-                "description": "DOC định nghĩa Entity",
+                "description": "DOC Ä‘á»‹nh nghÄ©a Entity",
             },
         ],
         "optional_edges": [
             {
                 "type": "relates_to",
                 "target": "Entity",
-                "description": "Entities liên quan",
+                "description": "Entities liÃªn quan",
             },
         ],
     },
@@ -1140,7 +1141,7 @@ _NODE_EDGE_REQUIREMENTS: dict[str, dict[str, list[dict[str, str]]]] = {
             {
                 "type": "implements",
                 "target": "Flow or Node",
-                "description": "Flow Feature này thuộc về",
+                "description": "Flow Feature nÃ y thuá»™c vá»",
             },
         ],
         "optional_edges": [
@@ -1172,7 +1173,7 @@ _NODE_EDGE_REQUIREMENTS: dict[str, dict[str, list[dict[str, str]]]] = {
             {
                 "type": "supersedes",
                 "target": "Decision",
-                "description": "Decision cũ bị thay thế",
+                "description": "Decision cÅ© bá»‹ thay tháº¿",
             },
         ],
     },
@@ -1182,7 +1183,7 @@ _NODE_EDGE_REQUIREMENTS: dict[str, dict[str, list[dict[str, str]]]] = {
             {
                 "type": "references",
                 "target": "Document",
-                "description": "Docs liên quan",
+                "description": "Docs liÃªn quan",
             },
         ],
     },
@@ -1191,12 +1192,12 @@ _NODE_EDGE_REQUIREMENTS: dict[str, dict[str, list[dict[str, str]]]] = {
             {
                 "type": "covers",
                 "target": "Node or Flow or Feature",
-                "description": "Node này test covers",
+                "description": "Node nÃ y test covers",
             },
             {
                 "type": "of_kind",
                 "target": "TestKind",
-                "description": "Loại test",
+                "description": "Loáº¡i test",
             },
         ],
         "optional_edges": [],
@@ -1429,11 +1430,11 @@ def node_interview(
     """Generate interview questions for declaring a node's relationships.
 
     AI uses this after creating a node to discover all relationships.
-    Returns structured questions — AI answers each, then creates edges.
+    Returns structured questions â€” AI answers each, then creates edges.
 
     Args:
-        node_id: str — node to interview about
-        answered: list[str] (optional) — edge types already declared
+        node_id: str â€” node to interview about
+        answered: list[str] (optional) â€” edge types already declared
 
     Returns:
         ok, node_id, node_name, questions[], next_question, completion_pct
@@ -1632,3 +1633,4 @@ def schema_governance(
         ),
         "node_types_checked": len(node_types_in_schema),
     }
+

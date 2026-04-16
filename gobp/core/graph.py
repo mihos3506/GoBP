@@ -1,4 +1,4 @@
-"""GoBP graph index.
+﻿"""GoBP graph index.
 
 In-memory index of nodes and edges loaded from .gobp/ folder.
 File-first: source of truth is markdown/YAML files on disk.
@@ -7,6 +7,7 @@ This class provides fast lookup via Python dicts.
 
 from __future__ import annotations
 
+import json as _json
 from collections import defaultdict
 from pathlib import Path
 from typing import Any
@@ -39,12 +40,12 @@ class GraphIndex:
     Write operations go through mutator.py (Wave 5).
 
     Internal indexes for O(1) / O(k) lookups:
-      _nodes          : id → node dict
-      _nodes_by_type  : type → list[node dict]
+      _nodes          : id â†’ node dict
+      _nodes_by_type  : type â†’ list[node dict]
       _edges          : flat list (source of truth)
-      _edges_from     : node_id → list[edge dict]
-      _edges_to       : node_id → list[edge dict]
-      _edges_by_type  : edge_type → list[edge dict]
+      _edges_from     : node_id â†’ list[edge dict]
+      _edges_to       : node_id â†’ list[edge dict]
+      _edges_by_type  : edge_type â†’ list[edge dict]
     """
 
     def __init__(self) -> None:
@@ -59,6 +60,7 @@ class GraphIndex:
         self._edges_schema: dict[str, Any] = {}
         self._load_errors: list[str] = []
         self._gobp_root: Path | None = None
+        self._legacy_id_map: dict[str, str] = {}
 
     @classmethod
     def load_from_disk(cls, gobp_root: Path) -> "GraphIndex":
@@ -84,6 +86,14 @@ class GraphIndex:
         index = cls()
         index._gobp_root = gobp_root
 
+        mapping_file = gobp_root / ".gobp" / "id_mapping.json"
+        if mapping_file.exists():
+            try:
+                mapping = _json.loads(mapping_file.read_text(encoding="utf-8"))
+                index._legacy_id_map = {k: v for k, v in mapping.items() if k != v}
+            except Exception:
+                index._legacy_id_map = {}
+
         package_root = gobp_root / "gobp"
         schema_dir = package_root / "schema"
         index._nodes_schema = load_schema(schema_dir / "core_nodes.yaml")
@@ -99,7 +109,7 @@ class GraphIndex:
             if not _db.index_exists(gobp_root):
                 _db.rebuild_index(gobp_root, index)
         except Exception:
-            # SQLite failure is non-fatal — in-memory index still works
+            # SQLite failure is non-fatal â€” in-memory index still works
             pass
 
         return index
@@ -166,15 +176,17 @@ class GraphIndex:
         return len(self._nodes)
 
     def get_node(self, node_id: str) -> dict[str, Any] | None:
-        """Get a node by ID. O(1).
+        """Get node by ID. Supports both new and legacy IDs. O(1)."""
+        node = self._nodes.get(node_id)
+        if node:
+            return node
 
-        Args:
-            node_id: Node ID (e.g., "node:feat_login").
+        if self._legacy_id_map:
+            new_id = self._legacy_id_map.get(node_id)
+            if new_id:
+                return self._nodes.get(new_id)
 
-        Returns:
-            Node dict or None if not found.
-        """
-        return self._nodes.get(node_id)
+        return None
 
     def all_nodes(self) -> list[dict[str, Any]]:
         """Return all nodes as a list. O(n).
@@ -250,3 +262,4 @@ class GraphIndex:
         node_type = node.get("type", "Node")
         tier_weight = get_tier_weight(node_type, groups)
         return incoming + outgoing + tier_weight
+
