@@ -1736,3 +1736,52 @@
   to: wave:core
   type: relates_to
   reason: feature belongs to wave
+- from: wave:0
+  to: doc:wave_0_brief
+  type: references
+  reason: canonical wave brief document
+- from: wave:1
+  to: doc:wave_1_brief
+  type: references
+  reason: canonical wave brief document
+- from: wave:2
+  to: doc:wave_2_brief
+  type: references
+  reason: canonical wave brief document
+- from: wave:3
+  to: doc:wave_3_brief
+  type: references
+  reason: canonical wave brief document
+- from: wave:5
+  to: doc:wave_5_brief
+  type: references
+  reason: canonical wave brief document
+- from: wave:6
+  to: doc:wave_6_brief
+  type: references
+  reason: canonical wave brief document
+- from: wave:7
+  to: doc:wave_7_brief
+  type: references
+  reason: canonical wave brief document
+- from: wave:8
+  to: doc:wave_8_brief
+  type: references
+  reason: canonical wave brief document
+- from: wave:9a
+  to: doc:wave_9a_brief
+  type: references
+  reason: canonical wave brief document
+- from: wave:h
+  to: doc:wave_h_brief
+  type: references
+  reason: canonical wave brief document
+- from: dec:d015
+  to: doc:wave_16a01_brief_575ef8
+  type: references
+- from: dec:d016
+  to: doc:wave_16a01_brief_575ef8
+  type: references
+- from: dec:d017
+  to: doc:wave_16a01_brief_575ef8
+  type: references
