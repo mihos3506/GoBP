@@ -1,2790 +1,2811 @@
-- from: ops.engine:8864
-  legacy_from: engine:mcp_runtime
-  legacy_to: flow:mcp_read_query
+- from: mcp_runtime_engine.ops.45160705
+  legacy_from: ops.engine:8864
+  legacy_to: ops.flow:2928
   reason: runtime executes read dispatch path
-  to: ops.flow:2928
+  to: mcp_read_query_flow.ops.54875904
   type: implements
-- from: ops.engine:8864
-  legacy_from: engine:mcp_runtime
-  legacy_to: flow:mcp_write_query
+- from: mcp_runtime_engine.ops.45160705
+  legacy_from: ops.engine:8864
+  legacy_to: ops.flow:1536
   reason: runtime executes guarded write dispatch path
-  to: ops.flow:1536
+  to: mcp_write_query_flow.ops.46487297
   type: implements
-- from: ops.engine:4560
-  legacy_from: engine:graph_storage
-  legacy_to: flow:mcp_write_query
+- from: graph_storage_engine.ops.45160704
+  legacy_from: ops.engine:4560
+  legacy_to: ops.flow:1536
   reason: storage engine persists writes and revisions
-  to: ops.flow:1536
+  to: mcp_write_query_flow.ops.46487297
   type: implements
-- from: ops.api:2848
-  legacy_from: api:gobp_query
-  legacy_to: flow:mcp_read_query
+- from: gobp_query_endpoint.ops.36772096
+  legacy_from: ops.api:2848
+  legacy_to: ops.flow:2928
   reason: gobp query API serves read actions
-  to: ops.flow:2928
+  to: mcp_read_query_flow.ops.54875904
   type: implements
-- from: ops.api:2848
-  legacy_from: api:gobp_query
-  legacy_to: flow:mcp_write_query
+- from: gobp_query_endpoint.ops.36772096
+  legacy_from: ops.api:2848
+  legacy_to: ops.flow:1536
   reason: gobp query API serves write actions
-  to: ops.flow:1536
+  to: mcp_write_query_flow.ops.46487297
   type: implements
-- from: ops.feat:6080
-  legacy_from: feat:mcp_cursor_pagination
-  legacy_to: flow:mcp_read_query
+- from: cursor_pagination_for_mcp_reads.ops.62601216
+  legacy_from: ops.feat:6080
+  legacy_to: ops.flow:2928
   reason: pagination feature ships read flow paging
-  to: ops.flow:2928
+  to: mcp_read_query_flow.ops.54875904
   type: implements
-- from: ops.feat:4688
-  legacy_from: feat:mcp_upsert_dedupe
-  legacy_to: flow:mcp_write_query
+- from: upsert_dedupe_key_write_model.ops.33241088
+  legacy_from: ops.feat:4688
+  legacy_to: ops.flow:1536
   reason: upsert feature ships dedupe write behavior
-  to: ops.flow:1536
+  to: mcp_write_query_flow.ops.46487297
   type: implements
-- from: ops.feat:0384
-  legacy_from: feat:mcp_dry_run_preview
-  legacy_to: flow:mcp_write_query
+- from: dry_run_write_preview.ops.57743616
+  legacy_from: ops.feat:0384
+  legacy_to: ops.flow:1536
   reason: dry-run preview for safe write flow
-  to: ops.flow:1536
+  to: mcp_write_query_flow.ops.46487297
   type: implements
-- from: ops.feat:0385
-  legacy_from: feat:mcp_stats_observability
-  legacy_to: api:gobp_query
+- from: in_memory_action_stats.ops.57743617
+  legacy_from: ops.feat:0385
+  legacy_to: ops.api:2848
   reason: stats action exposed through gobp query endpoint
-  to: ops.api:2848
+  to: gobp_query_endpoint.ops.36772096
   type: implements
-- from: ops.screen:7616
-  legacy_from: screen:viewer_main
-  legacy_to: api:viewer_graph
+- from: gobp_viewer_main_screen.ops.54875905
+  legacy_from: ops.screen:7616
+  legacy_to: ops.api:7152
   reason: viewer screen consumes graph endpoint
-  to: ops.api:7152
+  to: api_graph_endpoint.ops.36772097
   type: references
-- from: meta.wave:844096
-  legacy_from: wave:13
-  legacy_to: feat:mcp_cursor_pagination
+- from: wave_13_pagination_upsert_guardrails_obs.meta.19994880
+  legacy_from: meta.wave:844096
+  legacy_to: ops.feat:6080
   reason: wave includes pagination delivery
-  to: ops.feat:6080
+  to: cursor_pagination_for_mcp_reads.ops.62601216
   type: relates_to
-- from: meta.wave:844096
-  legacy_from: wave:13
-  legacy_to: feat:mcp_upsert_dedupe
+- from: wave_13_pagination_upsert_guardrails_obs.meta.19994880
+  legacy_from: meta.wave:844096
+  legacy_to: ops.feat:4688
   reason: wave includes upsert delivery
-  to: ops.feat:4688
+  to: upsert_dedupe_key_write_model.ops.33241088
   type: relates_to
-- from: meta.wave:844096
-  legacy_from: wave:13
-  legacy_to: feat:mcp_dry_run_preview
+- from: wave_13_pagination_upsert_guardrails_obs.meta.19994880
+  legacy_from: meta.wave:844096
+  legacy_to: ops.feat:0384
   reason: wave includes dry-run delivery
-  to: ops.feat:0384
+  to: dry_run_write_preview.ops.57743616
   type: relates_to
-- from: meta.wave:844096
-  legacy_from: wave:13
-  legacy_to: feat:mcp_stats_observability
+- from: wave_13_pagination_upsert_guardrails_obs.meta.19994880
+  legacy_from: meta.wave:844096
+  legacy_to: ops.feat:0385
   reason: wave includes stats delivery
-  to: ops.feat:0385
+  to: in_memory_action_stats.ops.57743617
   type: relates_to
-- from: core.inv:5840
-  legacy_from: inv:query_before_create
-  legacy_to: flow:mcp_write_query
+- from: discovery_before_creation.core.14239745
+  legacy_from: core.inv:5840
+  legacy_to: ops.flow:1536
   reason: governance invariant for write flow
-  to: ops.flow:1536
+  to: mcp_write_query_flow.ops.46487297
   type: relates_to
-- from: core.inv:4448
-  legacy_from: inv:write_guardrails_required
-  legacy_to: flow:mcp_write_query
+- from: write_guardrails_required.core.14239744
+  legacy_from: core.inv:4448
+  legacy_to: ops.flow:1536
   reason: guardrail invariant applies to write flow
-  to: ops.flow:1536
+  to: mcp_write_query_flow.ops.46487297
   type: relates_to
-- from: core.inv:0144
-  legacy_from: inv:session_required_for_write
-  legacy_to: flow:mcp_write_query
+- from: session_required_for_write.core.10045440
+  legacy_from: core.inv:0144
+  legacy_to: ops.flow:1536
   reason: session invariant applies to write flow
-  to: ops.flow:1536
+  to: mcp_write_query_flow.ops.46487297
   type: relates_to
-- from: test.case:403584
-  legacy_from: tc:wave13_find_page_info
-  legacy_to: testkind:contract
+- from: find_returns_page_info.test.unit.42956288
+  legacy_from: test.case:403584
+  legacy_to: test.kind:958016
   reason: testcase belongs to test kind
-  to: test.kind:958016
+  to: contract_test.test.48477184
   type: of_kind
-- from: test.case:403584
-  legacy_from: tc:wave13_find_page_info
-  legacy_to: feat:mcp_cursor_pagination
+- from: find_returns_page_info.test.unit.42956288
+  legacy_from: test.case:403584
+  legacy_to: ops.feat:6080
   reason: testcase validates target behavior
-  to: ops.feat:6080
+  to: cursor_pagination_for_mcp_reads.ops.62601216
   type: covers
-- from: test.case:209280
-  legacy_from: tc:wave13_find_cursor
-  legacy_to: testkind:integration
+- from: find_cursor_pagination_no_overlap.test.unit.05207552
+  legacy_from: test.case:209280
+  legacy_to: test.kind:540928
   reason: testcase belongs to test kind
-  to: test.kind:540928
+  to: integration_test.test.19117056
   type: of_kind
-- from: test.case:209280
-  legacy_from: tc:wave13_find_cursor
-  legacy_to: feat:mcp_cursor_pagination
+- from: find_cursor_pagination_no_overlap.test.unit.05207552
+  legacy_from: test.case:209280
+  legacy_to: ops.feat:6080
   reason: testcase validates target behavior
-  to: ops.feat:6080
+  to: cursor_pagination_for_mcp_reads.ops.62601216
   type: covers
-- from: test.case:792192
-  legacy_from: tc:wave13_related_page_info
-  legacy_to: testkind:contract
+- from: related_returns_page_info.test.unit.18453760
+  legacy_from: test.case:792192
+  legacy_to: test.kind:958016
   reason: testcase belongs to test kind
-  to: test.kind:958016
+  to: contract_test.test.48477184
   type: of_kind
-- from: test.case:792192
-  legacy_from: tc:wave13_related_page_info
-  legacy_to: flow:mcp_read_query
+- from: related_returns_page_info.test.unit.18453760
+  legacy_from: test.case:792192
+  legacy_to: ops.flow:2928
   reason: testcase validates target behavior
-  to: ops.flow:2928
+  to: mcp_read_query_flow.ops.54875904
   type: covers
-- from: test.case:986496
-  legacy_from: tc:wave13_tests_page_info
-  legacy_to: testkind:contract
+- from: node_tests_returns_page_info.test.unit.77174017
+  legacy_from: test.case:986496
+  legacy_to: test.kind:958016
   reason: testcase belongs to test kind
-  to: test.kind:958016
+  to: contract_test.test.48477184
   type: of_kind
-- from: test.case:986496
-  legacy_from: tc:wave13_tests_page_info
-  legacy_to: flow:mcp_read_query
+- from: node_tests_returns_page_info.test.unit.77174017
+  legacy_from: test.case:986496
+  legacy_to: ops.flow:2928
   reason: testcase validates target behavior
-  to: ops.flow:2928
+  to: mcp_read_query_flow.ops.54875904
   type: covers
-- from: test.case:180800
-  legacy_from: tc:wave13_upsert_create_update
-  legacy_to: testkind:integration
+- from: upsert_creates_then_updates_by_dedupe_ke.test.unit.01013248
+  legacy_from: test.case:180800
+  legacy_to: test.kind:540928
   reason: testcase belongs to test kind
-  to: test.kind:540928
+  to: integration_test.test.19117056
   type: of_kind
-- from: test.case:180800
-  legacy_from: tc:wave13_upsert_create_update
-  legacy_to: feat:mcp_upsert_dedupe
+- from: upsert_creates_then_updates_by_dedupe_ke.test.unit.01013248
+  legacy_from: test.case:180800
+  legacy_to: ops.feat:4688
   reason: testcase validates target behavior
-  to: ops.feat:4688
+  to: upsert_dedupe_key_write_model.ops.33241088
   type: covers
-- from: test.case:014977
-  legacy_from: tc:wave13_dry_run_no_write
-  legacy_to: testkind:security_input
+- from: dry_run_prevents_disk_writes.test.unit.63264512
+  legacy_from: test.case:014977
+  legacy_to: test.kind:095360
   reason: testcase belongs to test kind
-  to: test.kind:095360
+  to: input_security_test.test.85562624
   type: of_kind
-- from: test.case:014977
-  legacy_from: tc:wave13_dry_run_no_write
-  legacy_to: feat:mcp_dry_run_preview
+- from: dry_run_prevents_disk_writes.test.unit.63264512
+  legacy_from: test.case:014977
+  legacy_to: ops.feat:0384
   reason: testcase validates target behavior
-  to: ops.feat:0384
+  to: dry_run_write_preview.ops.57743616
   type: covers
-- from: test.case:597888
-  legacy_from: tc:wave13_guardrail_fields
-  legacy_to: testkind:contract
+- from: write_response_includes_guardrail_fields.test.unit.80705025
+  legacy_from: test.case:597888
+  legacy_to: test.kind:958016
   reason: testcase belongs to test kind
-  to: test.kind:958016
+  to: contract_test.test.48477184
   type: of_kind
-- from: test.case:597888
-  legacy_from: tc:wave13_guardrail_fields
-  legacy_to: inv:write_guardrails_required
+- from: write_response_includes_guardrail_fields.test.unit.80705025
+  legacy_from: test.case:597888
+  legacy_to: core.inv:4448
   reason: testcase validates target behavior
-  to: core.inv:4448
+  to: write_guardrails_required.core.14239744
   type: covers
-- from: test.case:792193
-  legacy_from: tc:wave13_stats_action
-  legacy_to: testkind:performance
+- from: stats_action_tracks_calls_latency_errors.test.unit.22648064
+  legacy_from: test.case:792193
+  legacy_to: test.kind:735232
   reason: testcase belongs to test kind
-  to: test.kind:735232
+  to: performance_test.test.35894272
   type: of_kind
-- from: test.case:792193
-  legacy_from: tc:wave13_stats_action
-  legacy_to: feat:mcp_stats_observability
+- from: stats_action_tracks_calls_latency_errors.test.unit.22648064
+  legacy_from: test.case:792193
+  legacy_to: ops.feat:0385
   reason: testcase validates target behavior
-  to: ops.feat:0385
+  to: in_memory_action_stats.ops.57743617
   type: covers
-- from: core.dec:5888
-  legacy_from: dec:d004
-  legacy_to: flow:mcp_read_query
+- from: adopt_cursor_based_pagination_for_read_a.core.80685312
+  legacy_from: core.dec:5888
+  legacy_to: ops.flow:2928
   reason: wave13 locked decision applied to target node
-  to: ops.flow:2928
+  to: mcp_read_query_flow.ops.54875904
   type: implements
-- from: core.dec:0192
-  legacy_from: dec:d005
-  legacy_to: flow:mcp_write_query
+- from: adopt_dedupe_key_upsert_action.core.38742272
+  legacy_from: core.dec:0192
+  legacy_to: ops.flow:1536
   reason: wave13 locked decision applied to target node
-  to: ops.flow:1536
+  to: mcp_write_query_flow.ops.46487297
   type: implements
-- from: core.dec:8800
-  legacy_from: dec:d006
-  legacy_to: inv:write_guardrails_required
+- from: require_guardrail_metadata_on_write_resp.core.01656832
+  legacy_from: core.dec:8800
+  legacy_to: core.inv:4448
   reason: wave13 locked decision applied to target node
-  to: core.inv:4448
+  to: write_guardrails_required.core.14239744
   type: implements
-- from: core.dec:3104
-  legacy_from: dec:d007
-  legacy_to: feat:mcp_stats_observability
+- from: track_in_memory_stats_per_action.core.68102400
+  legacy_from: core.dec:3104
+  legacy_to: ops.feat:0385
   reason: wave13 locked decision applied to target node
-  to: ops.feat:0385
+  to: in_memory_action_stats.ops.57743617
   type: implements
-- from: meta.lesson:390272
-  legacy_from: lesson:ll130
-  legacy_to: wave:13
+- from: prefer_sequential_mcp_imports.meta.80919552
+  legacy_from: meta.lesson:390272
+  legacy_to: meta.wave:844096
   reason: operational learning linked to wave13 write path
-  to: meta.wave:844096
+  to: wave_13_pagination_upsert_guardrails_obs.meta.19994880
   type: relates_to
-- from: meta.lesson:390272
-  legacy_from: lesson:ll130
-  legacy_to: flow:mcp_write_query
+- from: prefer_sequential_mcp_imports.meta.80919552
+  legacy_from: meta.lesson:390272
+  legacy_to: ops.flow:1536
   reason: operational learning linked to wave13 write path
-  to: ops.flow:1536
+  to: mcp_write_query_flow.ops.46487297
   type: relates_to
-- from: meta.lesson:778880
-  legacy_from: lesson:ll131
-  legacy_to: wave:13
+- from: validate_schema_prefixes_before_create.meta.97696768
+  legacy_from: meta.lesson:778880
+  legacy_to: meta.wave:844096
   reason: operational learning linked to wave13 write path
-  to: meta.wave:844096
+  to: wave_13_pagination_upsert_guardrails_obs.meta.19994880
   type: relates_to
-- from: meta.lesson:778880
-  legacy_from: lesson:ll131
-  legacy_to: flow:mcp_write_query
+- from: validate_schema_prefixes_before_create.meta.97696768
+  legacy_from: meta.lesson:778880
+  legacy_to: ops.flow:1536
   reason: operational learning linked to wave13 write path
-  to: ops.flow:1536
+  to: mcp_write_query_flow.ops.46487297
   type: relates_to
-- from: meta.lesson:167488
-  legacy_from: lesson:ll132
-  legacy_to: wave:13
+- from: use_dry_run_before_high_impact_write_pat.meta.76725248
+  legacy_from: meta.lesson:167488
+  legacy_to: meta.wave:844096
   reason: operational learning linked to wave13 write path
-  to: meta.wave:844096
+  to: wave_13_pagination_upsert_guardrails_obs.meta.19994880
   type: relates_to
-- from: meta.lesson:167488
-  legacy_from: lesson:ll132
-  legacy_to: flow:mcp_write_query
+- from: use_dry_run_before_high_impact_write_pat.meta.76725248
+  legacy_from: meta.lesson:167488
+  legacy_to: ops.flow:1536
   reason: operational learning linked to wave13 write path
-  to: ops.flow:1536
+  to: mcp_write_query_flow.ops.46487297
   type: relates_to
-- from: meta.wave:261184
-  legacy_from: wave:10a
-  legacy_to: wave:10b
+- from: wave_10a_single_tool_protocol.meta.57080320
+  legacy_from: meta.wave:261184
+  legacy_to: meta.wave:261185
   reason: wave timeline progression
-  to: meta.wave:261185
+  to: wave_10b_bugfix_priority_edge_import.meta.57080321
   type: supersedes
-- from: meta.wave:261185
-  legacy_from: wave:10b
-  legacy_to: wave:10c
+- from: wave_10b_bugfix_priority_edge_import.meta.57080321
+  legacy_from: meta.wave:261185
+  legacy_to: meta.wave:455488
   reason: wave timeline progression
-  to: meta.wave:455488
+  to: wave_10c_postgresql_migration.meta.73857536
   type: supersedes
-- from: meta.wave:455488
-  legacy_from: wave:10c
-  legacy_to: wave:11a
+- from: wave_10c_postgresql_migration.meta.73857536
+  legacy_from: meta.wave:455488
+  legacy_to: meta.wave:455489
   reason: wave timeline progression
-  to: meta.wave:455489
+  to: wave_11a_lazy_query_actions.meta.73857537
   type: supersedes
-- from: meta.wave:455489
-  legacy_from: wave:11a
-  legacy_to: wave:11b
+- from: wave_11a_lazy_query_actions.meta.73857537
+  legacy_from: meta.wave:455489
+  legacy_to: meta.wave:649792
   reason: wave timeline progression
-  to: meta.wave:649792
+  to: wave_11b_3d_graph_viewer.meta.03217665
   type: supersedes
-- from: meta.wave:649792
-  legacy_from: wave:11b
-  legacy_to: wave:12
+- from: wave_11b_3d_graph_viewer.meta.03217665
+  legacy_from: meta.wave:649792
+  legacy_to: meta.wave:649793
   reason: wave timeline progression
-  to: meta.wave:649793
+  to: wave_12_multi_project_viewer_and_schema.meta.07411968
   type: supersedes
-- from: meta.wave:649793
-  legacy_from: wave:12
-  legacy_to: wave:13
+- from: wave_12_multi_project_viewer_and_schema.meta.07411968
+  legacy_from: meta.wave:649793
+  legacy_to: meta.wave:844096
   reason: wave timeline progression
-  to: meta.wave:844096
+  to: wave_13_pagination_upsert_guardrails_obs.meta.19994880
   type: supersedes
-- from: meta.wave:261184
-  legacy_from: wave:10a
-  legacy_to: api:gobp_query
+- from: wave_10a_single_tool_protocol.meta.57080320
+  legacy_from: meta.wave:261184
+  legacy_to: ops.api:2848
   reason: wave delivers this capability
-  to: ops.api:2848
+  to: gobp_query_endpoint.ops.36772096
   type: relates_to
-- from: meta.wave:455488
-  legacy_from: wave:10c
-  legacy_to: entity:db_nodes
+- from: wave_10c_postgresql_migration.meta.73857536
+  legacy_from: meta.wave:455488
+  legacy_to: domain.entity:40011776
   reason: wave delivers this capability
-  to: domain.entity:40011776
+  to: nodes_table.domain.26822656
   type: relates_to
-- from: meta.wave:649792
-  legacy_from: wave:11b
-  legacy_to: screen:viewer_main
+- from: wave_11b_3d_graph_viewer.meta.03217665
+  legacy_from: meta.wave:649792
+  legacy_to: ops.screen:7616
   reason: wave delivers this capability
-  to: ops.screen:7616
+  to: gobp_viewer_main_screen.ops.54875905
   type: relates_to
-- from: meta.wave:649793
-  legacy_from: wave:12
-  legacy_to: api:viewer_projects
+- from: wave_12_multi_project_viewer_and_schema.meta.07411968
+  legacy_from: meta.wave:649793
+  legacy_to: ops.api:1456
   reason: wave delivers this capability
-  to: ops.api:1456
+  to: api_projects_endpoint.ops.32577793
   type: relates_to
-- from: ops.flow:2928
-  legacy_from: flow:mcp_read_query
-  legacy_to: api:gobp_query
+- from: mcp_read_query_flow.ops.54875904
+  legacy_from: ops.flow:2928
+  legacy_to: ops.api:2848
   reason: perf-check
-  to: ops.api:2848
+  to: gobp_query_endpoint.ops.36772096
   type: relates_to
-- from: core.dec:1712
-  legacy_from: dec:d009
-  legacy_to: doc:wave_14_brief_79fc28
-  to: meta.doc:856064
+- from: normalize_nodetype_via_casefold_type_can.core.59713792
+  legacy_from: core.dec:1712
+  legacy_to: meta.doc:856064
+  to: wave_14_brief.meta.25067008
   type: references
-- from: core.dec:6016
-  legacy_from: dec:d010
-  legacy_to: doc:wave_14_brief_79fc28
-  to: meta.doc:856064
+- from: template_action_returns_node_edge_requir.core.84879616
+  legacy_from: core.dec:6016
+  legacy_to: meta.doc:856064
+  to: wave_14_brief.meta.25067008
   type: references
-- from: core.dec:0320
-  legacy_from: dec:d011
-  legacy_to: doc:wave_14_brief_79fc28
-  to: meta.doc:856064
+- from: interview_node_x_returns_questions_for_u.core.47130880
+  legacy_from: core.dec:0320
+  legacy_to: meta.doc:856064
+  to: wave_14_brief.meta.25067008
   type: references
-- from: core.dec:4624
-  legacy_from: dec:d012
-  legacy_to: doc:wave_14_brief_79fc28
-  to: meta.doc:856064
+- from: gobp_read_only_true_blocks_create_update.core.76491008
+  legacy_from: core.dec:4624
+  legacy_to: meta.doc:856064
+  to: wave_14_brief.meta.25067008
   type: references
-- from: core.dec:8928
-  legacy_from: dec:d013
-  legacy_to: doc:wave_14_brief_79fc28
-  to: meta.doc:856064
+- from: version_action_returns_protocol_version.core.01656833
+  legacy_from: core.dec:8928
+  legacy_to: meta.doc:856064
+  to: wave_14_brief.meta.25067008
   type: references
-- from: core.dec:3232
-  legacy_from: dec:d014
-  legacy_to: doc:wave_14_brief_79fc28
-  to: meta.doc:856064
+- from: validate_schema_docs_cross_checks_schema.core.72296704
+  legacy_from: core.dec:3232
+  legacy_to: meta.doc:856064
+  to: wave_14_brief.meta.25067008
   type: references
-- from: test.case:882689
-  legacy_from: tc:3eaaa9
-  legacy_to: testkind:unit
+- from: project_initialization.test.unit.52008192
+  legacy_from: test.case:882689
+  legacy_to: test.kind:678272
   reason: testcase belongs to test kind
-  to: test.kind:678272
+  to: unit_test.test.27505664
   type: of_kind
-- from: test.case:882689
-  legacy_from: tc:3eaaa9
-  legacy_to: api:gobp_query
+- from: project_initialization.test.unit.52008192
+  legacy_from: test.case:882689
+  legacy_to: ops.api:2848
   reason: testcase validates target behavior
-  to: ops.api:2848
+  to: gobp_query_endpoint.ops.36772096
   type: covers
-- from: test.case:271296
-  legacy_from: tc:41966a
-  legacy_to: testkind:unit
+- from: init_seeded_nodes.test.unit.17790464
+  legacy_from: test.case:271296
+  legacy_to: test.kind:678272
   reason: testcase belongs to test kind
-  to: test.kind:678272
+  to: unit_test.test.27505664
   type: of_kind
-- from: test.case:271296
-  legacy_from: tc:41966a
-  legacy_to: api:gobp_query
+- from: init_seeded_nodes.test.unit.17790464
+  legacy_from: test.case:271296
+  legacy_to: ops.api:2848
   reason: testcase validates target behavior
-  to: ops.api:2848
+  to: gobp_query_endpoint.ops.36772096
   type: covers
-- from: test.case:882688
-  legacy_from: tc:386007
-  legacy_to: testkind:unit
+- from: init_idempotency.test.unit.47813889
+  legacy_from: test.case:882688
+  legacy_to: test.kind:678272
   reason: testcase belongs to test kind
-  to: test.kind:678272
+  to: unit_test.test.27505664
   type: of_kind
-- from: test.case:882688
-  legacy_from: tc:386007
-  legacy_to: api:gobp_query
+- from: init_idempotency.test.unit.47813889
+  legacy_from: test.case:882688
+  legacy_to: ops.api:2848
   reason: testcase validates target behavior
-  to: ops.api:2848
+  to: gobp_query_endpoint.ops.36772096
   type: covers
-- from: test.case:328256
-  legacy_from: tc:27df2c
-  legacy_to: testkind:unit
+- from: find_type_filter.test.unit.26179072
+  legacy_from: test.case:328256
+  legacy_to: test.kind:678272
   reason: testcase belongs to test kind
-  to: test.kind:678272
+  to: unit_test.test.27505664
   type: of_kind
-- from: test.case:328256
-  legacy_from: tc:27df2c
-  legacy_to: api:gobp_query
+- from: find_type_filter.test.unit.26179072
+  legacy_from: test.case:328256
+  legacy_to: ops.api:2848
   reason: testcase validates target behavior
-  to: ops.api:2848
+  to: gobp_query_endpoint.ops.36772096
   type: covers
-- from: test.case:214336
-  legacy_from: tc:7fed89
-  legacy_to: testkind:unit
+- from: overview_concepts_and_coverage.test.unit.09401856
+  legacy_from: test.case:214336
+  legacy_to: test.kind:678272
   reason: testcase belongs to test kind
-  to: test.kind:678272
+  to: unit_test.test.27505664
   type: of_kind
-- from: test.case:214336
-  legacy_from: tc:7fed89
-  legacy_to: api:gobp_query
+- from: overview_concepts_and_coverage.test.unit.09401856
+  legacy_from: test.case:214336
+  legacy_to: ops.api:2848
   reason: testcase validates target behavior
-  to: ops.api:2848
+  to: gobp_query_endpoint.ops.36772096
   type: covers
-- from: test.case:014976
-  legacy_from: tc:f7af8a
-  legacy_to: testkind:integration
+- from: cli_commands.test.unit.59070208
+  legacy_from: test.case:014976
+  legacy_to: test.kind:540928
   reason: testcase belongs to test kind
-  to: test.kind:540928
+  to: integration_test.test.19117056
   type: of_kind
-- from: test.case:014976
-  legacy_from: tc:f7af8a
-  legacy_to: api:gobp_query
+- from: cli_commands.test.unit.59070208
+  legacy_from: test.case:014976
+  legacy_to: ops.api:2848
   reason: testcase validates target behavior
-  to: ops.api:2848
+  to: gobp_query_endpoint.ops.36772096
   type: covers
-- from: test.case:849153
-  legacy_from: tc:e6ed78
-  legacy_to: testkind:unit
+- from: session_id_generation.test.unit.39425280
+  legacy_from: test.case:849153
+  legacy_to: test.kind:678272
   reason: testcase belongs to test kind
-  to: test.kind:678272
+  to: unit_test.test.27505664
   type: of_kind
-- from: test.case:849153
-  legacy_from: tc:e6ed78
-  legacy_to: api:gobp_query
+- from: session_id_generation.test.unit.39425280
+  legacy_from: test.case:849153
+  legacy_to: ops.api:2848
   reason: testcase validates target behavior
-  to: ops.api:2848
+  to: gobp_query_endpoint.ops.36772096
   type: covers
-- from: test.case:849153
-  legacy_from: tc:e6ed78
-  legacy_to: wave:10b
+- from: session_id_generation.test.unit.39425280
+  legacy_from: test.case:849153
+  legacy_to: meta.wave:261185
   reason: testcase belongs to wave
-  to: meta.wave:261185
+  to: wave_10b_bugfix_priority_edge_import.meta.57080321
   type: relates_to
-- from: test.case:934593
-  legacy_from: tc:ad7404
-  legacy_to: testkind:unit
+- from: unicode_yaml_encoding.test.unit.60396801
+  legacy_from: test.case:934593
+  legacy_to: test.kind:678272
   reason: testcase belongs to test kind
-  to: test.kind:678272
+  to: unit_test.test.27505664
   type: of_kind
-- from: test.case:934593
-  legacy_from: tc:ad7404
-  legacy_to: api:gobp_query
+- from: unicode_yaml_encoding.test.unit.60396801
+  legacy_from: test.case:934593
+  legacy_to: ops.api:2848
   reason: testcase validates target behavior
-  to: ops.api:2848
+  to: gobp_query_endpoint.ops.36772096
   type: covers
-- from: test.case:934593
-  legacy_from: tc:ad7404
-  legacy_to: wave:10b
+- from: unicode_yaml_encoding.test.unit.60396801
+  legacy_from: test.case:934593
+  legacy_to: meta.wave:261185
   reason: testcase belongs to wave
-  to: meta.wave:261185
+  to: wave_10b_bugfix_priority_edge_import.meta.57080321
   type: relates_to
-- from: test.case:711808
-  legacy_from: tc:b27af0
-  legacy_to: testkind:unit
+- from: priority_field.test.unit.05870848
+  legacy_from: test.case:711808
+  legacy_to: test.kind:678272
   reason: testcase belongs to test kind
-  to: test.kind:678272
+  to: unit_test.test.27505664
   type: of_kind
-- from: test.case:711808
-  legacy_from: tc:b27af0
-  legacy_to: api:gobp_query
+- from: priority_field.test.unit.05870848
+  legacy_from: test.case:711808
+  legacy_to: ops.api:2848
   reason: testcase validates target behavior
-  to: ops.api:2848
+  to: gobp_query_endpoint.ops.36772096
   type: covers
-- from: test.case:711808
-  legacy_from: tc:b27af0
-  legacy_to: wave:10b
+- from: priority_field.test.unit.05870848
+  legacy_from: test.case:711808
+  legacy_to: meta.wave:261185
   reason: testcase belongs to wave
-  to: meta.wave:261185
+  to: wave_10b_bugfix_priority_edge_import.meta.57080321
   type: relates_to
-- from: test.case:968128
-  legacy_from: tc:00df5e
-  legacy_to: testkind:unit
+- from: document_priority_classification.test.unit.77174016
+  legacy_from: test.case:968128
+  legacy_to: test.kind:678272
   reason: testcase belongs to test kind
-  to: test.kind:678272
+  to: unit_test.test.27505664
   type: of_kind
-- from: test.case:968128
-  legacy_from: tc:00df5e
-  legacy_to: api:gobp_query
+- from: document_priority_classification.test.unit.77174016
+  legacy_from: test.case:968128
+  legacy_to: ops.api:2848
   reason: testcase validates target behavior
-  to: ops.api:2848
+  to: gobp_query_endpoint.ops.36772096
   type: covers
-- from: test.case:968128
-  legacy_from: tc:00df5e
-  legacy_to: wave:10b
+- from: document_priority_classification.test.unit.77174016
+  legacy_from: test.case:968128
+  legacy_to: meta.wave:261185
   reason: testcase belongs to wave
-  to: meta.wave:261185
+  to: wave_10b_bugfix_priority_edge_import.meta.57080321
   type: relates_to
-- from: test.case:437121
-  legacy_from: tc:61be76
-  legacy_to: testkind:unit
+- from: auto_generated_node_ids.test.unit.51344897
+  legacy_from: test.case:437121
+  legacy_to: test.kind:678272
   reason: testcase belongs to test kind
-  to: test.kind:678272
+  to: unit_test.test.27505664
   type: of_kind
-- from: test.case:437121
-  legacy_from: tc:61be76
-  legacy_to: api:gobp_query
+- from: auto_generated_node_ids.test.unit.51344897
+  legacy_from: test.case:437121
+  legacy_to: ops.api:2848
   reason: testcase validates target behavior
-  to: ops.api:2848
+  to: gobp_query_endpoint.ops.36772096
   type: covers
-- from: test.case:437121
-  legacy_from: tc:61be76
-  legacy_to: wave:10b
+- from: auto_generated_node_ids.test.unit.51344897
+  legacy_from: test.case:437121
+  legacy_to: meta.wave:261185
   reason: testcase belongs to wave
-  to: meta.wave:261185
+  to: wave_10b_bugfix_priority_edge_import.meta.57080321
   type: relates_to
-- from: test.case:654848
-  legacy_from: tc:de5eb0
-  legacy_to: testkind:integration
+- from: edge_action.test.unit.93287936
+  legacy_from: test.case:654848
+  legacy_to: test.kind:540928
   reason: testcase belongs to test kind
-  to: test.kind:540928
+  to: integration_test.test.19117056
   type: of_kind
-- from: test.case:654848
-  legacy_from: tc:de5eb0
-  legacy_to: api:gobp_query
+- from: edge_action.test.unit.93287936
+  legacy_from: test.case:654848
+  legacy_to: ops.api:2848
   reason: testcase validates target behavior
-  to: ops.api:2848
+  to: gobp_query_endpoint.ops.36772096
   type: covers
-- from: test.case:654848
-  legacy_from: tc:de5eb0
-  legacy_to: wave:10b
+- from: edge_action.test.unit.93287936
+  legacy_from: test.case:654848
+  legacy_to: meta.wave:261185
   reason: testcase belongs to wave
-  to: meta.wave:261185
+  to: wave_10b_bugfix_priority_edge_import.meta.57080321
   type: relates_to
-- from: test.case:740288
-  legacy_from: tc:ab41bc
-  legacy_to: testkind:integration
+- from: import_document_creation.test.unit.10065152
+  legacy_from: test.case:740288
+  legacy_to: test.kind:540928
   reason: testcase belongs to test kind
-  to: test.kind:540928
+  to: integration_test.test.19117056
   type: of_kind
-- from: test.case:740288
-  legacy_from: tc:ab41bc
-  legacy_to: api:gobp_query
+- from: import_document_creation.test.unit.10065152
+  legacy_from: test.case:740288
+  legacy_to: ops.api:2848
   reason: testcase validates target behavior
-  to: ops.api:2848
+  to: gobp_query_endpoint.ops.36772096
   type: covers
-- from: test.case:740288
-  legacy_from: tc:ab41bc
-  legacy_to: wave:10b
+- from: import_document_creation.test.unit.10065152
+  legacy_from: test.case:740288
+  legacy_to: meta.wave:261185
   reason: testcase belongs to wave
-  to: meta.wave:261185
+  to: wave_10b_bugfix_priority_edge_import.meta.57080321
   type: relates_to
-- from: test.case:043456
-  legacy_from: tc:e7e809
-  legacy_to: testkind:unit
+- from: code_refs_schema_field.test.unit.71653120
+  legacy_from: test.case:043456
+  legacy_to: test.kind:678272
   reason: testcase belongs to test kind
-  to: test.kind:678272
+  to: unit_test.test.27505664
   type: of_kind
-- from: test.case:043456
-  legacy_from: tc:e7e809
-  legacy_to: api:gobp_query
+- from: code_refs_schema_field.test.unit.71653120
+  legacy_from: test.case:043456
+  legacy_to: ops.api:2848
   reason: testcase validates target behavior
-  to: ops.api:2848
+  to: gobp_query_endpoint.ops.36772096
   type: covers
-- from: test.case:043456
-  legacy_from: tc:e7e809
-  legacy_to: wave:11a
+- from: code_refs_schema_field.test.unit.71653120
+  legacy_from: test.case:043456
+  legacy_to: meta.wave:455489
   reason: testcase belongs to wave
-  to: meta.wave:455489
+  to: wave_11a_lazy_query_actions.meta.73857537
   type: relates_to
-- from: test.case:939648
-  legacy_from: tc:223882
-  legacy_to: testkind:unit
+- from: invariants_schema_field.test.unit.64591104
+  legacy_from: test.case:939648
+  legacy_to: test.kind:678272
   reason: testcase belongs to test kind
-  to: test.kind:678272
+  to: unit_test.test.27505664
   type: of_kind
-- from: test.case:939648
-  legacy_from: tc:223882
-  legacy_to: api:gobp_query
+- from: invariants_schema_field.test.unit.64591104
+  legacy_from: test.case:939648
+  legacy_to: ops.api:2848
   reason: testcase validates target behavior
-  to: ops.api:2848
+  to: gobp_query_endpoint.ops.36772096
   type: covers
-- from: test.case:939648
-  legacy_from: tc:223882
-  legacy_to: wave:11a
+- from: invariants_schema_field.test.unit.64591104
+  legacy_from: test.case:939648
+  legacy_to: meta.wave:455489
   reason: testcase belongs to wave
-  to: meta.wave:455489
+  to: wave_11a_lazy_query_actions.meta.73857537
   type: relates_to
-- from: test.case:323200
-  legacy_from: tc:ae29fd
-  legacy_to: testkind:unit
+- from: lazy_query_actions_parsing.test.unit.21984769
+  legacy_from: test.case:323200
+  legacy_to: test.kind:678272
   reason: testcase belongs to test kind
-  to: test.kind:678272
+  to: unit_test.test.27505664
   type: of_kind
-- from: test.case:323200
-  legacy_from: tc:ae29fd
-  legacy_to: api:gobp_query
+- from: lazy_query_actions_parsing.test.unit.21984769
+  legacy_from: test.case:323200
+  legacy_to: ops.api:2848
   reason: testcase validates target behavior
-  to: ops.api:2848
+  to: gobp_query_endpoint.ops.36772096
   type: covers
-- from: test.case:323200
-  legacy_from: tc:ae29fd
-  legacy_to: wave:11a
+- from: lazy_query_actions_parsing.test.unit.21984769
+  legacy_from: test.case:323200
+  legacy_to: meta.wave:455489
   reason: testcase belongs to wave
-  to: meta.wave:455489
+  to: wave_11a_lazy_query_actions.meta.73857537
   type: relates_to
-- from: test.case:659904
-  legacy_from: tc:4bc78e
-  legacy_to: testkind:unit
+- from: code_read_action.test.unit.93287937
+  legacy_from: test.case:659904
+  legacy_to: test.kind:678272
   reason: testcase belongs to test kind
-  to: test.kind:678272
+  to: unit_test.test.27505664
   type: of_kind
-- from: test.case:659904
-  legacy_from: tc:4bc78e
-  legacy_to: api:gobp_query
+- from: code_read_action.test.unit.93287937
+  legacy_from: test.case:659904
+  legacy_to: ops.api:2848
   reason: testcase validates target behavior
-  to: ops.api:2848
+  to: gobp_query_endpoint.ops.36772096
   type: covers
-- from: test.case:659904
-  legacy_from: tc:4bc78e
-  legacy_to: wave:11a
+- from: code_read_action.test.unit.93287937
+  legacy_from: test.case:659904
+  legacy_to: meta.wave:455489
   reason: testcase belongs to wave
-  to: meta.wave:455489
+  to: wave_11a_lazy_query_actions.meta.73857537
   type: relates_to
-- from: test.case:071936
-  legacy_from: tc:c90f74
-  legacy_to: testkind:unit
+- from: invariants_read_action.test.unit.75847424
+  legacy_from: test.case:071936
+  legacy_to: test.kind:678272
   reason: testcase belongs to test kind
-  to: test.kind:678272
+  to: unit_test.test.27505664
   type: of_kind
-- from: test.case:071936
-  legacy_from: tc:c90f74
-  legacy_to: api:gobp_query
+- from: invariants_read_action.test.unit.75847424
+  legacy_from: test.case:071936
+  legacy_to: ops.api:2848
   reason: testcase validates target behavior
-  to: ops.api:2848
+  to: gobp_query_endpoint.ops.36772096
   type: covers
-- from: test.case:071936
-  legacy_from: tc:c90f74
-  legacy_to: wave:11a
+- from: invariants_read_action.test.unit.75847424
+  legacy_from: test.case:071936
+  legacy_to: meta.wave:455489
   reason: testcase belongs to wave
-  to: meta.wave:455489
+  to: wave_11a_lazy_query_actions.meta.73857537
   type: relates_to
-- from: test.case:522560
-  legacy_from: tc:295853
-  legacy_to: testkind:unit
+- from: tests_read_action.test.unit.72316416
+  legacy_from: test.case:522560
+  legacy_to: test.kind:678272
   reason: testcase belongs to test kind
-  to: test.kind:678272
+  to: unit_test.test.27505664
   type: of_kind
-- from: test.case:522560
-  legacy_from: tc:295853
-  legacy_to: api:gobp_query
+- from: tests_read_action.test.unit.72316416
+  legacy_from: test.case:522560
+  legacy_to: ops.api:2848
   reason: testcase validates target behavior
-  to: ops.api:2848
+  to: gobp_query_endpoint.ops.36772096
   type: covers
-- from: test.case:522560
-  legacy_from: tc:295853
-  legacy_to: wave:11a
+- from: tests_read_action.test.unit.72316416
+  legacy_from: test.case:522560
+  legacy_to: meta.wave:455489
   reason: testcase belongs to wave
-  to: meta.wave:455489
+  to: wave_11a_lazy_query_actions.meta.73857537
   type: relates_to
-- from: test.case:437120
-  legacy_from: tc:5f84c6
-  legacy_to: testkind:unit
+- from: related_read_action.test.unit.51344896
+  legacy_from: test.case:437120
+  legacy_to: test.kind:678272
   reason: testcase belongs to test kind
-  to: test.kind:678272
+  to: unit_test.test.27505664
   type: of_kind
-- from: test.case:437120
-  legacy_from: tc:5f84c6
-  legacy_to: api:gobp_query
+- from: related_read_action.test.unit.51344896
+  legacy_from: test.case:437120
+  legacy_to: ops.api:2848
   reason: testcase validates target behavior
-  to: ops.api:2848
+  to: gobp_query_endpoint.ops.36772096
   type: covers
-- from: test.case:437120
-  legacy_from: tc:5f84c6
-  legacy_to: wave:11a
+- from: related_read_action.test.unit.51344896
+  legacy_from: test.case:437120
+  legacy_to: meta.wave:455489
   reason: testcase belongs to wave
-  to: meta.wave:455489
+  to: wave_11a_lazy_query_actions.meta.73857537
   type: relates_to
-- from: test.case:020032
-  legacy_from: tc:7c9e89
-  legacy_to: testkind:integration
+- from: lazy_actions_dispatch.test.unit.67458816
+  legacy_from: test.case:020032
+  legacy_to: test.kind:540928
   reason: testcase belongs to test kind
-  to: test.kind:540928
+  to: integration_test.test.19117056
   type: of_kind
-- from: test.case:020032
-  legacy_from: tc:7c9e89
-  legacy_to: api:gobp_query
+- from: lazy_actions_dispatch.test.unit.67458816
+  legacy_from: test.case:020032
+  legacy_to: ops.api:2848
   reason: testcase validates target behavior
-  to: ops.api:2848
+  to: gobp_query_endpoint.ops.36772096
   type: covers
-- from: test.case:020032
-  legacy_from: tc:7c9e89
-  legacy_to: wave:11a
+- from: lazy_actions_dispatch.test.unit.67458816
+  legacy_from: test.case:020032
+  legacy_to: meta.wave:455489
   reason: testcase belongs to wave
-  to: meta.wave:455489
+  to: wave_11a_lazy_query_actions.meta.73857537
   type: relates_to
-- from: test.case:465600
-  legacy_from: tc:45cad5
-  legacy_to: testkind:unit
+- from: version_action.test.unit.59733505
+  legacy_from: test.case:465600
+  legacy_to: test.kind:678272
   reason: testcase belongs to test kind
-  to: test.kind:678272
+  to: unit_test.test.27505664
   type: of_kind
-- from: test.case:465600
-  legacy_from: tc:45cad5
-  legacy_to: api:gobp_query
+- from: version_action.test.unit.59733505
+  legacy_from: test.case:465600
+  legacy_to: ops.api:2848
   reason: testcase validates target behavior
-  to: ops.api:2848
+  to: gobp_query_endpoint.ops.36772096
   type: covers
-- from: test.case:294720
-  legacy_from: tc:bcceed
-  legacy_to: testkind:unit
+- from: schema_governance_score.test.unit.21984768
+  legacy_from: test.case:294720
+  legacy_to: test.kind:678272
   reason: testcase belongs to test kind
-  to: test.kind:678272
+  to: unit_test.test.27505664
   type: of_kind
-- from: test.case:294720
-  legacy_from: tc:bcceed
-  legacy_to: api:gobp_query
+- from: schema_governance_score.test.unit.21984768
+  legacy_from: test.case:294720
+  legacy_to: ops.api:2848
   reason: testcase validates target behavior
-  to: ops.api:2848
+  to: gobp_query_endpoint.ops.36772096
   type: covers
-- from: test.case:048512
-  legacy_from: tc:513cb8
-  legacy_to: testkind:integration
+- from: validate_schema_docs.test.unit.71653121
+  legacy_from: test.case:048512
+  legacy_to: test.kind:540928
   reason: testcase belongs to test kind
-  to: test.kind:540928
+  to: integration_test.test.19117056
   type: of_kind
-- from: test.case:048512
-  legacy_from: tc:513cb8
-  legacy_to: api:gobp_query
+- from: validate_schema_docs.test.unit.71653121
+  legacy_from: test.case:048512
+  legacy_to: ops.api:2848
   reason: testcase validates target behavior
-  to: ops.api:2848
+  to: gobp_query_endpoint.ops.36772096
   type: covers
-- from: test.case:906112
-  legacy_from: tc:b6c359
-  legacy_to: testkind:integration
+- from: session_role_field.test.unit.56202496
+  legacy_from: test.case:906112
+  legacy_to: test.kind:540928
   reason: testcase belongs to test kind
-  to: test.kind:540928
+  to: integration_test.test.19117056
   type: of_kind
-- from: test.case:906112
-  legacy_from: tc:b6c359
-  legacy_to: api:gobp_query
+- from: session_role_field.test.unit.56202496
+  legacy_from: test.case:906112
+  legacy_to: ops.api:2848
   reason: testcase validates target behavior
-  to: ops.api:2848
+  to: gobp_query_endpoint.ops.36772096
   type: covers
-- from: test.case:489024
-  legacy_from: tc:bfa6c9
-  legacy_to: testkind:unit
+- from: read_only_mode_flag.test.unit.63927808
+  legacy_from: test.case:489024
+  legacy_to: test.kind:678272
   reason: testcase belongs to test kind
-  to: test.kind:678272
+  to: unit_test.test.27505664
   type: of_kind
-- from: test.case:489024
-  legacy_from: tc:bfa6c9
-  legacy_to: api:gobp_query
+- from: read_only_mode_flag.test.unit.63927808
+  legacy_from: test.case:489024
+  legacy_to: ops.api:2848
   reason: testcase validates target behavior
-  to: ops.api:2848
+  to: gobp_query_endpoint.ops.36772096
   type: covers
-- from: test.case:602944
-  legacy_from: tc:81e1b4
-  legacy_to: testkind:unit
+- from: template_action.test.unit.84899328
+  legacy_from: test.case:602944
+  legacy_to: test.kind:678272
   reason: testcase belongs to test kind
-  to: test.kind:678272
+  to: unit_test.test.27505664
   type: of_kind
-- from: test.case:602944
-  legacy_from: tc:81e1b4
-  legacy_to: api:gobp_query
+- from: template_action.test.unit.84899328
+  legacy_from: test.case:602944
+  legacy_to: ops.api:2848
   reason: testcase validates target behavior
-  to: ops.api:2848
+  to: gobp_query_endpoint.ops.36772096
   type: covers
-- from: test.case:854209
-  legacy_from: tc:50bfb2
-  legacy_to: testkind:unit
+- from: parse_query_positional_args.test.unit.43619584
+  legacy_from: test.case:854209
+  legacy_to: test.kind:678272
   reason: testcase belongs to test kind
-  to: test.kind:678272
+  to: unit_test.test.27505664
   type: of_kind
-- from: test.case:854209
-  legacy_from: tc:50bfb2
-  legacy_to: api:gobp_query
+- from: parse_query_positional_args.test.unit.43619584
+  legacy_from: test.case:854209
+  legacy_to: ops.api:2848
   reason: testcase validates target behavior
-  to: ops.api:2848
+  to: gobp_query_endpoint.ops.36772096
   type: covers
-- from: test.case:185856
-  legacy_from: tc:9aa4a5
-  legacy_to: testkind:unit
+- from: value_coercion.test.unit.01013249
+  legacy_from: test.case:185856
+  legacy_to: test.kind:678272
   reason: testcase belongs to test kind
-  to: test.kind:678272
+  to: unit_test.test.27505664
   type: of_kind
-- from: test.case:185856
-  legacy_from: tc:9aa4a5
-  legacy_to: api:gobp_query
+- from: value_coercion.test.unit.01013249
+  legacy_from: test.case:185856
+  legacy_to: ops.api:2848
   reason: testcase validates target behavior
-  to: ops.api:2848
+  to: gobp_query_endpoint.ops.36772096
   type: covers
-- from: test.case:105472
-  legacy_from: tc:3185f2
-  legacy_to: testkind:integration
+- from: unique_import_doc_ids.test.unit.88430336
+  legacy_from: test.case:105472
+  legacy_to: test.kind:540928
   reason: testcase belongs to test kind
-  to: test.kind:540928
+  to: integration_test.test.19117056
   type: of_kind
-- from: test.case:105472
-  legacy_from: tc:3185f2
-  legacy_to: api:gobp_query
+- from: unique_import_doc_ids.test.unit.88430336
+  legacy_from: test.case:105472
+  legacy_to: ops.api:2848
   reason: testcase validates target behavior
-  to: ops.api:2848
+  to: gobp_query_endpoint.ops.36772096
   type: covers
-- from: test.case:551040
-  legacy_from: tc:16715d
-  legacy_to: testkind:integration
+- from: edge_deduplication.test.unit.76510720
+  legacy_from: test.case:551040
+  legacy_to: test.kind:540928
   reason: testcase belongs to test kind
-  to: test.kind:540928
+  to: integration_test.test.19117056
   type: of_kind
-- from: test.case:551040
-  legacy_from: tc:16715d
-  legacy_to: api:gobp_query
+- from: edge_deduplication.test.unit.76510720
+  legacy_from: test.case:551040
+  legacy_to: ops.api:2848
   reason: testcase validates target behavior
-  to: ops.api:2848
+  to: gobp_query_endpoint.ops.36772096
   type: covers
-- from: test.case:854208
-  legacy_from: tc:4bdcc4
-  legacy_to: testkind:unit
+- from: parser_smoke_matrix.test.unit.39425281
+  legacy_from: test.case:854208
+  legacy_to: test.kind:678272
   reason: testcase belongs to test kind
-  to: test.kind:678272
+  to: unit_test.test.27505664
   type: of_kind
-- from: test.case:854208
-  legacy_from: tc:4bdcc4
-  legacy_to: api:gobp_query
+- from: parser_smoke_matrix.test.unit.39425281
+  legacy_from: test.case:854208
+  legacy_to: ops.api:2848
   reason: testcase validates target behavior
-  to: ops.api:2848
+  to: gobp_query_endpoint.ops.36772096
   type: covers
-- from: test.case:432064
-  legacy_from: tc:eef90f
-  legacy_to: testkind:unit
+- from: graphindex_loading.test.unit.47150592
+  legacy_from: test.case:432064
+  legacy_to: test.kind:678272
   reason: testcase belongs to test kind
-  to: test.kind:678272
+  to: unit_test.test.27505664
   type: of_kind
-- from: test.case:432064
-  legacy_from: tc:eef90f
-  legacy_to: api:gobp_query
+- from: graphindex_loading.test.unit.47150592
+  legacy_from: test.case:432064
+  legacy_to: ops.api:2848
   reason: testcase validates target behavior
-  to: ops.api:2848
+  to: gobp_query_endpoint.ops.36772096
   type: covers
-- from: test.case:237760
-  legacy_from: tc:edff66
-  legacy_to: testkind:unit
+- from: graphindex_queries.test.unit.09401857
+  legacy_from: test.case:237760
+  legacy_to: test.kind:678272
   reason: testcase belongs to test kind
-  to: test.kind:678272
+  to: unit_test.test.27505664
   type: of_kind
-- from: test.case:237760
-  legacy_from: tc:edff66
-  legacy_to: api:gobp_query
+- from: graphindex_queries.test.unit.09401857
+  legacy_from: test.case:237760
+  legacy_to: ops.api:2848
   reason: testcase validates target behavior
-  to: ops.api:2848
+  to: gobp_query_endpoint.ops.36772096
   type: covers
-- from: test.case:911168
-  legacy_from: tc:30ea16
-  legacy_to: testkind:unit
+- from: event_history_logging.test.unit.56202497
+  legacy_from: test.case:911168
+  legacy_to: test.kind:678272
   reason: testcase belongs to test kind
-  to: test.kind:678272
+  to: unit_test.test.27505664
   type: of_kind
-- from: test.case:911168
-  legacy_from: tc:30ea16
-  legacy_to: api:gobp_query
+- from: event_history_logging.test.unit.56202497
+  legacy_from: test.case:911168
+  legacy_to: ops.api:2848
   reason: testcase validates target behavior
-  to: ops.api:2848
+  to: gobp_query_endpoint.ops.36772096
   type: covers
-- from: test.case:551041
-  legacy_from: tc:1ff3fc
-  legacy_to: testkind:unit
+- from: create_node_mutation.test.unit.80705024
+  legacy_from: test.case:551041
+  legacy_to: test.kind:678272
   reason: testcase belongs to test kind
-  to: test.kind:678272
+  to: unit_test.test.27505664
   type: of_kind
-- from: test.case:551041
-  legacy_from: tc:1ff3fc
-  legacy_to: api:gobp_query
+- from: create_node_mutation.test.unit.80705024
+  legacy_from: test.case:551041
+  legacy_to: ops.api:2848
   reason: testcase validates target behavior
-  to: ops.api:2848
+  to: gobp_query_endpoint.ops.36772096
   type: covers
-- from: test.case:266240
-  legacy_from: tc:d303f2
-  legacy_to: testkind:unit
+- from: update_node_mutation.test.unit.13596161
+  legacy_from: test.case:266240
+  legacy_to: test.kind:678272
   reason: testcase belongs to test kind
-  to: test.kind:678272
+  to: unit_test.test.27505664
   type: of_kind
-- from: test.case:266240
-  legacy_from: tc:d303f2
-  legacy_to: api:gobp_query
+- from: update_node_mutation.test.unit.13596161
+  legacy_from: test.case:266240
+  legacy_to: ops.api:2848
   reason: testcase validates target behavior
-  to: ops.api:2848
+  to: gobp_query_endpoint.ops.36772096
   type: covers
-- from: test.case:820672
-  legacy_from: tc:f74d70
-  legacy_to: testkind:unit
+- from: delete_node_soft_delete.test.unit.26842368
+  legacy_from: test.case:820672
+  legacy_to: test.kind:678272
   reason: testcase belongs to test kind
-  to: test.kind:678272
+  to: unit_test.test.27505664
   type: of_kind
-- from: test.case:820672
-  legacy_from: tc:f74d70
-  legacy_to: api:gobp_query
+- from: delete_node_soft_delete.test.unit.26842368
+  legacy_from: test.case:820672
+  legacy_to: ops.api:2848
   reason: testcase validates target behavior
-  to: ops.api:2848
+  to: gobp_query_endpoint.ops.36772096
   type: covers
-- from: test.case:683328
-  legacy_from: tc:c121b0
-  legacy_to: testkind:unit
+- from: edge_mutations.test.unit.97482240
+  legacy_from: test.case:683328
+  legacy_to: test.kind:678272
   reason: testcase belongs to test kind
-  to: test.kind:678272
+  to: unit_test.test.27505664
   type: of_kind
-- from: test.case:683328
-  legacy_from: tc:c121b0
-  legacy_to: api:gobp_query
+- from: edge_mutations.test.unit.97482240
+  legacy_from: test.case:683328
+  legacy_to: ops.api:2848
   reason: testcase validates target behavior
-  to: ops.api:2848
+  to: gobp_query_endpoint.ops.36772096
   type: covers
-- from: test.case:351680
-  legacy_from: tc:a20d66
-  legacy_to: testkind:unit
+- from: atomic_writes.test.unit.30373376
+  legacy_from: test.case:351680
+  legacy_to: test.kind:678272
   reason: testcase belongs to test kind
-  to: test.kind:678272
+  to: unit_test.test.27505664
   type: of_kind
-- from: test.case:351680
-  legacy_from: tc:a20d66
-  legacy_to: api:gobp_query
+- from: atomic_writes.test.unit.30373376
+  legacy_from: test.case:351680
+  legacy_to: ops.api:2848
   reason: testcase validates target behavior
-  to: ops.api:2848
+  to: gobp_query_endpoint.ops.36772096
   type: covers
-- from: test.case:128896
-  legacy_from: tc:ae1ae3
-  legacy_to: testkind:unit
+- from: frontmatter_parsing.test.unit.88430337
+  legacy_from: test.case:128896
+  legacy_to: test.kind:678272
   reason: testcase belongs to test kind
-  to: test.kind:678272
+  to: unit_test.test.27505664
   type: of_kind
-- from: test.case:128896
-  legacy_from: tc:ae1ae3
-  legacy_to: api:gobp_query
+- from: frontmatter_parsing.test.unit.88430337
+  legacy_from: test.case:128896
+  legacy_to: ops.api:2848
   reason: testcase validates target behavior
-  to: ops.api:2848
+  to: gobp_query_endpoint.ops.36772096
   type: covers
-- from: test.case:797248
-  legacy_from: tc:89c5e2
-  legacy_to: testkind:unit
+- from: schema_loading.test.unit.22648065
+  legacy_from: test.case:797248
+  legacy_to: test.kind:678272
   reason: testcase belongs to test kind
-  to: test.kind:678272
+  to: unit_test.test.27505664
   type: of_kind
-- from: test.case:797248
-  legacy_from: tc:89c5e2
-  legacy_to: api:gobp_query
+- from: schema_loading.test.unit.22648065
+  legacy_from: test.case:797248
+  legacy_to: ops.api:2848
   reason: testcase validates target behavior
-  to: ops.api:2848
+  to: gobp_query_endpoint.ops.36772096
   type: covers
-- from: test.case:460544
-  legacy_from: tc:d7ed55
-  legacy_to: testkind:unit
+- from: node_validation.test.unit.55539200
+  legacy_from: test.case:460544
+  legacy_to: test.kind:678272
   reason: testcase belongs to test kind
-  to: test.kind:678272
+  to: unit_test.test.27505664
   type: of_kind
-- from: test.case:460544
-  legacy_from: tc:d7ed55
-  legacy_to: api:gobp_query
+- from: node_validation.test.unit.55539200
+  legacy_from: test.case:460544
+  legacy_to: ops.api:2848
   reason: testcase validates target behavior
-  to: ops.api:2848
+  to: gobp_query_endpoint.ops.36772096
   type: covers
-- from: test.case:877632
-  legacy_from: tc:c33407
-  legacy_to: testkind:unit
+- from: edge_validation.test.unit.47813888
+  legacy_from: test.case:877632
+  legacy_to: test.kind:678272
   reason: testcase belongs to test kind
-  to: test.kind:678272
+  to: unit_test.test.27505664
   type: of_kind
-- from: test.case:877632
-  legacy_from: tc:c33407
-  legacy_to: api:gobp_query
+- from: edge_validation.test.unit.47813888
+  legacy_from: test.case:877632
+  legacy_to: ops.api:2848
   reason: testcase validates target behavior
-  to: ops.api:2848
+  to: gobp_query_endpoint.ops.36772096
   type: covers
-- from: test.case:939649
-  legacy_from: tc:26b37d
-  legacy_to: testkind:unit
+- from: parse_query_routing.test.unit.68785408
+  legacy_from: test.case:939649
+  legacy_to: test.kind:678272
   reason: testcase belongs to test kind
-  to: test.kind:678272
+  to: unit_test.test.27505664
   type: of_kind
-- from: test.case:939649
-  legacy_from: tc:26b37d
-  legacy_to: api:gobp_query
+- from: parse_query_routing.test.unit.68785408
+  legacy_from: test.case:939649
+  legacy_to: ops.api:2848
   reason: testcase validates target behavior
-  to: ops.api:2848
+  to: gobp_query_endpoint.ops.36772096
   type: covers
-- from: test.case:242816
-  legacy_from: tc:583915
-  legacy_to: testkind:integration
+- from: dispatch_routing.test.unit.13596160
+  legacy_from: test.case:242816
+  legacy_to: test.kind:540928
   reason: testcase belongs to test kind
-  to: test.kind:540928
+  to: integration_test.test.19117056
   type: of_kind
-- from: test.case:242816
-  legacy_from: tc:583915
-  legacy_to: api:gobp_query
+- from: dispatch_routing.test.unit.13596160
+  legacy_from: test.case:242816
+  legacy_to: ops.api:2848
   reason: testcase validates target behavior
-  to: ops.api:2848
+  to: gobp_query_endpoint.ops.36772096
   type: covers
-- from: test.case:380161
-  legacy_from: tc:9c5558
-  legacy_to: testkind:unit
+- from: gobp_overview_tool.test.unit.38761984
+  legacy_from: test.case:380161
+  legacy_to: test.kind:678272
   reason: testcase belongs to test kind
-  to: test.kind:678272
+  to: unit_test.test.27505664
   type: of_kind
-- from: test.case:380161
-  legacy_from: tc:9c5558
-  legacy_to: api:gobp_query
+- from: gobp_overview_tool.test.unit.38761984
+  legacy_from: test.case:380161
+  legacy_to: ops.api:2848
   reason: testcase validates target behavior
-  to: ops.api:2848
+  to: gobp_query_endpoint.ops.36772096
   type: covers
-- from: test.case:688384
-  legacy_from: tc:367a33
-  legacy_to: testkind:unit
+- from: find_read_tool.test.unit.01676544
+  legacy_from: test.case:688384
+  legacy_to: test.kind:678272
   reason: testcase belongs to test kind
-  to: test.kind:678272
+  to: unit_test.test.27505664
   type: of_kind
-- from: test.case:688384
-  legacy_from: tc:367a33
-  legacy_to: api:gobp_query
+- from: find_read_tool.test.unit.01676544
+  legacy_from: test.case:688384
+  legacy_to: ops.api:2848
   reason: testcase validates target behavior
-  to: ops.api:2848
+  to: gobp_query_endpoint.ops.36772096
   type: covers
-- from: test.case:356736
-  legacy_from: tc:13dc00
-  legacy_to: testkind:unit
+- from: signature_tool.test.unit.30373377
+  legacy_from: test.case:356736
+  legacy_to: test.kind:678272
   reason: testcase belongs to test kind
-  to: test.kind:678272
+  to: unit_test.test.27505664
   type: of_kind
-- from: test.case:356736
-  legacy_from: tc:13dc00
-  legacy_to: api:gobp_query
+- from: signature_tool.test.unit.30373377
+  legacy_from: test.case:356736
+  legacy_to: ops.api:2848
   reason: testcase validates target behavior
-  to: ops.api:2848
+  to: gobp_query_endpoint.ops.36772096
   type: covers
-- from: test.case:460545
-  legacy_from: tc:d8f52d
-  legacy_to: testkind:unit
+- from: context_tool.test.unit.59733504
+  legacy_from: test.case:460545
+  legacy_to: test.kind:678272
   reason: testcase belongs to test kind
-  to: test.kind:678272
+  to: unit_test.test.27505664
   type: of_kind
-- from: test.case:460545
-  legacy_from: tc:d8f52d
-  legacy_to: api:gobp_query
+- from: context_tool.test.unit.59733504
+  legacy_from: test.case:460545
+  legacy_to: ops.api:2848
   reason: testcase validates target behavior
-  to: ops.api:2848
+  to: gobp_query_endpoint.ops.36772096
   type: covers
-- from: test.case:825728
-  legacy_from: tc:765106
-  legacy_to: testkind:unit
+- from: session_recent_tool.test.unit.31036672
+  legacy_from: test.case:825728
+  legacy_to: test.kind:678272
   reason: testcase belongs to test kind
-  to: test.kind:678272
+  to: unit_test.test.27505664
   type: of_kind
-- from: test.case:825728
-  legacy_from: tc:765106
-  legacy_to: api:gobp_query
+- from: session_recent_tool.test.unit.31036672
+  legacy_from: test.case:825728
+  legacy_to: ops.api:2848
   reason: testcase validates target behavior
-  to: ops.api:2848
+  to: gobp_query_endpoint.ops.36772096
   type: covers
-- from: test.case:545984
-  legacy_from: tc:a579a1
-  legacy_to: testkind:unit
+- from: decisions_for_tool.test.unit.72316417
+  legacy_from: test.case:545984
+  legacy_to: test.kind:678272
   reason: testcase belongs to test kind
-  to: test.kind:678272
+  to: unit_test.test.27505664
   type: of_kind
-- from: test.case:545984
-  legacy_from: tc:a579a1
-  legacy_to: api:gobp_query
+- from: decisions_for_tool.test.unit.72316417
+  legacy_from: test.case:545984
+  legacy_to: ops.api:2848
   reason: testcase validates target behavior
-  to: ops.api:2848
+  to: gobp_query_endpoint.ops.36772096
   type: covers
-- from: test.case:076992
-  legacy_from: tc:3f980e
-  legacy_to: testkind:unit
+- from: doc_sections_tool.test.unit.80041729
+  legacy_from: test.case:076992
+  legacy_to: test.kind:678272
   reason: testcase belongs to test kind
-  to: test.kind:678272
+  to: unit_test.test.27505664
   type: of_kind
-- from: test.case:076992
-  legacy_from: tc:3f980e
-  legacy_to: api:gobp_query
+- from: doc_sections_tool.test.unit.80041729
+  legacy_from: test.case:076992
+  legacy_to: ops.api:2848
   reason: testcase validates target behavior
-  to: ops.api:2848
+  to: gobp_query_endpoint.ops.36772096
   type: covers
-- from: test.case:494080
-  legacy_from: tc:362437
-  legacy_to: testkind:unit
+- from: node_upsert_tool.test.unit.63927809
+  legacy_from: test.case:494080
+  legacy_to: test.kind:678272
   reason: testcase belongs to test kind
-  to: test.kind:678272
+  to: unit_test.test.27505664
   type: of_kind
-- from: test.case:494080
-  legacy_from: tc:362437
-  legacy_to: api:gobp_query
+- from: node_upsert_tool.test.unit.63927809
+  legacy_from: test.case:494080
+  legacy_to: ops.api:2848
   reason: testcase validates target behavior
-  to: ops.api:2848
+  to: gobp_query_endpoint.ops.36772096
   type: covers
-- from: test.case:716864
-  legacy_from: tc:2c7461
-  legacy_to: testkind:unit
+- from: decision_lock_tool.test.unit.05870849
+  legacy_from: test.case:716864
+  legacy_to: test.kind:678272
   reason: testcase belongs to test kind
-  to: test.kind:678272
+  to: unit_test.test.27505664
   type: of_kind
-- from: test.case:716864
-  legacy_from: tc:2c7461
-  legacy_to: api:gobp_query
+- from: decision_lock_tool.test.unit.05870849
+  legacy_from: test.case:716864
+  legacy_to: ops.api:2848
   reason: testcase validates target behavior
-  to: ops.api:2848
+  to: gobp_query_endpoint.ops.36772096
   type: covers
-- from: test.case:380160
-  legacy_from: tc:9bd2a3
-  legacy_to: testkind:unit
+- from: session_log_tool.test.unit.34567680
+  legacy_from: test.case:380160
+  legacy_to: test.kind:678272
   reason: testcase belongs to test kind
-  to: test.kind:678272
+  to: unit_test.test.27505664
   type: of_kind
-- from: test.case:380160
-  legacy_from: tc:9bd2a3
-  legacy_to: api:gobp_query
+- from: session_log_tool.test.unit.34567680
+  legacy_from: test.case:380160
+  legacy_to: ops.api:2848
   reason: testcase validates target behavior
-  to: ops.api:2848
+  to: gobp_query_endpoint.ops.36772096
   type: covers
-- from: test.case:100416
-  legacy_from: tc:bc971a
-  legacy_to: testkind:unit
+- from: import_proposal_tool.test.unit.84236032
+  legacy_from: test.case:100416
+  legacy_to: test.kind:678272
   reason: testcase belongs to test kind
-  to: test.kind:678272
+  to: unit_test.test.27505664
   type: of_kind
-- from: test.case:100416
-  legacy_from: tc:bc971a
-  legacy_to: api:gobp_query
+- from: import_proposal_tool.test.unit.84236032
+  legacy_from: test.case:100416
+  legacy_to: ops.api:2848
   reason: testcase validates target behavior
-  to: ops.api:2848
+  to: gobp_query_endpoint.ops.36772096
   type: covers
-- from: test.case:408640
-  legacy_from: tc:80c313
-  legacy_to: testkind:unit
+- from: import_commit_tool.test.unit.42956289
+  legacy_from: test.case:408640
+  legacy_to: test.kind:678272
   reason: testcase belongs to test kind
-  to: test.kind:678272
+  to: unit_test.test.27505664
   type: of_kind
-- from: test.case:408640
-  legacy_from: tc:80c313
-  legacy_to: api:gobp_query
+- from: import_commit_tool.test.unit.42956289
+  legacy_from: test.case:408640
+  legacy_to: ops.api:2848
   reason: testcase validates target behavior
-  to: ops.api:2848
+  to: gobp_query_endpoint.ops.36772096
   type: covers
-- from: test.case:963072
-  legacy_from: tc:9d9e55
-  legacy_to: testkind:unit
+- from: validate_tool.test.unit.68785409
+  legacy_from: test.case:963072
+  legacy_to: test.kind:678272
   reason: testcase belongs to test kind
-  to: test.kind:678272
+  to: unit_test.test.27505664
   type: of_kind
-- from: test.case:963072
-  legacy_from: tc:9d9e55
-  legacy_to: api:gobp_query
+- from: validate_tool.test.unit.68785409
+  legacy_from: test.case:963072
+  legacy_to: ops.api:2848
   reason: testcase validates target behavior
-  to: ops.api:2848
+  to: gobp_query_endpoint.ops.36772096
   type: covers
-- from: test.case:768768
-  legacy_from: tc:9cb778
-  legacy_to: testkind:integration
+- from: full_ai_session_workflow.test.unit.14259457
+  legacy_from: test.case:768768
+  legacy_to: test.kind:540928
   reason: testcase belongs to test kind
-  to: test.kind:540928
+  to: integration_test.test.19117056
   type: of_kind
-- from: test.case:768768
-  legacy_from: tc:9cb778
-  legacy_to: api:gobp_query
+- from: full_ai_session_workflow.test.unit.14259457
+  legacy_from: test.case:768768
+  legacy_to: ops.api:2848
   reason: testcase validates target behavior
-  to: ops.api:2848
+  to: gobp_query_endpoint.ops.36772096
   type: covers
-- from: test.case:157376
-  legacy_from: tc:9f2720
-  legacy_to: testkind:smoke
+- from: smoke_tests.test.unit.92624641
+  legacy_from: test.case:157376
+  legacy_to: test.kind:483968
   reason: testcase belongs to test kind
-  to: test.kind:483968
+  to: smoke_test.test.10728448
   type: of_kind
-- from: test.case:157376
-  legacy_from: tc:9f2720
-  legacy_to: api:gobp_query
+- from: smoke_tests.test.unit.92624641
+  legacy_from: test.case:157376
+  legacy_to: ops.api:2848
   reason: testcase validates target behavior
-  to: ops.api:2848
+  to: gobp_query_endpoint.ops.36772096
   type: covers
-- from: test.case:849152
-  legacy_from: tc:e6ac4a
-  legacy_to: testkind:unit
+- from: lessons_extraction.test.unit.35230976
+  legacy_from: test.case:849152
+  legacy_to: test.kind:678272
   reason: testcase belongs to test kind
-  to: test.kind:678272
+  to: unit_test.test.27505664
   type: of_kind
-- from: test.case:849152
-  legacy_from: tc:e6ac4a
-  legacy_to: api:gobp_query
+- from: lessons_extraction.test.unit.35230976
+  legacy_from: test.case:849152
+  legacy_to: ops.api:2848
   reason: testcase validates target behavior
-  to: ops.api:2848
+  to: gobp_query_endpoint.ops.36772096
   type: covers
-- from: test.case:626368
-  legacy_from: tc:f6720c
-  legacy_to: testkind:unit
+- from: prune_operations.test.unit.89093632
+  legacy_from: test.case:626368
+  legacy_to: test.kind:678272
   reason: testcase belongs to test kind
-  to: test.kind:678272
+  to: unit_test.test.27505664
   type: of_kind
-- from: test.case:626368
-  legacy_from: tc:f6720c
-  legacy_to: api:gobp_query
+- from: prune_operations.test.unit.89093632
+  legacy_from: test.case:626368
+  legacy_to: ops.api:2848
   reason: testcase validates target behavior
-  to: ops.api:2848
+  to: gobp_query_endpoint.ops.36772096
   type: covers
-- from: test.case:517504
-  legacy_from: tc:b04474
-  legacy_to: testkind:unit
+- from: cache_ttl_and_lru.test.unit.68122112
+  legacy_from: test.case:517504
+  legacy_to: test.kind:678272
   reason: testcase belongs to test kind
-  to: test.kind:678272
+  to: unit_test.test.27505664
   type: of_kind
-- from: test.case:517504
-  legacy_from: tc:b04474
-  legacy_to: api:gobp_query
+- from: cache_ttl_and_lru.test.unit.68122112
+  legacy_from: test.case:517504
+  legacy_to: ops.api:2848
   reason: testcase validates target behavior
-  to: ops.api:2848
+  to: gobp_query_endpoint.ops.36772096
   type: covers
-- from: test.case:162432
-  legacy_from: tc:11d6d9
-  legacy_to: testkind:unit
+- from: db_operations.test.unit.96818944
+  legacy_from: test.case:162432
+  legacy_to: test.kind:678272
   reason: testcase belongs to test kind
-  to: test.kind:678272
+  to: unit_test.test.27505664
   type: of_kind
-- from: test.case:162432
-  legacy_from: tc:11d6d9
-  legacy_to: api:gobp_query
+- from: db_operations.test.unit.96818944
+  legacy_from: test.case:162432
+  legacy_to: ops.api:2848
   reason: testcase validates target behavior
-  to: ops.api:2848
+  to: gobp_query_endpoint.ops.36772096
   type: covers
-- from: test.case:133952
-  legacy_from: tc:272097
-  legacy_to: testkind:performance
+- from: performance_read_tools.test.unit.92624640
+  legacy_from: test.case:133952
+  legacy_to: test.kind:735232
   reason: testcase belongs to test kind
-  to: test.kind:735232
+  to: performance_test.test.35894272
   type: of_kind
-- from: test.case:133952
-  legacy_from: tc:272097
-  legacy_to: api:gobp_query
+- from: performance_read_tools.test.unit.92624640
+  legacy_from: test.case:133952
+  legacy_to: ops.api:2848
   reason: testcase validates target behavior
-  to: ops.api:2848
+  to: gobp_query_endpoint.ops.36772096
   type: covers
-- from: test.case:825729
-  legacy_from: tc:7ae607
-  legacy_to: testkind:performance
+- from: performance_write_tools.test.unit.31036673
+  legacy_from: test.case:825729
+  legacy_to: test.kind:735232
   reason: testcase belongs to test kind
-  to: test.kind:735232
+  to: performance_test.test.35894272
   type: of_kind
-- from: test.case:825729
-  legacy_from: tc:7ae607
-  legacy_to: api:gobp_query
+- from: performance_write_tools.test.unit.31036673
+  legacy_from: test.case:825729
+  legacy_to: ops.api:2848
   reason: testcase validates target behavior
-  to: ops.api:2848
+  to: gobp_query_endpoint.ops.36772096
   type: covers
-- from: test.case:071937
-  legacy_from: tc:cce230
-  legacy_to: testkind:unit
+- from: viewer_graph_data.test.unit.80041728
+  legacy_from: test.case:071937
+  legacy_to: test.kind:678272
   reason: testcase belongs to test kind
-  to: test.kind:678272
+  to: unit_test.test.27505664
   type: of_kind
-- from: test.case:631424
-  legacy_from: tc:6f880e
-  legacy_to: testkind:integration
+- from: viewer_http_server.test.unit.89093633
+  legacy_from: test.case:631424
+  legacy_to: test.kind:540928
   reason: testcase belongs to test kind
-  to: test.kind:540928
+  to: integration_test.test.19117056
   type: of_kind
-- from: test.case:631424
-  legacy_from: tc:6f880e
-  legacy_to: api:gobp_query
+- from: viewer_http_server.test.unit.89093633
+  legacy_from: test.case:631424
+  legacy_to: ops.api:2848
   reason: testcase validates target behavior
-  to: ops.api:2848
+  to: gobp_query_endpoint.ops.36772096
   type: covers
-- from: test.case:991552
-  legacy_from: tc:93026d
-  legacy_to: testkind:integration
+- from: viewer_multi_project.test.unit.81368320
+  legacy_from: test.case:991552
+  legacy_to: test.kind:540928
   reason: testcase belongs to test kind
-  to: test.kind:540928
+  to: integration_test.test.19117056
   type: of_kind
-- from: test.case:991552
-  legacy_from: tc:93026d
-  legacy_to: api:gobp_query
+- from: viewer_multi_project.test.unit.81368320
+  legacy_from: test.case:991552
+  legacy_to: ops.api:2848
   reason: testcase validates target behavior
-  to: ops.api:2848
+  to: gobp_query_endpoint.ops.36772096
   type: covers
-- from: test.case:934592
-  legacy_from: tc:ad35c4
-  legacy_to: testkind:unit
+- from: migration_version_check.test.unit.60396800
+  legacy_from: test.case:934592
+  legacy_to: test.kind:678272
   reason: testcase belongs to test kind
-  to: test.kind:678272
+  to: unit_test.test.27505664
   type: of_kind
-- from: test.case:934592
-  legacy_from: tc:ad35c4
-  legacy_to: api:gobp_query
+- from: migration_version_check.test.unit.60396800
+  legacy_from: test.case:934592
+  legacy_to: ops.api:2848
   reason: testcase validates target behavior
-  to: ops.api:2848
+  to: gobp_query_endpoint.ops.36772096
   type: covers
-- from: test.case:745344
-  legacy_from: tc:20c281
-  legacy_to: testkind:unit
+- from: migration_execution.test.unit.14259456
+  legacy_from: test.case:745344
+  legacy_to: test.kind:678272
   reason: testcase belongs to test kind
-  to: test.kind:678272
+  to: unit_test.test.27505664
   type: of_kind
-- from: test.case:745344
-  legacy_from: tc:20c281
-  legacy_to: api:gobp_query
+- from: migration_execution.test.unit.14259456
+  legacy_from: test.case:745344
+  legacy_to: ops.api:2848
   reason: testcase validates target behavior
-  to: ops.api:2848
+  to: gobp_query_endpoint.ops.36772096
   type: covers
-- from: test.case:882689
-  legacy_from: tc:3eaaa9
-  legacy_to: feat:w4_init_project_structure
+- from: project_initialization.test.unit.52008192
+  legacy_from: test.case:882689
+  legacy_to: ops.feat:2289
   reason: testcase validates target behavior
-  to: ops.feat:2289
+  to: init_project_creates_directory_structure.ops.95492353
   type: covers
-- from: test.case:271296
-  legacy_from: tc:41966a
-  legacy_to: feat:w4_init_seeded_nodes
+- from: init_seeded_nodes.test.unit.17790464
+  legacy_from: test.case:271296
+  legacy_to: ops.feat:6592
   reason: testcase validates target behavior
-  to: ops.feat:6592
+  to: initialization_with_17_seeded_nodes.ops.75184129
   type: covers
-- from: test.case:882688
-  legacy_from: tc:386007
-  legacy_to: feat:w4_init_idempotency
+- from: init_idempotency.test.unit.47813889
+  legacy_from: test.case:882688
+  legacy_to: ops.feat:2288
   reason: testcase validates target behavior
-  to: ops.feat:2288
+  to: initialization_idempotency_guard.ops.95492352
   type: covers
-- from: test.case:328256
-  legacy_from: tc:27df2c
-  legacy_to: feat:w4_find_type_filter
+- from: find_type_filter.test.unit.26179072
+  legacy_from: test.case:328256
+  legacy_to: ops.feat:3681
   reason: testcase validates target behavior
-  to: ops.feat:3681
+  to: find_type_filtering.ops.16463872
   type: covers
-- from: test.case:214336
-  legacy_from: tc:7fed89
-  legacy_to: feat:w4_gobp_overview_concepts
+- from: overview_concepts_and_coverage.test.unit.09401856
+  legacy_from: test.case:214336
+  legacy_to: ops.feat:7984
   reason: testcase validates target behavior
-  to: ops.feat:7984
+  to: gobp_overview_concepts_and_test_coverage.ops.04544256
   type: covers
-- from: test.case:014976
-  legacy_from: tc:f7af8a
-  legacy_to: feat:w4_cli_commands
+- from: cli_commands.test.unit.59070208
+  legacy_from: test.case:014976
+  legacy_to: ops.feat:3680
   reason: testcase validates target behavior
-  to: ops.feat:3680
+  to: cli_commands_init_status_validate.ops.12269569
   type: covers
-- from: ops.feat:0512
-  legacy_from: feat:w10b_session_id_generation
-  legacy_to: wave:10b
+- from: session_id_generation.ops.61937920
+  legacy_from: ops.feat:0512
+  legacy_to: meta.wave:261185
   reason: feature belongs to wave
-  to: meta.wave:261185
+  to: wave_10b_bugfix_priority_edge_import.meta.57080321
   type: relates_to
-- from: test.case:849153
-  legacy_from: tc:e6ed78
-  legacy_to: feat:w10b_session_id_generation
+- from: session_id_generation.test.unit.39425280
+  legacy_from: test.case:849153
+  legacy_to: ops.feat:0512
   reason: testcase validates target behavior
-  to: ops.feat:0512
+  to: session_id_generation.ops.61937920
   type: covers
-- from: ops.feat:4816
-  legacy_from: feat:w10b_unicode_handling
-  legacy_to: wave:10b
+- from: unicode_text_handling_in_yaml.ops.37435392
+  legacy_from: ops.feat:4816
+  legacy_to: meta.wave:261185
   reason: feature belongs to wave
-  to: meta.wave:261185
+  to: wave_10b_bugfix_priority_edge_import.meta.57080321
   type: relates_to
-- from: test.case:934593
-  legacy_from: tc:ad7404
-  legacy_to: feat:w10b_unicode_handling
+- from: unicode_yaml_encoding.test.unit.60396801
+  legacy_from: test.case:934593
+  legacy_to: ops.feat:4816
   reason: testcase validates target behavior
-  to: ops.feat:4816
+  to: unicode_text_handling_in_yaml.ops.37435392
   type: covers
-- from: ops.feat:6208
-  legacy_from: feat:w10b_priority_field
-  legacy_to: wave:10b
+- from: priority_field_in_node_schema.ops.66795520
+  legacy_from: ops.feat:6208
+  legacy_to: meta.wave:261185
   reason: feature belongs to wave
-  to: meta.wave:261185
+  to: wave_10b_bugfix_priority_edge_import.meta.57080321
   type: relates_to
-- from: test.case:711808
-  legacy_from: tc:b27af0
-  legacy_to: feat:w10b_priority_field
+- from: priority_field.test.unit.05870848
+  legacy_from: test.case:711808
+  legacy_to: ops.feat:6208
   reason: testcase validates target behavior
-  to: ops.feat:6208
+  to: priority_field_in_node_schema.ops.66795520
   type: covers
-- from: test.case:968128
-  legacy_from: tc:00df5e
-  legacy_to: feat:w10b_document_priority_classification
+- from: document_priority_classification.test.unit.77174016
+  legacy_from: test.case:968128
+  legacy_to: ops.feat:8993
   reason: testcase validates target behavior
-  to: ops.feat:8993
+  to: document_priority_auto_classification.ops.25515777
   type: covers
-- from: ops.feat:8992
-  legacy_from: feat:w10b_auto_id_generation
-  legacy_to: wave:10b
+- from: auto_generated_node_ids.ops.25515776
+  legacy_from: ops.feat:8992
+  legacy_to: meta.wave:261185
   reason: feature belongs to wave
-  to: meta.wave:261185
+  to: wave_10b_bugfix_priority_edge_import.meta.57080321
   type: relates_to
-- from: test.case:437121
-  legacy_from: tc:61be76
-  legacy_to: feat:w10b_auto_id_generation
+- from: auto_generated_node_ids.test.unit.51344897
+  legacy_from: test.case:437121
+  legacy_to: ops.feat:8992
   reason: testcase validates target behavior
-  to: ops.feat:8992
+  to: auto_generated_node_ids.ops.25515776
   type: covers
-- from: ops.feat:3296
-  legacy_from: feat:w10b_edge_creation
-  legacy_to: wave:10b
+- from: edge_action_with_arrow_syntax.ops.08075264
+  legacy_from: ops.feat:3296
+  legacy_to: meta.wave:261185
   reason: feature belongs to wave
-  to: meta.wave:261185
+  to: wave_10b_bugfix_priority_edge_import.meta.57080321
   type: relates_to
-- from: test.case:654848
-  legacy_from: tc:de5eb0
-  legacy_to: feat:w10b_edge_creation
+- from: edge_action.test.unit.93287936
+  legacy_from: test.case:654848
+  legacy_to: ops.feat:3296
   reason: testcase validates target behavior
-  to: ops.feat:3296
+  to: edge_action_with_arrow_syntax.ops.08075264
   type: covers
-- from: ops.feat:7600
-  legacy_from: feat:w10b_import_document
-  legacy_to: wave:10b
+- from: import_creates_document_node_with_priori.ops.91961344
+  legacy_from: ops.feat:7600
+  legacy_to: meta.wave:261185
   reason: feature belongs to wave
-  to: meta.wave:261185
+  to: wave_10b_bugfix_priority_edge_import.meta.57080321
   type: relates_to
-- from: test.case:740288
-  legacy_from: tc:ab41bc
-  legacy_to: feat:w10b_import_document
+- from: import_document_creation.test.unit.10065152
+  legacy_from: test.case:740288
+  legacy_to: ops.feat:7600
   reason: testcase validates target behavior
-  to: ops.feat:7600
+  to: import_creates_document_node_with_priori.ops.91961344
   type: covers
-- from: ops.feat:9120
-  legacy_from: feat:w11a_code_refs_field
-  legacy_to: wave:11a
+- from: code_refs_field_in_schema.ops.29710080
+  legacy_from: ops.feat:9120
+  legacy_to: meta.wave:455489
   reason: feature belongs to wave
-  to: meta.wave:455489
+  to: wave_11a_lazy_query_actions.meta.73857537
   type: relates_to
-- from: test.case:043456
-  legacy_from: tc:e7e809
-  legacy_to: feat:w11a_code_refs_field
+- from: code_refs_schema_field.test.unit.71653120
+  legacy_from: test.case:043456
+  legacy_to: ops.feat:9120
   reason: testcase validates target behavior
-  to: ops.feat:9120
+  to: code_refs_field_in_schema.ops.29710080
   type: covers
-- from: ops.feat:7728
-  legacy_from: feat:w11a_invariants_field
-  legacy_to: wave:11a
+- from: invariants_field_in_schema.ops.96155648
+  legacy_from: ops.feat:7728
+  legacy_to: meta.wave:455489
   reason: feature belongs to wave
-  to: meta.wave:455489
+  to: wave_11a_lazy_query_actions.meta.73857537
   type: relates_to
-- from: test.case:939648
-  legacy_from: tc:223882
-  legacy_to: feat:w11a_invariants_field
+- from: invariants_schema_field.test.unit.64591104
+  legacy_from: test.case:939648
+  legacy_to: ops.feat:7728
   reason: testcase validates target behavior
-  to: ops.feat:7728
+  to: invariants_field_in_schema.ops.96155648
   type: covers
-- from: test.case:323200
-  legacy_from: tc:ae29fd
-  legacy_to: feat:w11a_lazy_query_parsing
+- from: lazy_query_actions_parsing.test.unit.21984769
+  legacy_from: test.case:323200
+  legacy_to: ops.feat:0640
   reason: testcase validates target behavior
-  to: ops.feat:0640
+  to: lazy_query_actions_parsing.ops.66132224
   type: covers
-- from: ops.feat:3424
-  legacy_from: feat:w11a_code_refs_read
-  legacy_to: wave:11a
+- from: code_read_action.ops.08075265
+  legacy_from: ops.feat:3424
+  legacy_to: meta.wave:455489
   reason: feature belongs to wave
-  to: meta.wave:455489
+  to: wave_11a_lazy_query_actions.meta.73857537
   type: relates_to
-- from: test.case:659904
-  legacy_from: tc:4bc78e
-  legacy_to: feat:w11a_code_refs_read
+- from: code_read_action.test.unit.93287937
+  legacy_from: test.case:659904
+  legacy_to: ops.feat:3424
   reason: testcase validates target behavior
-  to: ops.feat:3424
+  to: code_read_action.ops.08075265
   type: covers
-- from: ops.feat:2032
-  legacy_from: feat:w11a_invariants_read
-  legacy_to: wave:11a
+- from: invariants_read_action.ops.91298048
+  legacy_from: ops.feat:2032
+  legacy_to: meta.wave:455489
   reason: feature belongs to wave
-  to: meta.wave:455489
+  to: wave_11a_lazy_query_actions.meta.73857537
   type: relates_to
-- from: test.case:071936
-  legacy_from: tc:c90f74
-  legacy_to: feat:w11a_invariants_read
+- from: invariants_read_action.test.unit.75847424
+  legacy_from: test.case:071936
+  legacy_to: ops.feat:2032
   reason: testcase validates target behavior
-  to: ops.feat:2032
+  to: invariants_read_action.ops.91298048
   type: covers
-- from: ops.feat:4944
-  legacy_from: feat:w11a_node_tests_read
-  legacy_to: wave:11a
+- from: tests_read_action.ops.41629696
+  legacy_from: ops.feat:4944
+  legacy_to: meta.wave:455489
   reason: feature belongs to wave
-  to: meta.wave:455489
+  to: wave_11a_lazy_query_actions.meta.73857537
   type: relates_to
-- from: test.case:522560
-  legacy_from: tc:295853
-  legacy_to: feat:w11a_node_tests_read
+- from: tests_read_action.test.unit.72316416
+  legacy_from: test.case:522560
+  legacy_to: ops.feat:4944
   reason: testcase validates target behavior
-  to: ops.feat:4944
+  to: tests_read_action.ops.41629696
   type: covers
-- from: ops.feat:0641
-  legacy_from: feat:w11a_node_related_read
-  legacy_to: wave:11a
+- from: related_read_action.ops.66132225
+  legacy_from: ops.feat:0641
+  legacy_to: meta.wave:455489
   reason: feature belongs to wave
-  to: meta.wave:455489
+  to: wave_11a_lazy_query_actions.meta.73857537
   type: relates_to
-- from: test.case:071937
-  legacy_from: tc:cce230
-  legacy_to: api:gobp_query
+- from: viewer_graph_data.test.unit.80041728
+  legacy_from: test.case:071937
+  legacy_to: ops.api:2848
   reason: testcase validates target behavior
-  to: ops.api:2848
+  to: gobp_query_endpoint.ops.36772096
   type: covers
-- from: test.case:437120
-  legacy_from: tc:5f84c6
-  legacy_to: feat:w11a_node_related_read
+- from: related_read_action.test.unit.51344896
+  legacy_from: test.case:437120
+  legacy_to: ops.feat:0641
   reason: testcase validates target behavior
-  to: ops.feat:0641
+  to: related_read_action.ops.66132225
   type: covers
-- from: ops.feat:6336
-  legacy_from: feat:w11a_lazy_actions_dispatch
-  legacy_to: wave:11a
+- from: lazy_actions_dispatch_integration.ops.66795521
+  legacy_from: ops.feat:6336
+  legacy_to: meta.wave:455489
   reason: feature belongs to wave
-  to: meta.wave:455489
+  to: wave_11a_lazy_query_actions.meta.73857537
   type: relates_to
-- from: test.case:020032
-  legacy_from: tc:7c9e89
-  legacy_to: feat:w11a_lazy_actions_dispatch
+- from: lazy_actions_dispatch.test.unit.67458816
+  legacy_from: test.case:020032
+  legacy_to: ops.feat:6336
   reason: testcase validates target behavior
-  to: ops.feat:6336
+  to: lazy_actions_dispatch_integration.ops.66795521
   type: covers
-- from: test.case:465600
-  legacy_from: tc:45cad5
-  legacy_to: feat:w14_protocol_version_action
+- from: version_action.test.unit.59733505
+  legacy_from: test.case:465600
+  legacy_to: ops.feat:9248
   reason: testcase validates target behavior
-  to: ops.feat:9248
+  to: version_protocol_version_action.ops.29710081
   type: covers
-- from: test.case:294720
-  legacy_from: tc:bcceed
-  legacy_to: feat:w14_schema_governance_score
+- from: schema_governance_score.test.unit.21984768
+  legacy_from: test.case:294720
+  legacy_to: ops.feat:3552
   reason: testcase validates target behavior
-  to: ops.feat:3552
+  to: schema_governance_scoring.ops.12269568
   type: covers
-- from: test.case:048512
-  legacy_from: tc:513cb8
-  legacy_to: feat:w14_validate_schema_docs
+- from: validate_schema_docs.test.unit.71653121
+  legacy_from: test.case:048512
+  legacy_to: ops.feat:2160
   reason: testcase validates target behavior
-  to: ops.feat:2160
+  to: validate_schema_docs_dispatch.ops.91298049
   type: covers
-- from: test.case:906112
-  legacy_from: tc:b6c359
-  legacy_to: feat:w14_session_role_field
+- from: session_role_field.test.unit.56202496
+  legacy_from: test.case:906112
+  legacy_to: ops.feat:7856
   reason: testcase validates target behavior
-  to: ops.feat:7856
+  to: session_role_field_storage.ops.00349952
   type: covers
-- from: test.case:489024
-  legacy_from: tc:bfa6c9
-  legacy_to: feat:w14_read_only_mode_flag
+- from: read_only_mode_flag.test.unit.63927808
+  legacy_from: test.case:489024
+  legacy_to: ops.feat:9249
   reason: testcase validates target behavior
-  to: ops.feat:9249
+  to: read_only_mode_flag_enforcement.ops.33904384
   type: covers
-- from: test.case:602944
-  legacy_from: tc:81e1b4
-  legacy_to: feat:w14_template_action
+- from: template_action.test.unit.84899328
+  legacy_from: test.case:602944
+  legacy_to: ops.feat:7857
   reason: testcase validates target behavior
-  to: ops.feat:7857
+  to: template_nodetype_declaration_template.ops.00349953
   type: covers
-- from: test.case:854209
-  legacy_from: tc:50bfb2
-  legacy_to: feat:w15_parse_query_positional
+- from: parse_query_positional_args.test.unit.43619584
+  legacy_from: test.case:854209
+  legacy_to: ops.feat:0768
   reason: testcase validates target behavior
-  to: ops.feat:0768
+  to: parse_query_positional_argument_handling.ops.70326528
   type: covers
-- from: test.case:185856
-  legacy_from: tc:9aa4a5
-  legacy_to: feat:w15_value_coercion
+- from: value_coercion.test.unit.01013249
+  legacy_from: test.case:185856
+  legacy_to: ops.feat:9376
   reason: testcase validates target behavior
-  to: ops.feat:9376
+  to: value_coercion_in_parse_query.ops.38098688
   type: covers
-- from: test.case:105472
-  legacy_from: tc:3185f2
-  legacy_to: feat:w15_import_unique_docids
+- from: unique_import_doc_ids.test.unit.88430336
+  legacy_from: test.case:105472
+  legacy_to: ops.feat:6465
   reason: testcase validates target behavior
-  to: ops.feat:6465
+  to: import_generates_unique_document_ids.ops.75184128
   type: covers
-- from: test.case:551040
-  legacy_from: tc:16715d
-  legacy_to: feat:w15_edge_deduplication
+- from: edge_deduplication.test.unit.76510720
+  legacy_from: test.case:551040
+  legacy_to: ops.feat:6464
   reason: testcase validates target behavior
-  to: ops.feat:6464
+  to: edge_deduplication_and_idempotency.ops.70989824
   type: covers
-- from: test.case:854208
-  legacy_from: tc:4bdcc4
-  legacy_to: feat:w15_parser_smoke_matrix
+- from: parser_smoke_matrix.test.unit.39425281
+  legacy_from: test.case:854208
+  legacy_to: ops.feat:5072
   reason: testcase validates target behavior
-  to: ops.feat:5072
+  to: parser_mixed_format_handling.ops.41629697
   type: covers
-- from: test.case:432064
-  legacy_from: tc:eef90f
-  legacy_to: feat:wcore_graph_index_construction
+- from: graphindex_loading.test.unit.47150592
+  legacy_from: test.case:432064
+  legacy_to: ops.feat:5456
   reason: testcase validates target behavior
-  to: ops.feat:5456
+  to: graphindex_construction_and_loading.ops.50018305
   type: covers
-- from: test.case:237760
-  legacy_from: tc:edff66
-  legacy_to: feat:wcore_graph_index_queries
+- from: graphindex_queries.test.unit.09401857
+  legacy_from: test.case:237760
+  legacy_to: ops.feat:5457
   reason: testcase validates target behavior
-  to: ops.feat:5457
+  to: graphindex_query_methods.ops.54212608
   type: covers
-- from: test.case:911168
-  legacy_from: tc:30ea16
-  legacy_to: feat:wcore_event_history
+- from: event_history_logging.test.unit.56202497
+  legacy_from: test.case:911168
+  legacy_to: ops.feat:2544
   reason: testcase validates target behavior
-  to: ops.feat:2544
+  to: event_history_jsonl_logging.ops.03880960
   type: covers
-- from: test.case:551041
-  legacy_from: tc:1ff3fc
-  legacy_to: feat:wcore_create_node_mutation
+- from: create_node_mutation.test.unit.80705024
+  legacy_from: test.case:551041
+  legacy_to: ops.feat:8112
   reason: testcase validates target behavior
-  to: ops.feat:8112
+  to: create_node_write_mutation.ops.08738560
   type: covers
-- from: test.case:266240
-  legacy_from: tc:d303f2
-  legacy_to: feat:wcore_update_node_mutation
+- from: update_node_mutation.test.unit.13596161
+  legacy_from: test.case:266240
+  legacy_to: ops.feat:5712
   reason: testcase validates target behavior
-  to: ops.feat:5712
+  to: update_node_write_mutation.ops.58406913
   type: covers
-- from: test.case:820672
-  legacy_from: tc:f74d70
-  legacy_to: feat:wcore_delete_node_mutation
+- from: delete_node_soft_delete.test.unit.26842368
+  legacy_from: test.case:820672
+  legacy_to: ops.feat:1024
   reason: testcase validates target behavior
-  to: ops.feat:1024
+  to: delete_node_soft_delete.ops.78715136
   type: covers
-- from: test.case:683328
-  legacy_from: tc:c121b0
-  legacy_to: feat:wcore_edge_mutations
+- from: edge_mutations.test.unit.97482240
+  legacy_from: test.case:683328
+  legacy_to: ops.feat:8240
   reason: testcase validates target behavior
-  to: ops.feat:8240
+  to: edge_create_and_delete_mutations.ops.08738561
   type: covers
-- from: test.case:351680
-  legacy_from: tc:a20d66
-  legacy_to: feat:wcore_atomic_writes
+- from: atomic_writes.test.unit.30373376
+  legacy_from: test.case:351680
+  legacy_to: ops.feat:9504
   reason: testcase validates target behavior
-  to: ops.feat:9504
+  to: atomic_file_write_operations.ops.38098689
   type: covers
-- from: test.case:128896
-  legacy_from: tc:ae1ae3
-  legacy_to: feat:wcore_frontmatter_parsing
+- from: frontmatter_parsing.test.unit.88430337
+  legacy_from: test.case:128896
+  legacy_to: ops.feat:6849
   reason: testcase validates target behavior
-  to: ops.feat:6849
+  to: frontmatter_yaml_parsing.ops.83572736
   type: covers
-- from: test.case:797248
-  legacy_from: tc:89c5e2
-  legacy_to: feat:wcore_schema_loading
+- from: schema_loading.test.unit.22648065
+  legacy_from: test.case:797248
+  legacy_to: ops.feat:9888
   reason: testcase validates target behavior
-  to: ops.feat:9888
+  to: schema_yaml_loading.ops.46487296
   type: covers
-- from: test.case:460544
-  legacy_from: tc:d7ed55
-  legacy_to: feat:wcore_node_validation
+- from: node_validation.test.unit.55539200
+  legacy_from: test.case:460544
+  legacy_to: ops.feat:6977
   reason: testcase validates target behavior
-  to: ops.feat:6977
+  to: node_schema_validation.ops.87767040
   type: covers
-- from: test.case:877632
-  legacy_from: tc:c33407
-  legacy_to: feat:wcore_edge_validation
+- from: edge_validation.test.unit.47813888
+  legacy_from: test.case:877632
+  legacy_to: ops.feat:8241
   reason: testcase validates target behavior
-  to: ops.feat:8241
+  to: edge_schema_validation.ops.12932864
   type: covers
-- from: test.case:939649
-  legacy_from: tc:26b37d
-  legacy_to: feat:wcore_dispatcher_parse_query
+- from: parse_query_routing.test.unit.68785408
+  legacy_from: test.case:939649
+  legacy_to: ops.feat:1025
   reason: testcase validates target behavior
-  to: ops.feat:1025
+  to: dispatcher_parse_query_routing.ops.78715137
   type: covers
-- from: test.case:242816
-  legacy_from: tc:583915
-  legacy_to: feat:wcore_dispatcher_routing
+- from: dispatch_routing.test.unit.13596160
+  legacy_from: test.case:242816
+  legacy_to: ops.feat:5328
   reason: testcase validates target behavior
-  to: ops.feat:5328
+  to: dispatch_action_routing.ops.50018304
   type: covers
-- from: test.case:380161
-  legacy_from: tc:9c5558
-  legacy_to: feat:wcore_gobp_overview_read
+- from: gobp_overview_tool.test.unit.38761984
+  legacy_from: test.case:380161
+  legacy_to: ops.feat:1152
   reason: testcase validates target behavior
-  to: ops.feat:1152
+  to: gobp_overview_read_tool.ops.82909440
   type: covers
-- from: test.case:688384
-  legacy_from: tc:367a33
-  legacy_to: feat:wcore_find_read_tool
+- from: find_read_tool.test.unit.01676544
+  legacy_from: test.case:688384
+  legacy_to: ops.feat:6848
   reason: testcase validates target behavior
-  to: ops.feat:6848
+  to: find_read_tool.ops.79378433
   type: covers
-- from: test.case:356736
-  legacy_from: tc:13dc00
-  legacy_to: feat:wcore_signature_read_tool
+- from: signature_tool.test.unit.30373377
+  legacy_from: test.case:356736
+  legacy_to: ops.feat:7104
   reason: testcase validates target behavior
-  to: ops.feat:7104
+  to: signature_read_tool.ops.87767041
   type: covers
-- from: test.case:460545
-  legacy_from: tc:d8f52d
-  legacy_to: feat:wcore_context_read_tool
+- from: context_tool.test.unit.59733504
+  legacy_from: test.case:460545
+  legacy_to: ops.feat:3809
   reason: testcase validates target behavior
-  to: ops.feat:3809
+  to: context_read_tool.ops.20658176
   type: covers
-- from: test.case:825728
-  legacy_from: tc:765106
-  legacy_to: feat:wcore_session_recent_tool
+- from: session_recent_tool.test.unit.31036672
+  legacy_from: test.case:825728
+  legacy_to: ops.feat:8496
   reason: testcase validates target behavior
-  to: ops.feat:8496
+  to: session_recent_read_tool.ops.21321472
   type: covers
-- from: test.case:545984
-  legacy_from: tc:a579a1
-  legacy_to: feat:wcore_decisions_for_tool
+- from: decisions_for_tool.test.unit.72316417
+  legacy_from: test.case:545984
+  legacy_to: ops.feat:6720
   reason: testcase validates target behavior
-  to: ops.feat:6720
+  to: decisions_for_read_tool.ops.79378432
   type: covers
-- from: test.case:076992
-  legacy_from: tc:3f980e
-  legacy_to: feat:wcore_doc_sections_tool
+- from: doc_sections_tool.test.unit.80041729
+  legacy_from: test.case:076992
+  legacy_to: ops.feat:9632
   reason: testcase validates target behavior
-  to: ops.feat:9632
+  to: doc_sections_read_tool.ops.42292992
   type: covers
-- from: test.case:494080
-  legacy_from: tc:362437
-  legacy_to: feat:wcore_node_upsert_write
+- from: node_upsert_tool.test.unit.63927809
+  legacy_from: test.case:494080
+  legacy_to: ops.feat:6976
   reason: testcase validates target behavior
-  to: ops.feat:6976
+  to: node_upsert_write_tool.ops.83572737
   type: covers
-- from: test.case:716864
-  legacy_from: tc:2c7461
-  legacy_to: feat:wcore_decision_lock_write
+- from: decision_lock_tool.test.unit.05870849
+  legacy_from: test.case:716864
+  legacy_to: ops.feat:2417
   reason: testcase validates target behavior
-  to: ops.feat:2417
+  to: decision_lock_write_tool.ops.99686657
   type: covers
-- from: test.case:380160
-  legacy_from: tc:9bd2a3
-  legacy_to: feat:wcore_session_log_write
+- from: session_log_tool.test.unit.34567680
+  legacy_from: test.case:380160
+  legacy_to: ops.feat:4192
   reason: testcase validates target behavior
-  to: ops.feat:4192
+  to: session_log_write_tool.ops.29046784
   type: covers
-- from: test.case:100416
-  legacy_from: tc:bc971a
-  legacy_to: feat:wcore_import_proposal
+- from: import_proposal_tool.test.unit.84236032
+  legacy_from: test.case:100416
+  legacy_to: ops.feat:4064
   reason: testcase validates target behavior
-  to: ops.feat:4064
+  to: import_proposal_tool.ops.24852480
   type: covers
-- from: test.case:408640
-  legacy_from: tc:80c313
-  legacy_to: feat:wcore_import_commit
+- from: import_commit_tool.test.unit.42956289
+  legacy_from: test.case:408640
+  legacy_to: ops.feat:9760
   reason: testcase validates target behavior
-  to: ops.feat:9760
+  to: import_commit_tool.ops.42292993
   type: covers
-- from: test.case:963072
-  legacy_from: tc:9d9e55
-  legacy_to: feat:wcore_validate_tool
+- from: validate_tool.test.unit.68785409
+  legacy_from: test.case:963072
+  legacy_to: ops.feat:0016
   reason: testcase validates target behavior
-  to: ops.feat:0016
+  to: validate_maintain_tool.ops.49355008
   type: covers
-- from: test.case:768768
-  legacy_from: tc:9cb778
-  legacy_to: feat:wcore_ai_session_workflow
+- from: full_ai_session_workflow.test.unit.14259457
+  legacy_from: test.case:768768
+  legacy_to: ops.feat:5200
   reason: testcase validates target behavior
-  to: ops.feat:5200
+  to: full_ai_session_workflow.ops.45824000
   type: covers
-- from: test.case:157376
-  legacy_from: tc:9f2720
-  legacy_to: feat:wcore_smoke_tests
+- from: smoke_tests.test.unit.92624641
+  legacy_from: test.case:157376
+  legacy_to: ops.feat:1408
   reason: testcase validates target behavior
-  to: ops.feat:1408
+  to: package_and_schema_smoke_tests.ops.87103745
   type: covers
-- from: test.case:849152
-  legacy_from: tc:e6ac4a
-  legacy_to: feat:wcore_lessons_extraction
+- from: lessons_extraction.test.unit.35230976
+  legacy_from: test.case:849152
+  legacy_to: ops.feat:8368
   reason: testcase validates target behavior
-  to: ops.feat:8368
+  to: lessons_extraction_patterns.ops.12932865
   type: covers
-- from: ops.feat:8993
-  legacy_from: feat:w10b_document_priority_classification
-  legacy_to: wave:10b
+- from: document_priority_auto_classification.ops.25515777
+  legacy_from: ops.feat:8993
+  legacy_to: meta.wave:261185
   reason: feature belongs to wave
-  to: meta.wave:261185
+  to: wave_10b_bugfix_priority_edge_import.meta.57080321
   type: relates_to
-- from: test.case:626368
-  legacy_from: tc:f6720c
-  legacy_to: feat:wcore_prune_operations
+- from: prune_operations.test.unit.89093632
+  legacy_from: test.case:626368
+  legacy_to: ops.feat:5585
   reason: testcase validates target behavior
-  to: ops.feat:5585
+  to: prune_dry_run_and_execution.ops.58406912
   type: covers
-- from: test.case:517504
-  legacy_from: tc:b04474
-  legacy_to: feat:wcore_cache_ttl_lru
+- from: cache_ttl_and_lru.test.unit.68122112
+  legacy_from: test.case:517504
+  legacy_to: ops.feat:3808
   reason: testcase validates target behavior
-  to: ops.feat:3808
+  to: gobp_cache_with_ttl_and_lru.ops.16463873
   type: covers
-- from: test.case:162432
-  legacy_from: tc:11d6d9
-  legacy_to: feat:wcore_db_operations
+- from: db_operations.test.unit.96818944
+  legacy_from: test.case:162432
+  legacy_to: ops.feat:2416
   reason: testcase validates target behavior
-  to: ops.feat:2416
+  to: database_node_and_edge_operations.ops.99686656
   type: covers
-- from: test.case:133952
-  legacy_from: tc:272097
-  legacy_to: feat:wcore_performance_read
+- from: performance_read_tools.test.unit.92624640
+  legacy_from: test.case:133952
+  legacy_to: ops.feat:1280
   reason: testcase validates target behavior
-  to: ops.feat:1280
+  to: performance_of_read_tools.ops.87103744
   type: covers
-- from: test.case:825729
-  legacy_from: tc:7ae607
-  legacy_to: feat:wcore_performance_write
+- from: performance_write_tools.test.unit.31036673
+  legacy_from: test.case:825729
+  legacy_to: ops.feat:5584
   reason: testcase validates target behavior
-  to: ops.feat:5584
+  to: performance_of_write_tools.ops.54212609
   type: covers
-- from: ops.feat:0640
-  legacy_from: feat:w11a_lazy_query_parsing
-  legacy_to: wave:11a
+- from: lazy_query_actions_parsing.ops.66132224
+  legacy_from: ops.feat:0640
+  legacy_to: meta.wave:455489
   reason: feature belongs to wave
-  to: meta.wave:455489
+  to: wave_11a_lazy_query_actions.meta.73857537
   type: relates_to
-- from: test.case:071937
-  legacy_from: tc:cce230
-  legacy_to: feat:wcore_viewer_graph_data
+- from: viewer_graph_data.test.unit.80041728
+  legacy_from: test.case:071937
+  legacy_to: ops.feat:0017
   reason: testcase validates target behavior
-  to: ops.feat:0017
+  to: viewer_graph_data_export.ops.53549312
   type: covers
-- from: test.case:631424
-  legacy_from: tc:6f880e
-  legacy_to: feat:wcore_viewer_http_server
+- from: viewer_http_server.test.unit.89093633
+  legacy_from: test.case:631424
+  legacy_to: ops.feat:4320
   reason: testcase validates target behavior
-  to: ops.feat:4320
+  to: viewer_http_server.ops.29046785
   type: covers
-- from: test.case:934592
-  legacy_from: tc:ad35c4
-  legacy_to: feat:wcore_migration_check
+- from: migration_version_check.test.unit.60396800
+  legacy_from: test.case:934592
+  legacy_to: ops.feat:8369
   reason: testcase validates target behavior
-  to: ops.feat:8369
+  to: schema_version_migration_check.ops.17127168
   type: covers
-- from: test.case:745344
-  legacy_from: tc:20c281
-  legacy_to: feat:wcore_migration_execution
+- from: migration_execution.test.unit.14259456
+  legacy_from: test.case:745344
+  legacy_to: ops.feat:2672
   reason: testcase validates target behavior
-  to: ops.feat:2672
+  to: schema_migration_execution.ops.03880961
   type: covers
-- from: test.case:991552
-  legacy_from: tc:93026d
-  legacy_to: feat:wcore_viewer_multi_project
+- from: viewer_multi_project.test.unit.81368320
+  legacy_from: test.case:991552
+  legacy_to: ops.feat:8624
   reason: testcase validates target behavior
-  to: ops.feat:8624
+  to: viewer_multi_project_support.ops.21321473
   type: covers
-- from: test.case:162432
-  legacy_from: tc:11d6d9
-  legacy_to: wave:core
+- from: db_operations.test.unit.96818944
+  legacy_from: test.case:162432
+  legacy_to: meta.wave:787136
   reason: testcase belongs to wave
-  to: meta.wave:787136
+  to: core_infrastructure_graph_history_mutato.meta.11606272
   type: relates_to
-- from: test.case:356736
-  legacy_from: tc:13dc00
-  legacy_to: wave:core
+- from: signature_tool.test.unit.30373377
+  legacy_from: test.case:356736
+  legacy_to: meta.wave:787136
   reason: testcase belongs to wave
-  to: meta.wave:787136
+  to: core_infrastructure_graph_history_mutato.meta.11606272
   type: relates_to
-- from: test.case:551040
-  legacy_from: tc:16715d
-  legacy_to: wave:15
+- from: edge_deduplication.test.unit.76510720
+  legacy_from: test.case:551040
+  legacy_to: meta.wave:038400
   reason: testcase belongs to wave
-  to: meta.wave:038400
+  to: wave_15_parser_positional_args_value_coe.meta.31914496
   type: relates_to
-- from: test.case:551041
-  legacy_from: tc:1ff3fc
-  legacy_to: wave:core
+- from: create_node_mutation.test.unit.80705024
+  legacy_from: test.case:551041
+  legacy_to: meta.wave:787136
   reason: testcase belongs to wave
-  to: meta.wave:787136
+  to: core_infrastructure_graph_history_mutato.meta.11606272
   type: relates_to
-- from: test.case:745344
-  legacy_from: tc:20c281
-  legacy_to: wave:core
+- from: migration_execution.test.unit.14259456
+  legacy_from: test.case:745344
+  legacy_to: meta.wave:787136
   reason: testcase belongs to wave
-  to: meta.wave:787136
+  to: core_infrastructure_graph_history_mutato.meta.11606272
   type: relates_to
-- from: test.case:939649
-  legacy_from: tc:26b37d
-  legacy_to: wave:core
+- from: parse_query_routing.test.unit.68785408
+  legacy_from: test.case:939649
+  legacy_to: meta.wave:787136
   reason: testcase belongs to wave
-  to: meta.wave:787136
+  to: core_infrastructure_graph_history_mutato.meta.11606272
   type: relates_to
-- from: test.case:133952
-  legacy_from: tc:272097
-  legacy_to: wave:core
+- from: performance_read_tools.test.unit.92624640
+  legacy_from: test.case:133952
+  legacy_to: meta.wave:787136
   reason: testcase belongs to wave
-  to: meta.wave:787136
+  to: core_infrastructure_graph_history_mutato.meta.11606272
   type: relates_to
-- from: test.case:328256
-  legacy_from: tc:27df2c
-  legacy_to: wave:4
+- from: find_type_filter.test.unit.26179072
+  legacy_from: test.case:328256
+  legacy_to: meta.wave:621313
   reason: testcase belongs to wave
-  to: meta.wave:621313
+  to: wave_4_testkind_seeding_init_overview_cl.meta.03217664
   type: relates_to
-- from: test.case:716864
-  legacy_from: tc:2c7461
-  legacy_to: wave:core
+- from: decision_lock_tool.test.unit.05870849
+  legacy_from: test.case:716864
+  legacy_to: meta.wave:787136
   reason: testcase belongs to wave
-  to: meta.wave:787136
+  to: core_infrastructure_graph_history_mutato.meta.11606272
   type: relates_to
-- from: test.case:911168
-  legacy_from: tc:30ea16
-  legacy_to: wave:core
+- from: event_history_logging.test.unit.56202497
+  legacy_from: test.case:911168
+  legacy_to: meta.wave:787136
   reason: testcase belongs to wave
-  to: meta.wave:787136
+  to: core_infrastructure_graph_history_mutato.meta.11606272
   type: relates_to
-- from: test.case:105472
-  legacy_from: tc:3185f2
-  legacy_to: wave:15
+- from: unique_import_doc_ids.test.unit.88430336
+  legacy_from: test.case:105472
+  legacy_to: meta.wave:038400
   reason: testcase belongs to wave
-  to: meta.wave:038400
+  to: wave_15_parser_positional_args_value_coe.meta.31914496
   type: relates_to
-- from: test.case:494080
-  legacy_from: tc:362437
-  legacy_to: wave:core
+- from: node_upsert_tool.test.unit.63927809
+  legacy_from: test.case:494080
+  legacy_to: meta.wave:787136
   reason: testcase belongs to wave
-  to: meta.wave:787136
+  to: core_infrastructure_graph_history_mutato.meta.11606272
   type: relates_to
-- from: test.case:688384
-  legacy_from: tc:367a33
-  legacy_to: wave:core
+- from: find_read_tool.test.unit.01676544
+  legacy_from: test.case:688384
+  legacy_to: meta.wave:787136
   reason: testcase belongs to wave
-  to: meta.wave:787136
+  to: core_infrastructure_graph_history_mutato.meta.11606272
   type: relates_to
-- from: test.case:882688
-  legacy_from: tc:386007
-  legacy_to: wave:4
+- from: init_idempotency.test.unit.47813889
+  legacy_from: test.case:882688
+  legacy_to: meta.wave:621313
   reason: testcase belongs to wave
-  to: meta.wave:621313
+  to: wave_4_testkind_seeding_init_overview_cl.meta.03217664
   type: relates_to
-- from: test.case:882689
-  legacy_from: tc:3eaaa9
-  legacy_to: wave:4
+- from: project_initialization.test.unit.52008192
+  legacy_from: test.case:882689
+  legacy_to: meta.wave:621313
   reason: testcase belongs to wave
-  to: meta.wave:621313
+  to: wave_4_testkind_seeding_init_overview_cl.meta.03217664
   type: relates_to
-- from: test.case:076992
-  legacy_from: tc:3f980e
-  legacy_to: wave:core
+- from: doc_sections_tool.test.unit.80041729
+  legacy_from: test.case:076992
+  legacy_to: meta.wave:787136
   reason: testcase belongs to wave
-  to: meta.wave:787136
+  to: core_infrastructure_graph_history_mutato.meta.11606272
   type: relates_to
-- from: test.case:271296
-  legacy_from: tc:41966a
-  legacy_to: wave:4
+- from: init_seeded_nodes.test.unit.17790464
+  legacy_from: test.case:271296
+  legacy_to: meta.wave:621313
   reason: testcase belongs to wave
-  to: meta.wave:621313
+  to: wave_4_testkind_seeding_init_overview_cl.meta.03217664
   type: relates_to
-- from: test.case:465600
-  legacy_from: tc:45cad5
-  legacy_to: wave:14
+- from: version_action.test.unit.59733505
+  legacy_from: test.case:465600
+  legacy_to: meta.wave:844097
   reason: testcase belongs to wave
-  to: meta.wave:844097
+  to: wave_14_schema_governance_protocol_versi.meta.19994881
   type: relates_to
-- from: test.case:854208
-  legacy_from: tc:4bdcc4
-  legacy_to: wave:15
+- from: parser_smoke_matrix.test.unit.39425281
+  legacy_from: test.case:854208
+  legacy_to: meta.wave:038400
   reason: testcase belongs to wave
-  to: meta.wave:038400
+  to: wave_15_parser_positional_args_value_coe.meta.31914496
   type: relates_to
-- from: test.case:854209
-  legacy_from: tc:50bfb2
-  legacy_to: wave:15
+- from: parse_query_positional_args.test.unit.43619584
+  legacy_from: test.case:854209
+  legacy_to: meta.wave:038400
   reason: testcase belongs to wave
-  to: meta.wave:038400
+  to: wave_15_parser_positional_args_value_coe.meta.31914496
   type: relates_to
-- from: test.case:048512
-  legacy_from: tc:513cb8
-  legacy_to: wave:14
+- from: validate_schema_docs.test.unit.71653121
+  legacy_from: test.case:048512
+  legacy_to: meta.wave:844097
   reason: testcase belongs to wave
-  to: meta.wave:844097
+  to: wave_14_schema_governance_protocol_versi.meta.19994881
   type: relates_to
-- from: test.case:242816
-  legacy_from: tc:583915
-  legacy_to: wave:core
+- from: dispatch_routing.test.unit.13596160
+  legacy_from: test.case:242816
+  legacy_to: meta.wave:787136
   reason: testcase belongs to wave
-  to: meta.wave:787136
+  to: core_infrastructure_graph_history_mutato.meta.11606272
   type: relates_to
-- from: test.case:631424
-  legacy_from: tc:6f880e
-  legacy_to: wave:core
+- from: viewer_http_server.test.unit.89093633
+  legacy_from: test.case:631424
+  legacy_to: meta.wave:787136
   reason: testcase belongs to wave
-  to: meta.wave:787136
+  to: core_infrastructure_graph_history_mutato.meta.11606272
   type: relates_to
-- from: test.case:825728
-  legacy_from: tc:765106
-  legacy_to: wave:core
+- from: session_recent_tool.test.unit.31036672
+  legacy_from: test.case:825728
+  legacy_to: meta.wave:787136
   reason: testcase belongs to wave
-  to: meta.wave:787136
+  to: core_infrastructure_graph_history_mutato.meta.11606272
   type: relates_to
-- from: test.case:825729
-  legacy_from: tc:7ae607
-  legacy_to: wave:core
+- from: performance_write_tools.test.unit.31036673
+  legacy_from: test.case:825729
+  legacy_to: meta.wave:787136
   reason: testcase belongs to wave
-  to: meta.wave:787136
+  to: core_infrastructure_graph_history_mutato.meta.11606272
   type: relates_to
-- from: test.case:214336
-  legacy_from: tc:7fed89
-  legacy_to: wave:4
+- from: overview_concepts_and_coverage.test.unit.09401856
+  legacy_from: test.case:214336
+  legacy_to: meta.wave:621313
   reason: testcase belongs to wave
-  to: meta.wave:621313
+  to: wave_4_testkind_seeding_init_overview_cl.meta.03217664
   type: relates_to
-- from: test.case:408640
-  legacy_from: tc:80c313
-  legacy_to: wave:core
+- from: import_commit_tool.test.unit.42956289
+  legacy_from: test.case:408640
+  legacy_to: meta.wave:787136
   reason: testcase belongs to wave
-  to: meta.wave:787136
+  to: core_infrastructure_graph_history_mutato.meta.11606272
   type: relates_to
-- from: test.case:602944
-  legacy_from: tc:81e1b4
-  legacy_to: wave:14
+- from: template_action.test.unit.84899328
+  legacy_from: test.case:602944
+  legacy_to: meta.wave:844097
   reason: testcase belongs to wave
-  to: meta.wave:844097
+  to: wave_14_schema_governance_protocol_versi.meta.19994881
   type: relates_to
-- from: test.case:797248
-  legacy_from: tc:89c5e2
-  legacy_to: wave:core
+- from: schema_loading.test.unit.22648065
+  legacy_from: test.case:797248
+  legacy_to: meta.wave:787136
   reason: testcase belongs to wave
-  to: meta.wave:787136
+  to: core_infrastructure_graph_history_mutato.meta.11606272
   type: relates_to
-- from: test.case:991552
-  legacy_from: tc:93026d
-  legacy_to: wave:core
+- from: viewer_multi_project.test.unit.81368320
+  legacy_from: test.case:991552
+  legacy_to: meta.wave:787136
   reason: testcase belongs to wave
-  to: meta.wave:787136
+  to: core_infrastructure_graph_history_mutato.meta.11606272
   type: relates_to
-- from: test.case:185856
-  legacy_from: tc:9aa4a5
-  legacy_to: wave:15
+- from: value_coercion.test.unit.01013249
+  legacy_from: test.case:185856
+  legacy_to: meta.wave:038400
   reason: testcase belongs to wave
-  to: meta.wave:038400
+  to: wave_15_parser_positional_args_value_coe.meta.31914496
   type: relates_to
-- from: test.case:380160
-  legacy_from: tc:9bd2a3
-  legacy_to: wave:core
+- from: session_log_tool.test.unit.34567680
+  legacy_from: test.case:380160
+  legacy_to: meta.wave:787136
   reason: testcase belongs to wave
-  to: meta.wave:787136
+  to: core_infrastructure_graph_history_mutato.meta.11606272
   type: relates_to
-- from: test.case:380161
-  legacy_from: tc:9c5558
-  legacy_to: wave:core
+- from: gobp_overview_tool.test.unit.38761984
+  legacy_from: test.case:380161
+  legacy_to: meta.wave:787136
   reason: testcase belongs to wave
-  to: meta.wave:787136
+  to: core_infrastructure_graph_history_mutato.meta.11606272
   type: relates_to
-- from: test.case:768768
-  legacy_from: tc:9cb778
-  legacy_to: wave:core
+- from: full_ai_session_workflow.test.unit.14259457
+  legacy_from: test.case:768768
+  legacy_to: meta.wave:787136
   reason: testcase belongs to wave
-  to: meta.wave:787136
+  to: core_infrastructure_graph_history_mutato.meta.11606272
   type: relates_to
-- from: test.case:963072
-  legacy_from: tc:9d9e55
-  legacy_to: wave:core
+- from: validate_tool.test.unit.68785409
+  legacy_from: test.case:963072
+  legacy_to: meta.wave:787136
   reason: testcase belongs to wave
-  to: meta.wave:787136
+  to: core_infrastructure_graph_history_mutato.meta.11606272
   type: relates_to
-- from: test.case:157376
-  legacy_from: tc:9f2720
-  legacy_to: wave:core
+- from: smoke_tests.test.unit.92624641
+  legacy_from: test.case:157376
+  legacy_to: meta.wave:787136
   reason: testcase belongs to wave
-  to: meta.wave:787136
+  to: core_infrastructure_graph_history_mutato.meta.11606272
   type: relates_to
-- from: test.case:351680
-  legacy_from: tc:a20d66
-  legacy_to: wave:core
+- from: atomic_writes.test.unit.30373376
+  legacy_from: test.case:351680
+  legacy_to: meta.wave:787136
   reason: testcase belongs to wave
-  to: meta.wave:787136
+  to: core_infrastructure_graph_history_mutato.meta.11606272
   type: relates_to
-- from: test.case:545984
-  legacy_from: tc:a579a1
-  legacy_to: wave:core
+- from: decisions_for_tool.test.unit.72316417
+  legacy_from: test.case:545984
+  legacy_to: meta.wave:787136
   reason: testcase belongs to wave
-  to: meta.wave:787136
+  to: core_infrastructure_graph_history_mutato.meta.11606272
   type: relates_to
-- from: test.case:934592
-  legacy_from: tc:ad35c4
-  legacy_to: wave:core
+- from: migration_version_check.test.unit.60396800
+  legacy_from: test.case:934592
+  legacy_to: meta.wave:787136
   reason: testcase belongs to wave
-  to: meta.wave:787136
+  to: core_infrastructure_graph_history_mutato.meta.11606272
   type: relates_to
-- from: test.case:128896
-  legacy_from: tc:ae1ae3
-  legacy_to: wave:core
+- from: frontmatter_parsing.test.unit.88430337
+  legacy_from: test.case:128896
+  legacy_to: meta.wave:787136
   reason: testcase belongs to wave
-  to: meta.wave:787136
+  to: core_infrastructure_graph_history_mutato.meta.11606272
   type: relates_to
-- from: test.case:517504
-  legacy_from: tc:b04474
-  legacy_to: wave:core
+- from: cache_ttl_and_lru.test.unit.68122112
+  legacy_from: test.case:517504
+  legacy_to: meta.wave:787136
   reason: testcase belongs to wave
-  to: meta.wave:787136
+  to: core_infrastructure_graph_history_mutato.meta.11606272
   type: relates_to
-- from: test.case:906112
-  legacy_from: tc:b6c359
-  legacy_to: wave:14
+- from: session_role_field.test.unit.56202496
+  legacy_from: test.case:906112
+  legacy_to: meta.wave:844097
   reason: testcase belongs to wave
-  to: meta.wave:844097
+  to: wave_14_schema_governance_protocol_versi.meta.19994881
   type: relates_to
-- from: test.case:100416
-  legacy_from: tc:bc971a
-  legacy_to: wave:core
+- from: import_proposal_tool.test.unit.84236032
+  legacy_from: test.case:100416
+  legacy_to: meta.wave:787136
   reason: testcase belongs to wave
-  to: meta.wave:787136
+  to: core_infrastructure_graph_history_mutato.meta.11606272
   type: relates_to
-- from: test.case:294720
-  legacy_from: tc:bcceed
-  legacy_to: wave:14
+- from: schema_governance_score.test.unit.21984768
+  legacy_from: test.case:294720
+  legacy_to: meta.wave:844097
   reason: testcase belongs to wave
-  to: meta.wave:844097
+  to: wave_14_schema_governance_protocol_versi.meta.19994881
   type: relates_to
-- from: test.case:489024
-  legacy_from: tc:bfa6c9
-  legacy_to: wave:14
+- from: read_only_mode_flag.test.unit.63927808
+  legacy_from: test.case:489024
+  legacy_to: meta.wave:844097
   reason: testcase belongs to wave
-  to: meta.wave:844097
+  to: wave_14_schema_governance_protocol_versi.meta.19994881
   type: relates_to
-- from: test.case:683328
-  legacy_from: tc:c121b0
-  legacy_to: wave:core
+- from: edge_mutations.test.unit.97482240
+  legacy_from: test.case:683328
+  legacy_to: meta.wave:787136
   reason: testcase belongs to wave
-  to: meta.wave:787136
+  to: core_infrastructure_graph_history_mutato.meta.11606272
   type: relates_to
-- from: test.case:877632
-  legacy_from: tc:c33407
-  legacy_to: wave:core
+- from: edge_validation.test.unit.47813888
+  legacy_from: test.case:877632
+  legacy_to: meta.wave:787136
   reason: testcase belongs to wave
-  to: meta.wave:787136
+  to: core_infrastructure_graph_history_mutato.meta.11606272
   type: relates_to
-- from: test.case:071937
-  legacy_from: tc:cce230
-  legacy_to: wave:core
+- from: viewer_graph_data.test.unit.80041728
+  legacy_from: test.case:071937
+  legacy_to: meta.wave:787136
   reason: testcase belongs to wave
-  to: meta.wave:787136
+  to: core_infrastructure_graph_history_mutato.meta.11606272
   type: relates_to
-- from: test.case:266240
-  legacy_from: tc:d303f2
-  legacy_to: wave:core
+- from: update_node_mutation.test.unit.13596161
+  legacy_from: test.case:266240
+  legacy_to: meta.wave:787136
   reason: testcase belongs to wave
-  to: meta.wave:787136
+  to: core_infrastructure_graph_history_mutato.meta.11606272
   type: relates_to
-- from: test.case:460544
-  legacy_from: tc:d7ed55
-  legacy_to: wave:core
+- from: node_validation.test.unit.55539200
+  legacy_from: test.case:460544
+  legacy_to: meta.wave:787136
   reason: testcase belongs to wave
-  to: meta.wave:787136
+  to: core_infrastructure_graph_history_mutato.meta.11606272
   type: relates_to
-- from: test.case:460545
-  legacy_from: tc:d8f52d
-  legacy_to: wave:core
+- from: context_tool.test.unit.59733504
+  legacy_from: test.case:460545
+  legacy_to: meta.wave:787136
   reason: testcase belongs to wave
-  to: meta.wave:787136
+  to: core_infrastructure_graph_history_mutato.meta.11606272
   type: relates_to
-- from: test.case:849152
-  legacy_from: tc:e6ac4a
-  legacy_to: wave:core
+- from: lessons_extraction.test.unit.35230976
+  legacy_from: test.case:849152
+  legacy_to: meta.wave:787136
   reason: testcase belongs to wave
-  to: meta.wave:787136
+  to: core_infrastructure_graph_history_mutato.meta.11606272
   type: relates_to
-- from: test.case:237760
-  legacy_from: tc:edff66
-  legacy_to: wave:core
+- from: graphindex_queries.test.unit.09401857
+  legacy_from: test.case:237760
+  legacy_to: meta.wave:787136
   reason: testcase belongs to wave
-  to: meta.wave:787136
+  to: core_infrastructure_graph_history_mutato.meta.11606272
   type: relates_to
-- from: test.case:432064
-  legacy_from: tc:eef90f
-  legacy_to: wave:core
+- from: graphindex_loading.test.unit.47150592
+  legacy_from: test.case:432064
+  legacy_to: meta.wave:787136
   reason: testcase belongs to wave
-  to: meta.wave:787136
+  to: core_infrastructure_graph_history_mutato.meta.11606272
   type: relates_to
-- from: test.case:626368
-  legacy_from: tc:f6720c
-  legacy_to: wave:core
+- from: prune_operations.test.unit.89093632
+  legacy_from: test.case:626368
+  legacy_to: meta.wave:787136
   reason: testcase belongs to wave
-  to: meta.wave:787136
+  to: core_infrastructure_graph_history_mutato.meta.11606272
   type: relates_to
-- from: test.case:820672
-  legacy_from: tc:f74d70
-  legacy_to: wave:core
+- from: delete_node_soft_delete.test.unit.26842368
+  legacy_from: test.case:820672
+  legacy_to: meta.wave:787136
   reason: testcase belongs to wave
-  to: meta.wave:787136
+  to: core_infrastructure_graph_history_mutato.meta.11606272
   type: relates_to
-- from: test.case:014976
-  legacy_from: tc:f7af8a
-  legacy_to: wave:4
+- from: cli_commands.test.unit.59070208
+  legacy_from: test.case:014976
+  legacy_to: meta.wave:621313
   reason: testcase belongs to wave
-  to: meta.wave:621313
+  to: wave_4_testkind_seeding_init_overview_cl.meta.03217664
   type: relates_to
-- from: meta.wave:261184
-  legacy_from: wave:10a
-  legacy_to: doc:wave_10a_brief
+- from: wave_10a_single_tool_protocol.meta.57080320
+  legacy_from: meta.wave:261184
+  legacy_to: meta.doc:609856
   reason: canonical wave brief document
-  to: meta.doc:609856
+  to: wave_10a_brief.meta.06963200
   type: references
-- from: meta.wave:261185
-  legacy_from: wave:10b
-  legacy_to: doc:wave_10b_brief
+- from: wave_10b_bugfix_priority_edge_import.meta.57080321
+  legacy_from: meta.wave:261185
+  legacy_to: meta.doc:387072
   reason: canonical wave brief document
-  to: meta.doc:387072
+  to: wave_10b_brief.meta.00779008
   type: references
-- from: meta.wave:455488
-  legacy_from: wave:10c
-  legacy_to: doc:wave_10c_brief
+- from: wave_10c_postgresql_migration.meta.73857536
+  legacy_from: meta.wave:455488
+  legacy_to: meta.doc:969984
   reason: canonical wave brief document
-  to: meta.doc:969984
+  to: wave_10c_brief.meta.59948032
   type: references
-- from: meta.wave:455489
-  legacy_from: wave:11a
-  legacy_to: doc:wave_11a_brief
+- from: wave_11a_lazy_query_actions.meta.73857537
+  legacy_from: meta.wave:455489
+  legacy_to: meta.doc:941504
   reason: canonical wave brief document
-  to: meta.doc:941504
+  to: wave_11a_brief.meta.92839168
   type: references
-- from: meta.wave:649792
-  legacy_from: wave:11b
-  legacy_to: doc:wave_11b_brief
+- from: wave_11b_3d_graph_viewer.meta.03217665
+  legacy_from: meta.wave:649792
+  legacy_to: meta.doc:718720
   reason: canonical wave brief document
-  to: meta.doc:718720
+  to: wave_11b_brief.meta.16015104
   type: references
-- from: meta.wave:649793
-  legacy_from: wave:12
-  legacy_to: doc:wave_12_brief
+- from: wave_12_multi_project_viewer_and_schema.meta.07411968
+  legacy_from: meta.wave:649793
+  legacy_to: meta.doc:495936
   reason: canonical wave brief document
-  to: meta.doc:495936
+  to: wave_12_brief.meta.51773952
   type: references
-- from: meta.wave:844096
-  legacy_from: wave:13
-  legacy_to: doc:wave_13_brief
+- from: wave_13_pagination_upsert_guardrails_obs.meta.19994880
+  legacy_from: meta.wave:844096
+  legacy_to: meta.doc:273152
   reason: canonical wave brief document
-  to: meta.doc:273152
+  to: wave_13_brief.meta.83338496
   type: references
-- from: meta.wave:844097
-  legacy_from: wave:14
-  legacy_to: doc:wave_14_brief_79fc28
+- from: wave_14_schema_governance_protocol_versi.meta.19994881
+  legacy_from: meta.wave:844097
+  legacy_to: meta.doc:856064
   reason: canonical wave brief document
-  to: meta.doc:856064
+  to: wave_14_brief.meta.25067008
   type: references
-- from: meta.wave:038400
-  legacy_from: wave:15
-  legacy_to: doc:wave_15_brief
+- from: wave_15_parser_positional_args_value_coe.meta.31914496
+  legacy_from: meta.wave:038400
+  legacy_to: meta.doc:050368
   reason: canonical wave brief document
-  to: meta.doc:050368
+  to: wave_15_brief.meta.93931520
   type: references
-- from: meta.wave:038401
-  legacy_from: wave:16a01
-  legacy_to: doc:wave_16a01_brief
+- from: wave_16a01_response_tiers_metadata_linte.meta.36108800
+  legacy_from: meta.wave:038401
+  legacy_to: meta.doc:438976
   reason: canonical wave brief document
-  to: meta.doc:438976
+  to: wave_16a01_brief.meta.38527744
   type: references
-- from: meta.wave:621313
-  legacy_from: wave:4
-  legacy_to: doc:wave_4_brief
+- from: wave_4_testkind_seeding_init_overview_cl.meta.03217664
+  legacy_from: meta.wave:621313
+  legacy_to: meta.doc:325056
   reason: canonical wave brief document
-  to: meta.doc:325056
+  to: wave_4_brief.meta.29475840
   type: references
-- from: ops.feat:6080
-  legacy_from: feat:mcp_cursor_pagination
-  legacy_to: wave:13
+- from: cursor_pagination_for_mcp_reads.ops.62601216
+  legacy_from: ops.feat:6080
+  legacy_to: meta.wave:844096
   reason: feature belongs to wave
-  to: meta.wave:844096
+  to: wave_13_pagination_upsert_guardrails_obs.meta.19994880
   type: relates_to
-- from: ops.feat:0384
-  legacy_from: feat:mcp_dry_run_preview
-  legacy_to: wave:13
+- from: dry_run_write_preview.ops.57743616
+  legacy_from: ops.feat:0384
+  legacy_to: meta.wave:844096
   reason: feature belongs to wave
-  to: meta.wave:844096
+  to: wave_13_pagination_upsert_guardrails_obs.meta.19994880
   type: relates_to
-- from: ops.feat:0385
-  legacy_from: feat:mcp_stats_observability
-  legacy_to: wave:13
+- from: in_memory_action_stats.ops.57743617
+  legacy_from: ops.feat:0385
+  legacy_to: meta.wave:844096
   reason: feature belongs to wave
-  to: meta.wave:844096
+  to: wave_13_pagination_upsert_guardrails_obs.meta.19994880
   type: relates_to
-- from: ops.feat:4688
-  legacy_from: feat:mcp_upsert_dedupe
-  legacy_to: wave:13
+- from: upsert_dedupe_key_write_model.ops.33241088
+  legacy_from: ops.feat:4688
+  legacy_to: meta.wave:844096
   reason: feature belongs to wave
-  to: meta.wave:844096
+  to: wave_13_pagination_upsert_guardrails_obs.meta.19994880
   type: relates_to
-- from: ops.feat:9248
-  legacy_from: feat:w14_protocol_version_action
-  legacy_to: wave:14
+- from: version_protocol_version_action.ops.29710081
+  legacy_from: ops.feat:9248
+  legacy_to: meta.wave:844097
   reason: feature belongs to wave
-  to: meta.wave:844097
+  to: wave_14_schema_governance_protocol_versi.meta.19994881
   type: relates_to
-- from: ops.feat:9249
-  legacy_from: feat:w14_read_only_mode_flag
-  legacy_to: wave:14
+- from: read_only_mode_flag_enforcement.ops.33904384
+  legacy_from: ops.feat:9249
+  legacy_to: meta.wave:844097
   reason: feature belongs to wave
-  to: meta.wave:844097
+  to: wave_14_schema_governance_protocol_versi.meta.19994881
   type: relates_to
-- from: ops.feat:3552
-  legacy_from: feat:w14_schema_governance_score
-  legacy_to: wave:14
+- from: schema_governance_scoring.ops.12269568
+  legacy_from: ops.feat:3552
+  legacy_to: meta.wave:844097
   reason: feature belongs to wave
-  to: meta.wave:844097
+  to: wave_14_schema_governance_protocol_versi.meta.19994881
   type: relates_to
-- from: ops.feat:7856
-  legacy_from: feat:w14_session_role_field
-  legacy_to: wave:14
+- from: session_role_field_storage.ops.00349952
+  legacy_from: ops.feat:7856
+  legacy_to: meta.wave:844097
   reason: feature belongs to wave
-  to: meta.wave:844097
+  to: wave_14_schema_governance_protocol_versi.meta.19994881
   type: relates_to
-- from: ops.feat:7857
-  legacy_from: feat:w14_template_action
-  legacy_to: wave:14
+- from: template_nodetype_declaration_template.ops.00349953
+  legacy_from: ops.feat:7857
+  legacy_to: meta.wave:844097
   reason: feature belongs to wave
-  to: meta.wave:844097
+  to: wave_14_schema_governance_protocol_versi.meta.19994881
   type: relates_to
-- from: ops.feat:2160
-  legacy_from: feat:w14_validate_schema_docs
-  legacy_to: wave:14
+- from: validate_schema_docs_dispatch.ops.91298049
+  legacy_from: ops.feat:2160
+  legacy_to: meta.wave:844097
   reason: feature belongs to wave
-  to: meta.wave:844097
+  to: wave_14_schema_governance_protocol_versi.meta.19994881
   type: relates_to
-- from: ops.feat:6464
-  legacy_from: feat:w15_edge_deduplication
-  legacy_to: wave:15
+- from: edge_deduplication_and_idempotency.ops.70989824
+  legacy_from: ops.feat:6464
+  legacy_to: meta.wave:038400
   reason: feature belongs to wave
-  to: meta.wave:038400
+  to: wave_15_parser_positional_args_value_coe.meta.31914496
   type: relates_to
-- from: ops.feat:6465
-  legacy_from: feat:w15_import_unique_docids
-  legacy_to: wave:15
+- from: import_generates_unique_document_ids.ops.75184128
+  legacy_from: ops.feat:6465
+  legacy_to: meta.wave:038400
   reason: feature belongs to wave
-  to: meta.wave:038400
+  to: wave_15_parser_positional_args_value_coe.meta.31914496
   type: relates_to
-- from: ops.feat:0768
-  legacy_from: feat:w15_parse_query_positional
-  legacy_to: wave:15
+- from: parse_query_positional_argument_handling.ops.70326528
+  legacy_from: ops.feat:0768
+  legacy_to: meta.wave:038400
   reason: feature belongs to wave
-  to: meta.wave:038400
+  to: wave_15_parser_positional_args_value_coe.meta.31914496
   type: relates_to
-- from: ops.feat:5072
-  legacy_from: feat:w15_parser_smoke_matrix
-  legacy_to: wave:15
+- from: parser_mixed_format_handling.ops.41629697
+  legacy_from: ops.feat:5072
+  legacy_to: meta.wave:038400
   reason: feature belongs to wave
-  to: meta.wave:038400
+  to: wave_15_parser_positional_args_value_coe.meta.31914496
   type: relates_to
-- from: ops.feat:9376
-  legacy_from: feat:w15_value_coercion
-  legacy_to: wave:15
+- from: value_coercion_in_parse_query.ops.38098688
+  legacy_from: ops.feat:9376
+  legacy_to: meta.wave:038400
   reason: feature belongs to wave
-  to: meta.wave:038400
+  to: wave_15_parser_positional_args_value_coe.meta.31914496
   type: relates_to
-- from: ops.feat:3680
-  legacy_from: feat:w4_cli_commands
-  legacy_to: wave:4
+- from: cli_commands_init_status_validate.ops.12269569
+  legacy_from: ops.feat:3680
+  legacy_to: meta.wave:621313
   reason: feature belongs to wave
-  to: meta.wave:621313
+  to: wave_4_testkind_seeding_init_overview_cl.meta.03217664
   type: relates_to
-- from: ops.feat:3681
-  legacy_from: feat:w4_find_type_filter
-  legacy_to: wave:4
+- from: find_type_filtering.ops.16463872
+  legacy_from: ops.feat:3681
+  legacy_to: meta.wave:621313
   reason: feature belongs to wave
-  to: meta.wave:621313
+  to: wave_4_testkind_seeding_init_overview_cl.meta.03217664
   type: relates_to
-- from: ops.feat:7984
-  legacy_from: feat:w4_gobp_overview_concepts
-  legacy_to: wave:4
+- from: gobp_overview_concepts_and_test_coverage.ops.04544256
+  legacy_from: ops.feat:7984
+  legacy_to: meta.wave:621313
   reason: feature belongs to wave
-  to: meta.wave:621313
+  to: wave_4_testkind_seeding_init_overview_cl.meta.03217664
   type: relates_to
-- from: ops.feat:2288
-  legacy_from: feat:w4_init_idempotency
-  legacy_to: wave:4
+- from: initialization_idempotency_guard.ops.95492352
+  legacy_from: ops.feat:2288
+  legacy_to: meta.wave:621313
   reason: feature belongs to wave
-  to: meta.wave:621313
+  to: wave_4_testkind_seeding_init_overview_cl.meta.03217664
   type: relates_to
-- from: ops.feat:2289
-  legacy_from: feat:w4_init_project_structure
-  legacy_to: wave:4
+- from: init_project_creates_directory_structure.ops.95492353
+  legacy_from: ops.feat:2289
+  legacy_to: meta.wave:621313
   reason: feature belongs to wave
-  to: meta.wave:621313
+  to: wave_4_testkind_seeding_init_overview_cl.meta.03217664
   type: relates_to
-- from: ops.feat:6592
-  legacy_from: feat:w4_init_seeded_nodes
-  legacy_to: wave:4
+- from: initialization_with_17_seeded_nodes.ops.75184129
+  legacy_from: ops.feat:6592
+  legacy_to: meta.wave:621313
   reason: feature belongs to wave
-  to: meta.wave:621313
+  to: wave_4_testkind_seeding_init_overview_cl.meta.03217664
   type: relates_to
-- from: ops.feat:0896
-  legacy_from: feat:wave13_regression_tests
-  legacy_to: wave:13
+- from: wave_13_regression_tests.ops.74520832
+  legacy_from: ops.feat:0896
+  legacy_to: meta.wave:844096
   reason: feature belongs to wave
-  to: meta.wave:844096
+  to: wave_13_pagination_upsert_guardrails_obs.meta.19994880
   type: relates_to
-- from: ops.feat:5200
-  legacy_from: feat:wcore_ai_session_workflow
-  legacy_to: wave:core
+- from: full_ai_session_workflow.ops.45824000
+  legacy_from: ops.feat:5200
+  legacy_to: meta.wave:787136
   reason: feature belongs to wave
-  to: meta.wave:787136
+  to: core_infrastructure_graph_history_mutato.meta.11606272
   type: relates_to
-- from: ops.feat:9504
-  legacy_from: feat:wcore_atomic_writes
-  legacy_to: wave:core
+- from: atomic_file_write_operations.ops.38098689
+  legacy_from: ops.feat:9504
+  legacy_to: meta.wave:787136
   reason: feature belongs to wave
-  to: meta.wave:787136
+  to: core_infrastructure_graph_history_mutato.meta.11606272
   type: relates_to
-- from: ops.feat:3808
-  legacy_from: feat:wcore_cache_ttl_lru
-  legacy_to: wave:core
+- from: gobp_cache_with_ttl_and_lru.ops.16463873
+  legacy_from: ops.feat:3808
+  legacy_to: meta.wave:787136
   reason: feature belongs to wave
-  to: meta.wave:787136
+  to: core_infrastructure_graph_history_mutato.meta.11606272
   type: relates_to
-- from: ops.feat:3809
-  legacy_from: feat:wcore_context_read_tool
-  legacy_to: wave:core
+- from: context_read_tool.ops.20658176
+  legacy_from: ops.feat:3809
+  legacy_to: meta.wave:787136
   reason: feature belongs to wave
-  to: meta.wave:787136
+  to: core_infrastructure_graph_history_mutato.meta.11606272
   type: relates_to
-- from: ops.feat:8112
-  legacy_from: feat:wcore_create_node_mutation
-  legacy_to: wave:core
+- from: create_node_write_mutation.ops.08738560
+  legacy_from: ops.feat:8112
+  legacy_to: meta.wave:787136
   reason: feature belongs to wave
-  to: meta.wave:787136
+  to: core_infrastructure_graph_history_mutato.meta.11606272
   type: relates_to
-- from: ops.feat:2416
-  legacy_from: feat:wcore_db_operations
-  legacy_to: wave:core
+- from: database_node_and_edge_operations.ops.99686656
+  legacy_from: ops.feat:2416
+  legacy_to: meta.wave:787136
   reason: feature belongs to wave
-  to: meta.wave:787136
+  to: core_infrastructure_graph_history_mutato.meta.11606272
   type: relates_to
-- from: ops.feat:2417
-  legacy_from: feat:wcore_decision_lock_write
-  legacy_to: wave:core
+- from: decision_lock_write_tool.ops.99686657
+  legacy_from: ops.feat:2417
+  legacy_to: meta.wave:787136
   reason: feature belongs to wave
-  to: meta.wave:787136
+  to: core_infrastructure_graph_history_mutato.meta.11606272
   type: relates_to
-- from: ops.feat:6720
-  legacy_from: feat:wcore_decisions_for_tool
-  legacy_to: wave:core
+- from: decisions_for_read_tool.ops.79378432
+  legacy_from: ops.feat:6720
+  legacy_to: meta.wave:787136
   reason: feature belongs to wave
-  to: meta.wave:787136
+  to: core_infrastructure_graph_history_mutato.meta.11606272
   type: relates_to
-- from: ops.feat:1024
-  legacy_from: feat:wcore_delete_node_mutation
-  legacy_to: wave:core
+- from: delete_node_soft_delete.ops.78715136
+  legacy_from: ops.feat:1024
+  legacy_to: meta.wave:787136
   reason: feature belongs to wave
-  to: meta.wave:787136
+  to: core_infrastructure_graph_history_mutato.meta.11606272
   type: relates_to
-- from: ops.feat:1025
-  legacy_from: feat:wcore_dispatcher_parse_query
-  legacy_to: wave:core
+- from: dispatcher_parse_query_routing.ops.78715137
+  legacy_from: ops.feat:1025
+  legacy_to: meta.wave:787136
   reason: feature belongs to wave
-  to: meta.wave:787136
+  to: core_infrastructure_graph_history_mutato.meta.11606272
   type: relates_to
-- from: ops.feat:5328
-  legacy_from: feat:wcore_dispatcher_routing
-  legacy_to: wave:core
+- from: dispatch_action_routing.ops.50018304
+  legacy_from: ops.feat:5328
+  legacy_to: meta.wave:787136
   reason: feature belongs to wave
-  to: meta.wave:787136
+  to: core_infrastructure_graph_history_mutato.meta.11606272
   type: relates_to
-- from: ops.feat:9632
-  legacy_from: feat:wcore_doc_sections_tool
-  legacy_to: wave:core
+- from: doc_sections_read_tool.ops.42292992
+  legacy_from: ops.feat:9632
+  legacy_to: meta.wave:787136
   reason: feature belongs to wave
-  to: meta.wave:787136
+  to: core_infrastructure_graph_history_mutato.meta.11606272
   type: relates_to
-- from: ops.feat:8240
-  legacy_from: feat:wcore_edge_mutations
-  legacy_to: wave:core
+- from: edge_create_and_delete_mutations.ops.08738561
+  legacy_from: ops.feat:8240
+  legacy_to: meta.wave:787136
   reason: feature belongs to wave
-  to: meta.wave:787136
+  to: core_infrastructure_graph_history_mutato.meta.11606272
   type: relates_to
-- from: ops.feat:8241
-  legacy_from: feat:wcore_edge_validation
-  legacy_to: wave:core
+- from: edge_schema_validation.ops.12932864
+  legacy_from: ops.feat:8241
+  legacy_to: meta.wave:787136
   reason: feature belongs to wave
-  to: meta.wave:787136
+  to: core_infrastructure_graph_history_mutato.meta.11606272
   type: relates_to
-- from: ops.feat:2544
-  legacy_from: feat:wcore_event_history
-  legacy_to: wave:core
+- from: event_history_jsonl_logging.ops.03880960
+  legacy_from: ops.feat:2544
+  legacy_to: meta.wave:787136
   reason: feature belongs to wave
-  to: meta.wave:787136
+  to: core_infrastructure_graph_history_mutato.meta.11606272
   type: relates_to
-- from: ops.feat:6848
-  legacy_from: feat:wcore_find_read_tool
-  legacy_to: wave:core
+- from: find_read_tool.ops.79378433
+  legacy_from: ops.feat:6848
+  legacy_to: meta.wave:787136
   reason: feature belongs to wave
-  to: meta.wave:787136
+  to: core_infrastructure_graph_history_mutato.meta.11606272
   type: relates_to
-- from: ops.feat:6849
-  legacy_from: feat:wcore_frontmatter_parsing
-  legacy_to: wave:core
+- from: frontmatter_yaml_parsing.ops.83572736
+  legacy_from: ops.feat:6849
+  legacy_to: meta.wave:787136
   reason: feature belongs to wave
-  to: meta.wave:787136
+  to: core_infrastructure_graph_history_mutato.meta.11606272
   type: relates_to
-- from: ops.feat:1152
-  legacy_from: feat:wcore_gobp_overview_read
-  legacy_to: wave:core
+- from: gobp_overview_read_tool.ops.82909440
+  legacy_from: ops.feat:1152
+  legacy_to: meta.wave:787136
   reason: feature belongs to wave
-  to: meta.wave:787136
+  to: core_infrastructure_graph_history_mutato.meta.11606272
   type: relates_to
-- from: ops.feat:5456
-  legacy_from: feat:wcore_graph_index_construction
-  legacy_to: wave:core
+- from: graphindex_construction_and_loading.ops.50018305
+  legacy_from: ops.feat:5456
+  legacy_to: meta.wave:787136
   reason: feature belongs to wave
-  to: meta.wave:787136
+  to: core_infrastructure_graph_history_mutato.meta.11606272
   type: relates_to
-- from: ops.feat:5457
-  legacy_from: feat:wcore_graph_index_queries
-  legacy_to: wave:core
+- from: graphindex_query_methods.ops.54212608
+  legacy_from: ops.feat:5457
+  legacy_to: meta.wave:787136
   reason: feature belongs to wave
-  to: meta.wave:787136
+  to: core_infrastructure_graph_history_mutato.meta.11606272
   type: relates_to
-- from: ops.feat:9760
-  legacy_from: feat:wcore_import_commit
-  legacy_to: wave:core
+- from: import_commit_tool.ops.42292993
+  legacy_from: ops.feat:9760
+  legacy_to: meta.wave:787136
   reason: feature belongs to wave
-  to: meta.wave:787136
+  to: core_infrastructure_graph_history_mutato.meta.11606272
   type: relates_to
-- from: ops.feat:4064
-  legacy_from: feat:wcore_import_proposal
-  legacy_to: wave:core
+- from: import_proposal_tool.ops.24852480
+  legacy_from: ops.feat:4064
+  legacy_to: meta.wave:787136
   reason: feature belongs to wave
-  to: meta.wave:787136
+  to: core_infrastructure_graph_history_mutato.meta.11606272
   type: relates_to
-- from: ops.feat:8368
-  legacy_from: feat:wcore_lessons_extraction
-  legacy_to: wave:core
+- from: lessons_extraction_patterns.ops.12932865
+  legacy_from: ops.feat:8368
+  legacy_to: meta.wave:787136
   reason: feature belongs to wave
-  to: meta.wave:787136
+  to: core_infrastructure_graph_history_mutato.meta.11606272
   type: relates_to
-- from: ops.feat:8369
-  legacy_from: feat:wcore_migration_check
-  legacy_to: wave:core
+- from: schema_version_migration_check.ops.17127168
+  legacy_from: ops.feat:8369
+  legacy_to: meta.wave:787136
   reason: feature belongs to wave
-  to: meta.wave:787136
+  to: core_infrastructure_graph_history_mutato.meta.11606272
   type: relates_to
-- from: ops.feat:2672
-  legacy_from: feat:wcore_migration_execution
-  legacy_to: wave:core
+- from: schema_migration_execution.ops.03880961
+  legacy_from: ops.feat:2672
+  legacy_to: meta.wave:787136
   reason: feature belongs to wave
-  to: meta.wave:787136
+  to: core_infrastructure_graph_history_mutato.meta.11606272
   type: relates_to
-- from: ops.feat:6976
-  legacy_from: feat:wcore_node_upsert_write
-  legacy_to: wave:core
+- from: node_upsert_write_tool.ops.83572737
+  legacy_from: ops.feat:6976
+  legacy_to: meta.wave:787136
   reason: feature belongs to wave
-  to: meta.wave:787136
+  to: core_infrastructure_graph_history_mutato.meta.11606272
   type: relates_to
-- from: ops.feat:6977
-  legacy_from: feat:wcore_node_validation
-  legacy_to: wave:core
+- from: node_schema_validation.ops.87767040
+  legacy_from: ops.feat:6977
+  legacy_to: meta.wave:787136
   reason: feature belongs to wave
-  to: meta.wave:787136
+  to: core_infrastructure_graph_history_mutato.meta.11606272
   type: relates_to
-- from: ops.feat:1280
-  legacy_from: feat:wcore_performance_read
-  legacy_to: wave:core
+- from: performance_of_read_tools.ops.87103744
+  legacy_from: ops.feat:1280
+  legacy_to: meta.wave:787136
   reason: feature belongs to wave
-  to: meta.wave:787136
+  to: core_infrastructure_graph_history_mutato.meta.11606272
   type: relates_to
-- from: ops.feat:5584
-  legacy_from: feat:wcore_performance_write
-  legacy_to: wave:core
+- from: performance_of_write_tools.ops.54212609
+  legacy_from: ops.feat:5584
+  legacy_to: meta.wave:787136
   reason: feature belongs to wave
-  to: meta.wave:787136
+  to: core_infrastructure_graph_history_mutato.meta.11606272
   type: relates_to
-- from: ops.feat:5585
-  legacy_from: feat:wcore_prune_operations
-  legacy_to: wave:core
+- from: prune_dry_run_and_execution.ops.58406912
+  legacy_from: ops.feat:5585
+  legacy_to: meta.wave:787136
   reason: feature belongs to wave
-  to: meta.wave:787136
+  to: core_infrastructure_graph_history_mutato.meta.11606272
   type: relates_to
-- from: ops.feat:9888
-  legacy_from: feat:wcore_schema_loading
-  legacy_to: wave:core
+- from: schema_yaml_loading.ops.46487296
+  legacy_from: ops.feat:9888
+  legacy_to: meta.wave:787136
   reason: feature belongs to wave
-  to: meta.wave:787136
+  to: core_infrastructure_graph_history_mutato.meta.11606272
   type: relates_to
-- from: ops.feat:4192
-  legacy_from: feat:wcore_session_log_write
-  legacy_to: wave:core
+- from: session_log_write_tool.ops.29046784
+  legacy_from: ops.feat:4192
+  legacy_to: meta.wave:787136
   reason: feature belongs to wave
-  to: meta.wave:787136
+  to: core_infrastructure_graph_history_mutato.meta.11606272
   type: relates_to
-- from: ops.feat:8496
-  legacy_from: feat:wcore_session_recent_tool
-  legacy_to: wave:core
+- from: session_recent_read_tool.ops.21321472
+  legacy_from: ops.feat:8496
+  legacy_to: meta.wave:787136
   reason: feature belongs to wave
-  to: meta.wave:787136
+  to: core_infrastructure_graph_history_mutato.meta.11606272
   type: relates_to
-- from: ops.feat:7104
-  legacy_from: feat:wcore_signature_read_tool
-  legacy_to: wave:core
+- from: signature_read_tool.ops.87767041
+  legacy_from: ops.feat:7104
+  legacy_to: meta.wave:787136
   reason: feature belongs to wave
-  to: meta.wave:787136
+  to: core_infrastructure_graph_history_mutato.meta.11606272
   type: relates_to
-- from: ops.feat:1408
-  legacy_from: feat:wcore_smoke_tests
-  legacy_to: wave:core
+- from: package_and_schema_smoke_tests.ops.87103745
+  legacy_from: ops.feat:1408
+  legacy_to: meta.wave:787136
   reason: feature belongs to wave
-  to: meta.wave:787136
+  to: core_infrastructure_graph_history_mutato.meta.11606272
   type: relates_to
-- from: ops.feat:5712
-  legacy_from: feat:wcore_update_node_mutation
-  legacy_to: wave:core
+- from: update_node_write_mutation.ops.58406913
+  legacy_from: ops.feat:5712
+  legacy_to: meta.wave:787136
   reason: feature belongs to wave
-  to: meta.wave:787136
+  to: core_infrastructure_graph_history_mutato.meta.11606272
   type: relates_to
-- from: ops.feat:0016
-  legacy_from: feat:wcore_validate_tool
-  legacy_to: wave:core
+- from: validate_maintain_tool.ops.49355008
+  legacy_from: ops.feat:0016
+  legacy_to: meta.wave:787136
   reason: feature belongs to wave
-  to: meta.wave:787136
+  to: core_infrastructure_graph_history_mutato.meta.11606272
   type: relates_to
-- from: ops.feat:0017
-  legacy_from: feat:wcore_viewer_graph_data
-  legacy_to: wave:core
+- from: viewer_graph_data_export.ops.53549312
+  legacy_from: ops.feat:0017
+  legacy_to: meta.wave:787136
   reason: feature belongs to wave
-  to: meta.wave:787136
+  to: core_infrastructure_graph_history_mutato.meta.11606272
   type: relates_to
-- from: ops.feat:4320
-  legacy_from: feat:wcore_viewer_http_server
-  legacy_to: wave:core
+- from: viewer_http_server.ops.29046785
+  legacy_from: ops.feat:4320
+  legacy_to: meta.wave:787136
   reason: feature belongs to wave
-  to: meta.wave:787136
+  to: core_infrastructure_graph_history_mutato.meta.11606272
   type: relates_to
-- from: ops.feat:8624
-  legacy_from: feat:wcore_viewer_multi_project
-  legacy_to: wave:core
+- from: viewer_multi_project_support.ops.21321473
+  legacy_from: ops.feat:8624
+  legacy_to: meta.wave:787136
   reason: feature belongs to wave
-  to: meta.wave:787136
+  to: core_infrastructure_graph_history_mutato.meta.11606272
   type: relates_to
-- from: meta.wave:872576
-  legacy_from: wave:0
-  legacy_to: doc:wave_0_brief
+- from: repo_bootstrap_package_skeleton_core_sch.meta.24189184
+  legacy_from: meta.wave:872576
+  legacy_to: meta.doc:444032
   reason: canonical wave brief document
-  to: meta.doc:444032
+  to: wave_0_brief.meta.51110656
   type: references
-- from: meta.wave:066880
-  legacy_from: wave:1
-  legacy_to: doc:wave_1_brief
+- from: core_engine_graphindex_loader_validator.meta.40303104
+  legacy_from: meta.wave:066880
+  legacy_to: meta.doc:187712
   reason: canonical wave brief document
-  to: meta.doc:187712
+  to: wave_1_brief.meta.65897984
   type: references
-- from: meta.wave:232704
-  legacy_from: wave:2
-  legacy_to: doc:wave_2_brief
+- from: file_storage_append_only_history_mutator.meta.52886016
+  legacy_from: meta.wave:232704
+  legacy_to: meta.doc:770624
   reason: canonical wave brief document
-  to: meta.doc:770624
+  to: wave_2_brief.meta.66346752
   type: references
-- from: meta.wave:621312
-  legacy_from: wave:3
-  legacy_to: doc:wave_3_brief
+- from: mcp_server_7_read_tools_6_core_gobp_over.meta.99023360
+  legacy_from: meta.wave:621312
+  legacy_to: meta.doc:547840
   reason: canonical wave brief document
-  to: meta.doc:547840
+  to: wave_3_brief.meta.97911296
   type: references
-- from: meta.wave:815616
-  legacy_from: wave:5
-  legacy_to: doc:wave_5_brief
+- from: write_tools_3_import_tools_2_validate_1.meta.15800576
+  legacy_from: meta.wave:815616
+  legacy_to: meta.doc:102272
   reason: canonical wave brief document
-  to: meta.doc:102272
+  to: wave_5_brief.meta.69428992
   type: references
-- from: meta.wave:009920
-  legacy_from: wave:6
-  legacy_to: doc:wave_6_brief
+- from: lessons_extract_mcp_tool_migrate_prune.meta.27720192
+  legacy_from: meta.wave:009920
+  legacy_to: meta.doc:879488
   reason: canonical wave brief document
-  to: meta.doc:879488
+  to: wave_6_brief.meta.54427136
   type: references
-- from: meta.wave:204224
-  legacy_from: wave:7
-  legacy_to: doc:wave_7_brief
+- from: documentation_polish_install_guide_contr.meta.48691713
+  legacy_from: meta.wave:204224
+  legacy_to: meta.doc:599744
   reason: canonical wave brief document
-  to: meta.doc:599744
+  to: wave_7_brief_documentation_polish.meta.73408768
   type: references
-- from: meta.wave:398528
-  legacy_from: wave:8
-  legacy_to: doc:wave_8_brief
+- from: mihos_integration_test_performance_bench.meta.69663232
+  legacy_from: meta.wave:398528
+  legacy_to: meta.doc:376960
   reason: canonical wave brief document
-  to: meta.doc:376960
+  to: wave_8_brief.meta.88196096
   type: references
-- from: meta.wave:592832
-  legacy_from: wave:9a
-  legacy_to: doc:wave_9a_brief
+- from: sqlite_persistent_index_lru_cache_perfor.meta.94829056
+  legacy_from: meta.wave:592832
+  legacy_to: meta.doc:902912
   reason: canonical wave brief document
-  to: meta.doc:902912
+  to: wave_9a_brief_sqlite_persistent_index_lr.meta.17341696
   type: references
-- from: meta.wave:981440
-  legacy_from: wave:h
-  legacy_to: doc:wave_h_brief
+- from: hardening_doc_alignment_encoding_fixes_c.meta.28383488
+  legacy_from: meta.wave:981440
+  legacy_to: meta.doc:680128
   reason: canonical wave brief document
-  to: meta.doc:680128
+  to: wave_h_brief.meta.86654976
   type: references
-- from: core.dec:7536
-  legacy_from: dec:d015
-  legacy_to: doc:wave_16a01_brief_575ef8
-  to: meta.doc:216192
+- from: priority_score_incoming_edges_outgoing_e.core.97462528
+  legacy_from: core.dec:7536
+  legacy_to: meta.doc:216192
+  to: wave_16a01_brief.meta.03646720
   type: references
-- from: core.dec:0448
-  legacy_from: dec:d016
-  legacy_to: doc:wave_16a01_brief_575ef8
-  to: meta.doc:216192
+- from: metadata_requirements_per_nodetype_flow.core.51325184
+  legacy_from: core.dec:0448
+  legacy_to: meta.doc:216192
+  to: wave_16a01_brief.meta.03646720
   type: references
-- from: core.dec:9056
-  legacy_from: dec:d017
-  legacy_to: doc:wave_16a01_brief_575ef8
-  to: meta.doc:216192
+- from: mode_summary_brief_full_standard_for_fin.core.05851136
+  legacy_from: core.dec:9056
+  legacy_to: meta.doc:216192
+  to: wave_16a01_brief.meta.03646720
   type: references
-- from: meta.wave:088128
-  legacy_to: doc:wave_0_brief_20b063
+- from: wave_0.meta.44497408
+  legacy_from: meta.wave:088128
+  legacy_to: meta.doc:759168
   reason: wave brief source document
-  to: meta.doc:759168
+  to: wave_0_brief.meta.53763840
   type: references
-- from: meta.wave:430336
-  legacy_to: doc:wave_10a_brief_7a12b9
+- from: wave_10a.meta.69663233
+  legacy_from: meta.wave:430336
+  legacy_to: meta.doc:147776
   reason: wave brief source document
-  to: meta.doc:147776
+  to: wave_10a_brief.meta.23954944
   type: references
-- from: meta.wave:545216
-  legacy_to: doc:wave_10b_brief_3470ef
+- from: wave_10b.meta.90634752
+  legacy_from: meta.wave:545216
+  legacy_to: meta.doc:730688
   reason: wave brief source document
-  to: meta.doc:730688
+  to: wave_10b_brief.meta.32792320
   type: references
-- from: meta.wave:174080
-  legacy_to: doc:wave_10c_brief_f5fd26
+- from: wave_10c.meta.48691712
+  legacy_from: meta.wave:174080
+  legacy_to: meta.doc:313600
   reason: wave brief source document
-  to: meta.doc:313600
+  to: wave_10c_brief.meta.16892928
   type: references
-- from: meta.wave:047808
-  legacy_to: doc:wave_11a_brief_02c9da
+- from: wave_11a.meta.36108801
+  legacy_from: meta.wave:047808
+  legacy_to: meta.doc:896512
   reason: wave brief source document
-  to: meta.doc:896512
+  to: wave_11a_brief.meta.83787264
   type: references
-- from: meta.wave:492480
-  legacy_to: doc:wave_11b_brief_528a0d
+- from: wave_11b.meta.78051841
+  legacy_from: meta.wave:492480
+  legacy_to: meta.doc:479424
   reason: wave brief source document
-  to: meta.doc:479424
+  to: wave_11b_brief.meta.34996736
   type: references
-- from: meta.wave:987712
-  legacy_to: doc:wave_12_brief_b727f4
+- from: wave_12.meta.32577792
+  legacy_from: meta.wave:987712
+  legacy_to: meta.doc:062336
   reason: wave brief source document
-  to: meta.doc:062336
+  to: wave_12_brief.meta.23291648
   type: references
-- from: meta.wave:903744
-  legacy_to: doc:wave_13_brief_f19f8f
+- from: wave_13.meta.24189185
+  legacy_from: meta.wave:903744
+  legacy_to: meta.doc:645248
   reason: wave brief source document
-  to: meta.doc:645248
+  to: wave_13_brief.meta.36323328
   type: references
-- from: meta.wave:489472
-  legacy_to: doc:wave_15_brief_b2833b
+- from: wave_15.meta.78051840
+  legacy_from: meta.wave:489472
+  legacy_to: meta.doc:228160
   reason: wave brief source document
-  to: meta.doc:228160
+  to: wave_15_brief.meta.33006848
   type: references
-- from: meta.wave:497856
-  legacy_to: doc:wave_16a02_brief_f7a348
+- from: wave_16a02.meta.82246144
+  legacy_from: meta.wave:497856
+  legacy_to: meta.doc:616768
   reason: wave brief source document
-  to: meta.doc:616768
+  to: wave_16a02_brief.meta.19546112
   type: references
-- from: meta.wave:698688
-  legacy_to: doc:wave_1_brief_417c52
+- from: wave_1.meta.07411969
+  legacy_from: meta.wave:698688
+  legacy_to: meta.doc:199680
   reason: wave brief source document
-  to: meta.doc:199680
+  to: wave_1_brief.meta.82675200
   type: references
-- from: meta.wave:298240
-  legacy_to: doc:wave_2_brief_e53534
+- from: wave_2.meta.61274625
+  legacy_from: meta.wave:298240
+  legacy_to: meta.doc:782592
   reason: wave brief source document
-  to: meta.doc:782592
+  to: wave_2_brief.meta.83123968
   type: references
-- from: meta.wave:088384
-  legacy_to: doc:wave_3_brief_57ec02
+- from: wave_3.meta.44497409
+  legacy_from: meta.wave:088384
+  legacy_to: meta.doc:365504
   reason: wave brief source document
-  to: meta.doc:365504
+  to: wave_3_brief.meta.75613184
   type: references
-- from: meta.wave:499520
-  legacy_to: doc:wave_4_brief_98553a
+- from: wave_4.meta.86440448
+  legacy_from: meta.wave:499520
+  legacy_to: meta.doc:948416
   reason: wave brief source document
-  to: meta.doc:948416
+  to: wave_4_brief.meta.13810688
   type: references
-- from: meta.wave:342912
-  legacy_to: doc:wave_5_brief_e8f163
+- from: wave_5.meta.65468929
+  legacy_from: meta.wave:342912
+  legacy_to: meta.doc:337024
   reason: wave brief source document
-  to: meta.doc:337024
+  to: wave_5_brief.meta.50447360
   type: references
-- from: meta.wave:314880
-  legacy_to: doc:wave_6_brief_75d161
+- from: wave_6.meta.65468928
+  legacy_from: meta.wave:314880
+  legacy_to: meta.doc:919936
   reason: wave brief source document
-  to: meta.doc:919936
+  to: wave_6_brief.meta.50896128
   type: references
-- from: meta.wave:590528
-  legacy_to: doc:wave_7_brief_263c85
+- from: wave_7.meta.90634753
+  legacy_from: meta.wave:590528
+  legacy_to: meta.doc:891456
   reason: wave brief source document
-  to: meta.doc:891456
+  to: wave_7_brief.meta.71204352
   type: references
-- from: meta.wave:507904
-  legacy_to: doc:wave_8_brief_c74899
+- from: wave_8.meta.86440449
+  legacy_from: meta.wave:507904
+  legacy_to: meta.doc:474368
   reason: wave brief source document
-  to: meta.doc:474368
+  to: wave_8_brief.meta.18219520
   type: references
-- from: meta.wave:800064
-  legacy_to: doc:wave_9a_brief_bc298a
+- from: wave_9a.meta.11606273
+  legacy_from: meta.wave:800064
+  legacy_to: meta.doc:057280
   reason: wave brief source document
-  to: meta.doc:057280
+  to: wave_9a_brief.meta.06514432
   type: references
-- from: meta.wave:277760
-  legacy_to: doc:wave_h_brief_c1e886
+- from: wave_h.meta.61274624
+  legacy_from: meta.wave:277760
+  legacy_to: meta.doc:445888
   reason: wave brief source document
-  to: meta.doc:445888
+  to: wave_h_brief.meta.63693568
   type: references
-- from: meta.idea:522112
-  legacy_to: doc:gobp_id_design_c76679
+- from: gobp_id_design_v1_0_implemented_in_wave.meta.68336640
+  legacy_from: meta.idea:522112
+  legacy_to: meta.doc:176256
   reason: idea grounded in design document
-  to: meta.doc:176256
+  to: gobp_id_design.meta.49120768
   type: references

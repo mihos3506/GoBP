@@ -1,0 +1,16 @@
+---
+covers: feat:w14_template_action
+created: '2026-04-16T03:29:34.260779+00:00'
+description: 'template: returns required/optional edges per NodeType'
+id: template_action.test.unit.84899328
+kind_id: testkind:unit
+legacy_id: test.case:602944
+name: 'template: action'
+priority: medium
+session_id: session:2026-04-16_import_all_testcase4
+status: READY
+type: TestCase
+updated: '2026-04-16T04:04:29.183851+00:00'
+---
+
+(Updated node file.)

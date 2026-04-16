@@ -1,0 +1,14 @@
+---
+actor: cursor
+created: '2026-04-15T17:48:54.494993+00:00'
+goal: retry failed import files
+id: meta.session.2026-04-16.d945f44ff
+legacy_id: meta.session:2026-04-16_12eb29398
+name: retry failed import files
+started_at: '2026-04-15T17:48:54.494993+00:00'
+status: IN_PROGRESS
+type: Session
+updated: '2026-04-15T17:48:54.494993+00:00'
+---
+
+(Auto-generated node file. Edit the YAML above or add body content below.)
