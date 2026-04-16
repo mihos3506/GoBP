@@ -72,8 +72,44 @@
   #loading p { font-size: 10px; color: var(--text-dim); letter-spacing: 0.2em; text-transform: uppercase; }
   @keyframes pulse { 0%,100%{opacity:0.3;transform:scale(1)} 50%{opacity:1;transform:scale(1.08)} }
 
-  #controls::-webkit-scrollbar, #detail::-webkit-scrollbar { width: 3px; }
-  #controls::-webkit-scrollbar-thumb, #detail::-webkit-scrollbar-thumb { background: var(--border-strong); }
+  #controls::-webkit-scrollbar, #detail::-webkit-scrollbar, #mcp-panel::-webkit-scrollbar { width: 3px; }
+  #controls::-webkit-scrollbar-thumb, #detail::-webkit-scrollbar-thumb, #mcp-panel::-webkit-scrollbar-thumb { background: var(--border-strong); }
+
+  #btn-mcp {
+    margin-top: 4px;
+    width: 100%;
+    background: rgba(255,193,7,0.08);
+    color: var(--amber);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 5px;
+    cursor: pointer;
+    font-size: 11px;
+    font-family: var(--mono);
+  }
+  #btn-mcp:hover { background: rgba(255,193,7,0.15); }
+  .mcp-field { margin-bottom: 8px; }
+  .mcp-field label { display: block; color: var(--text-dim); font-size: 10px; margin-bottom: 3px; }
+  .mcp-field input { width: 100%; background: rgba(255,255,255,0.05); border: 1px solid var(--border); border-radius: 4px; color: var(--text); padding: 5px 8px; font-family: var(--mono); font-size: 11px; }
+  .mcp-field input:focus { outline: none; border-color: var(--amber); }
+  .mcp-tabs { display: flex; gap: 4px; margin-top: 12px; }
+  .mcp-tab { flex: 1; background: transparent; border: 1px solid var(--border); border-radius: 4px 4px 0 0; color: var(--text-dim); padding: 4px; font-size: 10px; cursor: pointer; font-family: var(--mono); }
+  .mcp-tab.active { border-color: var(--amber); color: var(--amber); background: rgba(255,193,7,0.05); }
+  #mcp-panel {
+    position: fixed;
+    top: 56px;
+    right: 16px;
+    z-index: 11;
+    width: 300px;
+    max-height: calc(100vh - 80px);
+    background: var(--bg-panel);
+    backdrop-filter: blur(16px);
+    border: 1px solid var(--border);
+    padding: 16px;
+    overflow-y: auto;
+    display: none;
+  }
+  #mcp-panel .detail-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
 </style>
 </head>
 <body>
@@ -105,6 +141,7 @@
     <button id="btn-labels">Labels</button>
     <button id="btn-reset">Reset Camera</button>
     <button id="btn-refresh">↺ Refresh</button>
+    <button type="button" id="btn-mcp" onclick="toggleMCPPanel()">⚙ MCP</button>
   </section>
 </div>
 
@@ -113,6 +150,47 @@
 <div id="detail">
   <button class="close" onclick="document.getElementById('detail').classList.remove('visible')">×</button>
   <div id="detail-content"></div>
+</div>
+
+<div id="mcp-panel">
+  <div class="detail-header">
+    <span class="node-type">CONFIG</span>
+    <button type="button" onclick="toggleMCPPanel()" style="background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:14px">✕</button>
+  </div>
+  <h2 style="font-size:16px;margin-bottom:16px">⚙ MCP Config Generator</h2>
+
+  <div class="mcp-field">
+    <label>PROJECT ROOT</label>
+    <input id="mcp-root" readonly style="opacity:0.7">
+  </div>
+  <div class="mcp-field">
+    <label>PROJECT NAME</label>
+    <input id="mcp-name" oninput="generateMCP()">
+  </div>
+  <div class="mcp-field">
+    <label>DB NAME</label>
+    <input id="mcp-db" oninput="generateMCP()">
+  </div>
+  <div class="mcp-field">
+    <label>PYTHON PATH</label>
+    <input id="mcp-python" oninput="generateMCP()">
+  </div>
+  <div class="mcp-field">
+    <label>DB HOST</label>
+    <input id="mcp-dbhost" oninput="generateMCP()">
+  </div>
+  <div id="mcp-key-preview" style="color:var(--amber);font-size:11px;margin:8px 0">MCP KEY: gobp-project</div>
+
+  <div class="mcp-tabs">
+    <button type="button" class="mcp-tab active" data-tab="cli" onclick="switchMCPTab('cli')">Claude CLI</button>
+    <button type="button" class="mcp-tab" data-tab="cursor" onclick="switchMCPTab('cursor')">Cursor</button>
+    <button type="button" class="mcp-tab" data-tab="ps" onclick="switchMCPTab('ps')">PowerShell</button>
+  </div>
+
+  <div id="mcp-output" style="position:relative;margin-top:8px">
+    <pre id="mcp-code" style="background:#050508;border:1px solid var(--border);border-radius:6px;padding:12px;font-size:10px;color:#c8c8d4;overflow-x:auto;max-height:200px;overflow-y:auto;white-space:pre-wrap;margin-top:8px"></pre>
+    <button type="button" onclick="copyMCP()" style="position:absolute;top:16px;right:8px;font-size:10px;padding:3px 8px" id="mcp-copy-btn">Copy</button>
+  </div>
 </div>
 
 <div id="statusbar">
@@ -419,7 +497,104 @@ function makeSprite(text, color) {
   return sprite;
 }
 
+let mcpTab = 'cli';
+
+async function toggleMCPPanel() {
+  const panel = document.getElementById('mcp-panel');
+  const detail = document.getElementById('detail');
+
+  if (panel.style.display === 'none' || panel.style.display === '') {
+    panel.style.display = 'block';
+    detail.classList.remove('visible');
+
+    const cfgUrl = CURRENT_ROOT
+      ? `/api/config?root=${encodeURIComponent(CURRENT_ROOT)}`
+      : '/api/config';
+    try {
+      const cfg = await fetch(cfgUrl).then(r => r.json());
+      document.getElementById('mcp-root').value = cfg.project_root || '';
+      document.getElementById('mcp-name').value = cfg.project_name || '';
+      document.getElementById('mcp-db').value = cfg.suggested_db || '';
+      document.getElementById('mcp-python').value = cfg.python_path || '';
+      document.getElementById('mcp-dbhost').value = cfg.db_host || 'postgresql://postgres:***@localhost';
+      generateMCP();
+    } catch (e) {
+      console.error('Failed to load config:', e);
+    }
+  } else {
+    panel.style.display = 'none';
+  }
+}
+
+function getMCPKey() {
+  const name = document.getElementById('mcp-name').value || 'project';
+  return 'gobp-' + name.toLowerCase().replace(/[^a-z0-9]/g, '-');
+}
+
+function switchMCPTab(tab) {
+  mcpTab = tab;
+  document.querySelectorAll('.mcp-tab').forEach((el) => {
+    el.classList.toggle('active', el.getAttribute('data-tab') === tab);
+  });
+  generateMCP();
+}
+
+function generateMCP() {
+  const root = document.getElementById('mcp-root').value;
+  const name = document.getElementById('mcp-name').value;
+  const db = document.getElementById('mcp-db').value;
+  const python = document.getElementById('mcp-python').value;
+  const dbhost = document.getElementById('mcp-dbhost').value;
+  const key = getMCPKey();
+
+  document.getElementById('mcp-key-preview').textContent = 'MCP KEY: ' + key;
+
+  const serverObj = {
+    type: 'stdio',
+    command: python,
+    args: ['-m', 'gobp.mcp.server'],
+    env: {
+      GOBP_PROJECT_ROOT: root,
+      GOBP_DB_URL: dbhost + '/' + db
+    }
+  };
+
+  const cursorObj = { ...serverObj };
+  delete cursorObj.type;
+
+  let output = '';
+  if (mcpTab === 'cli') {
+    output = JSON.stringify({ mcpServers: { [key]: serverObj } }, null, 2);
+  } else if (mcpTab === 'cursor') {
+    output = JSON.stringify({ mcpServers: { [key]: cursorObj } }, null, 2);
+  } else {
+    output = `# Add ${key} to ~/.claude.json
+$server = [PSCustomObject]@{
+  type = "stdio"
+  command = "${python}"
+  args = @("-m", "gobp.mcp.server")
+  env = [PSCustomObject]@{
+    GOBP_PROJECT_ROOT = "${root}"
+    GOBP_DB_URL = "${dbhost}/${db}"
+  }
+}
+# Run this script to add the MCP server automatically`;
+  }
+
+  document.getElementById('mcp-code').textContent = output;
+}
+
+function copyMCP() {
+  const text = document.getElementById('mcp-code').textContent;
+  navigator.clipboard.writeText(text);
+  const btn = document.getElementById('mcp-copy-btn');
+  btn.textContent = 'Copied!';
+  setTimeout(() => { btn.textContent = 'Copy'; }, 2000);
+}
+
 function showDetail(node) {
+  const mcpPanel = document.getElementById('mcp-panel');
+  if (mcpPanel) mcpPanel.style.display = 'none';
   const out = [], inc = [];
   const edges = GRAPH_DATA.edges||GRAPH_DATA.links||[];
   edges.forEach(e => {
