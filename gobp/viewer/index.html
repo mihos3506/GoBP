@@ -159,6 +159,13 @@ const TIER_Y = {
     test:   400,
     meta:   800,
 };
+const TIER_X = {
+  core: 0,
+  domain: 0,
+  ops: 0,
+  test: 0,
+  meta: 0,
+};
 const TYPE_GROUP = {
   Decision: "core", Invariant: "core", Concept: "core",
   Entity: "domain",
@@ -166,6 +173,27 @@ const TYPE_GROUP = {
   TestKind: "test", TestCase: "test",
   Session: "meta", Wave: "meta", Document: "meta", Lesson: "meta", Node: "meta", Repository: "meta", Idea: "meta",
 };
+function stableHash(input) {
+  let h = 0;
+  for (let i = 0; i < input.length; i += 1) {
+    h = ((h << 5) - h) + input.charCodeAt(i);
+    h |= 0;
+  }
+  return Math.abs(h);
+}
+
+function tierTargetX(node) {
+  const group = TYPE_GROUP[node.type] || 'meta';
+  const center = TIER_X[group] ?? 0;
+  // Deterministic spread keeps each tier horizontally balanced.
+  const jitter = (stableHash(node.id || node.name || '') % 1200) - 600;
+  return center + jitter;
+}
+
+function tierTargetY(node) {
+  const group = TYPE_GROUP[node.type] || 'meta';
+  return TIER_Y[group] ?? 0;
+}
 const EDGE_STATIC_COLORS = {
   implements: 'rgba(255, 214, 66, 0.92)',
   depends_on: 'rgba(255, 197, 38, 0.88)',
@@ -359,12 +387,17 @@ function initGraph() {
     .onNodeClick(n => showDetail(n))
     .onBackgroundClick(() => document.getElementById('detail').classList.remove('visible'));
 
-  FG.d3Force('charge').strength(-80);
-  FG.d3Force('link').distance(l => l.type==='belongs_to'?30:80);
-  FG.d3Force('y', d3.forceY(n => {
-             const group = TYPE_GROUP[n.type] || 'meta';
-            return TIER_Y[group] ?? 0;
-    }).strength(0.25));
+  FG.d3Force('charge').strength(-95);
+  FG.d3Force('link').distance(l => {
+    if (l.type === 'belongs_to') return 35;
+    const sourceTier = NODE_TIERS[(l.source && l.source.type) || 'Node'] || 3;
+    const targetTier = NODE_TIERS[(l.target && l.target.type) || 'Node'] || 3;
+    const delta = Math.abs(sourceTier - targetTier);
+    return 85 + (delta * 15);
+  });
+  FG.d3Force('x', d3.forceX(n => tierTargetX(n)).strength(0.11));
+  FG.d3Force('y', d3.forceY(n => tierTargetY(n)).strength(0.32));
+  FG.d3Force('collide', d3.forceCollide(n => (PRIORITY_SIZE[n.priority] || 3) * 4 + 8).strength(0.9));
 }
 
 function makeSprite(text, color) {

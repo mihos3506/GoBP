@@ -36,7 +36,17 @@
       "Bash(cat .claude/settings.json)",
       "Bash(ls .claude/)",
       "Read(//c/Users/Dell7320/AppData/Roaming/Claude/**)",
-      "Read(//c/Users/Dell7320/.claude/**)"
+      "Read(//c/Users/Dell7320/.claude/**)",
+      "Bash(xargs grep *)",
+      "Bash(GOBP_DB_URL=\"postgresql://postgres:Hieu%408283%40@localhost/gobp\" PYTHONUTF8=1 venv/Scripts/python.exe scripts/import_testcases.py)",
+      "Bash(tee /tmp/tc_import_run2.txt)",
+      "Read(//tmp/**)",
+      "Bash(GOBP_DB_URL=\"postgresql://postgres:Hieu%408283%40@localhost/gobp\" PYTHONUTF8=1 venv/Scripts/python.exe -m pytest tests/ --tb=no -q)",
+      "Bash(GOBP_DB_URL=\"postgresql://postgres:Hieu%408283%40@localhost/gobp\" PYTHONUTF8=1 venv/Scripts/python.exe -m pytest tests/test_wave16a01.py --tb=short -q)",
+      "Bash(PYTHONUTF8=1 GOBP_DB_URL=\"postgresql://postgres:Hieu%408283%40@localhost/gobp\" D:/GoBP/venv/Scripts/python.exe -m pytest tests/test_wave16a02.py -v --tb=short)",
+      "Bash(PYTHONUTF8=1 GOBP_DB_URL=\"postgresql://postgres:Hieu%408283%40@localhost/gobp\" D:/GoBP/venv/Scripts/python.exe -m pytest tests/ -q --tb=no)",
+      "Bash(PYTHONUTF8=1 GOBP_DB_URL=\"postgresql://postgres:Hieu%408283%40@localhost/gobp\" D:/GoBP/venv/Scripts/python.exe -m pytest tests/test_wave16a02.py::test_migrated_ids_have_group_namespace -v)",
+      "Bash(PYTHONUTF8=1 GOBP_DB_URL=\"postgresql://postgres:Hieu%408283%40@localhost/gobp\" D:/GoBP/venv/Scripts/python.exe -m pytest tests/test_wave16a03.py -v --tb=short)"
     ]
   }
 }
