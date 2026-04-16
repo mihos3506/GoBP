@@ -14,6 +14,11 @@ priority: medium
 sections:
 - heading: Module-level singleton for MCP server use
   level: 1
+description: Imported document from gobp/core/cache.py with 1 indexed sections.
+tags:
+- document
+- core
+spec_source: gobp/core/cache.py
 ---
 
 (Auto-generated node file. Edit the YAML above or add body content below.)

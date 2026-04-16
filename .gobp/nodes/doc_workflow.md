@@ -12,46 +12,50 @@ registered_at: '2026-04-15T17:48:26.688189+00:00'
 last_verified: '2026-04-15T17:48:26.688189+00:00'
 priority: medium
 sections:
-- heading: WORKFLOW — GoBP Build Pipeline
+- heading: "WORKFLOW \u2014 GoBP Build Pipeline"
   level: 1
 - heading: OVERVIEW
   level: 2
 - heading: ACTORS
   level: 2
-- heading: CTO Chat (Claude Desktop) — Designer
+- heading: "CTO Chat (Claude Desktop) \u2014 Designer"
   level: 3
-- heading: Claude CLI — Orchestrator + Tier 3 Auditor
+- heading: "Claude CLI \u2014 Orchestrator + Tier 3 Auditor"
   level: 3
-- heading: Cursor — Tier 1 Builder
+- heading: "Cursor \u2014 Tier 1 Builder"
   level: 3
-- heading: Qodo — Tier 2 Tester
+- heading: "Qodo \u2014 Tier 2 Tester"
   level: 3
-- heading: CEO — Escalation contact
+- heading: "CEO \u2014 Escalation contact"
   level: 3
 - heading: TASK GRANULARITY (CRITICAL RULE)
   level: 2
 - heading: PIPELINE EXECUTION (per task)
   level: 2
-- heading: Step 1 — Read task
+- heading: "Step 1 \u2014 Read task"
   level: 3
-- heading: Step 2 — Dispatch to Cursor (Tier 1)
+- heading: "Step 2 \u2014 Dispatch to Cursor (Tier 1)"
   level: 3
-- heading: Step 3 — Test (Tier 2)
+- heading: "Step 3 \u2014 Test (Tier 2)"
   level: 3
-- heading: Step 4 — Audit (Tier 3)
+- heading: "Step 4 \u2014 Audit (Tier 3)"
   level: 3
-- heading: Step 5 — Commit task
+- heading: "Step 5 \u2014 Commit task"
   level: 3
-- heading: Step 6 — Escalate (only if blocked)
+- heading: "Step 6 \u2014 Escalate (only if blocked)"
   level: 3
 - heading: RETRY POLICY
   level: 2
-- heading: Cursor failure — retry up to 3 times
+- heading: "Cursor failure \u2014 retry up to 3 times"
   level: 3
-- heading: Qodo failure — retry up to 2 times
+- heading: "Qodo failure \u2014 retry up to 2 times"
   level: 3
-- heading: Test failure — retry up to 3 times
+- heading: "Test failure \u2014 retry up to 3 times"
   level: 3
+description: Imported document from waves/WORKFLOW.md with 20 indexed sections.
+tags:
+- document
+spec_source: waves/WORKFLOW.md
 ---
 
 (Auto-generated node file. Edit the YAML above or add body content below.)

@@ -12,6 +12,11 @@ registered_at: '2026-04-15T17:47:44.406368+00:00'
 last_verified: '2026-04-15T17:47:44.406368+00:00'
 priority: medium
 sections: []
+description: Imported document from gobp/mcp/tools/import_.py.
+tags:
+- document
+- mcp
+spec_source: gobp/mcp/tools/import_.py
 ---
 
 (Auto-generated node file. Edit the YAML above or add body content below.)

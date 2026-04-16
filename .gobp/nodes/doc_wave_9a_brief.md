@@ -137,6 +137,8 @@ tags:
 - brief
 - wave-9a
 status: ACTIVE
+description: Imported document from waves/wave_9a_brief.md with 57 indexed sections.
+spec_source: waves/wave_9a_brief.md
 ---
 
 (Auto-generated node file. Edit the YAML above or add body content below.)

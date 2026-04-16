@@ -12,7 +12,7 @@ registered_at: '2026-04-15T17:48:35.962582+00:00'
 last_verified: '2026-04-15T17:48:35.962582+00:00'
 priority: high
 sections:
-- heading: WAVE 3 BRIEF — MCP SERVER + READ TOOLS
+- heading: "WAVE 3 BRIEF \u2014 MCP SERVER + READ TOOLS"
   level: 1
 - heading: CONTEXT
   level: 2
@@ -26,26 +26,26 @@ sections:
   level: 2
 - heading: TASKS
   level: 1
-- heading: TASK 1 — MCP server skeleton + tool registration
+- heading: "TASK 1 \u2014 MCP server skeleton + tool registration"
   level: 2
 - heading: Global server instance and index (loaded on startup)
   level: 1
 - heading: Verify server module can be imported and started (will hang waiting for
     stdio, Ctrl+C to exit)
   level: 1
-- heading: TASK 2 — Implement gobp_overview
+- heading: "TASK 2 \u2014 Implement gobp_overview"
   level: 2
-- heading: TASK 3 — Implement find
+- heading: "TASK 3 \u2014 Implement find"
   level: 2
-- heading: TASK 4 — Implement signature
+- heading: "TASK 4 \u2014 Implement signature"
   level: 2
-- heading: TASK 5 — Implement context
+- heading: "TASK 5 \u2014 Implement context"
   level: 2
-- heading: TASK 6 — Implement session_recent and decisions_for
+- heading: "TASK 6 \u2014 Implement session_recent and decisions_for"
   level: 2
-- heading: TASK 7 — Implement doc_sections
+- heading: "TASK 7 \u2014 Implement doc_sections"
   level: 2
-- heading: TASK 8 — Write MCP tools tests
+- heading: "TASK 8 \u2014 Write MCP tools tests"
   level: 2
 - heading: =============================================================================
   level: 1
@@ -53,6 +53,11 @@ sections:
   level: 1
 - heading: =============================================================================
   level: 1
+description: Imported document from waves/wave_3_brief.md with 20 indexed sections.
+tags:
+- document
+- wave
+spec_source: waves/wave_3_brief.md
 ---
 
 (Updated node file.)

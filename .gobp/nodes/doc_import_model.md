@@ -12,25 +12,25 @@ registered_at: '2026-04-15T17:47:21.578857+00:00'
 last_verified: '2026-04-15T17:47:21.578857+00:00'
 priority: critical
 sections:
-- heading: ◈ GoBP IMPORT MODEL
+- heading: "\u25C8 GoBP IMPORT MODEL"
   level: 1
 - heading: 0. WHY IMPORT MATTERS
   level: 2
 - heading: 1. THREE PROJECT STATES
   level: 2
-- heading: State 1 — Greenfield (empty)
+- heading: "State 1 \u2014 Greenfield (empty)"
   level: 3
-- heading: State 2 — In-progress (docs exist, code partial)
+- heading: "State 2 \u2014 In-progress (docs exist, code partial)"
   level: 3
-- heading: State 3 — Legacy (mature project)
+- heading: "State 3 \u2014 Legacy (mature project)"
   level: 3
 - heading: 2. THE 3 IMPORT APPROACHES
   level: 2
-- heading: Approach A — Manual entry via conversation
+- heading: "Approach A \u2014 Manual entry via conversation"
   level: 3
-- heading: Approach B — Auto-parser scripts
+- heading: "Approach B \u2014 Auto-parser scripts"
   level: 3
-- heading: Approach C — AI-assisted proposal (RECOMMENDED)
+- heading: "Approach C \u2014 AI-assisted proposal (RECOMMENDED)"
   level: 3
 - heading: 3. APPROACH C IN DETAIL
   level: 2
@@ -52,6 +52,11 @@ sections:
   level: 2
 - heading: 5.1 Code scanning approach
   level: 3
+description: Imported document from docs/IMPORT_MODEL.md with 20 indexed sections.
+tags:
+- document
+- docs
+spec_source: docs/IMPORT_MODEL.md
 ---
 
 (Updated node file.)

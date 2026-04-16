@@ -18,6 +18,10 @@ sections:
   level: 2
 - heading: Examples
   level: 2
+description: Imported document from gobp/templates/concept.md with 3 indexed sections.
+tags:
+- document
+spec_source: gobp/templates/concept.md
 ---
 
 (Auto-generated node file. Edit the YAML above or add body content below.)

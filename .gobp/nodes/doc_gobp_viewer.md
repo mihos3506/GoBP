@@ -12,6 +12,11 @@ registered_at: '2026-04-15T17:47:19.286818+00:00'
 last_verified: '2026-04-15T17:47:19.286818+00:00'
 priority: medium
 sections: []
+description: Imported document from GoBP_Viewer.bat.
+tags:
+- document
+- viewer
+spec_source: GoBP_Viewer.bat
 ---
 
 (Auto-generated node file. Edit the YAML above or add body content below.)

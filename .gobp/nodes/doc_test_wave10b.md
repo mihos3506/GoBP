@@ -26,6 +26,11 @@ sections:
   level: 1
 - heading: -- gobp_overview priority summary tests -------------------------------------
   level: 1
+description: Imported document from tests/test_wave10b.py with 7 indexed sections.
+tags:
+- document
+- tests
+spec_source: tests/test_wave10b.py
 ---
 
 (Auto-generated node file. Edit the YAML above or add body content below.)

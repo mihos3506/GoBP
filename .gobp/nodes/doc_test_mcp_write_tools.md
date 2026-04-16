@@ -30,6 +30,12 @@ sections:
   level: 1
 - heading: =============================================================================
   level: 1
+description: Imported document from tests/test_mcp_write_tools.py with 9 indexed sections.
+tags:
+- document
+- tests
+- mcp
+spec_source: tests/test_mcp_write_tools.py
 ---
 
 (Auto-generated node file. Edit the YAML above or add body content below.)

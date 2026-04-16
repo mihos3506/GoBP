@@ -12,11 +12,17 @@ registered_at: '2026-04-15T17:47:46.305785+00:00'
 last_verified: '2026-04-15T17:47:46.305785+00:00'
 priority: medium
 sections:
-- heading: (type_name, id_prefix_full, slice_index) — for auto-numbered node types.
+- heading: "(type_name, id_prefix_full, slice_index) \u2014 for auto-numbered node\
+    \ types."
   level: 1
 - heading: slice_index is the position in the full prefix where the numeric suffix
     begins.
   level: 1
+description: Imported document from gobp/mcp/tools/write.py with 2 indexed sections.
+tags:
+- document
+- mcp
+spec_source: gobp/mcp/tools/write.py
 ---
 
 (Auto-generated node file. Edit the YAML above or add body content below.)

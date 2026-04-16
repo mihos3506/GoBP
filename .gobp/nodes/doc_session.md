@@ -18,6 +18,10 @@ sections:
   level: 2
 - heading: Handoff notes
   level: 2
+description: Imported document from gobp/templates/session.md with 3 indexed sections.
+tags:
+- document
+spec_source: gobp/templates/session.md
 ---
 
 (Auto-generated node file. Edit the YAML above or add body content below.)

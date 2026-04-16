@@ -24,6 +24,12 @@ sections:
   level: 1
 - heading: '- gobp/schema/extensions/mihos.yaml'
   level: 1
+description: Imported document from gobp/schema/extensions/mihos.yaml with 6 indexed
+  sections.
+tags:
+- document
+- schema
+spec_source: gobp/schema/extensions/mihos.yaml
 ---
 
 (Auto-generated node file. Edit the YAML above or add body content below.)

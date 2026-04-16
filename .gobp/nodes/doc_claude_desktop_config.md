@@ -12,6 +12,11 @@ registered_at: '2026-04-15T17:47:26.438212+00:00'
 last_verified: '2026-04-15T17:47:26.438212+00:00'
 priority: medium
 sections: []
+description: Imported document from examples/mcp_configs/claude_desktop_config.json.
+tags:
+- document
+- mcp
+spec_source: examples/mcp_configs/claude_desktop_config.json
 ---
 
 (Auto-generated node file. Edit the YAML above or add body content below.)

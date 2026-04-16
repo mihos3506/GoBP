@@ -12,9 +12,9 @@ registered_at: '2026-04-15T17:47:20.376802+00:00'
 last_verified: '2026-04-15T17:47:20.376802+00:00'
 priority: high
 sections:
-- heading: FOUNDATIONAL DOCS UPDATES — 2026-04-14
+- heading: "FOUNDATIONAL DOCS UPDATES \u2014 2026-04-14"
   level: 1
-- heading: UPDATE 1 — MCP_TOOLS.md
+- heading: "UPDATE 1 \u2014 MCP_TOOLS.md"
   level: 1
 - heading: 'Tool: `gobp_overview`'
   level: 2
@@ -40,18 +40,23 @@ sections:
   level: 3
 - heading: Also applies to
   level: 3
-- heading: UPDATE 2 — ARCHITECTURE.md
+- heading: "UPDATE 2 \u2014 ARCHITECTURE.md"
   level: 1
 - heading: Multi-Project Architecture
   level: 2
 - heading: Architecture principle
   level: 3
-- heading: Per-project instances (Pattern A — v1 default)
+- heading: "Per-project instances (Pattern A \u2014 v1 default)"
   level: 3
 - heading: GoBP package installed globally
   level: 1
 - heading: Project A
   level: 1
+description: Imported document from docs/ARCHITECTURE.md with 20 indexed sections.
+tags:
+- document
+- docs
+spec_source: docs/ARCHITECTURE.md
 ---
 
 (Updated node file.)

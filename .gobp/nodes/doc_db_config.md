@@ -12,6 +12,11 @@ registered_at: '2026-04-15T17:47:32.119145+00:00'
 last_verified: '2026-04-15T17:47:32.119145+00:00'
 priority: medium
 sections: []
+description: Imported document from gobp/core/db_config.py.
+tags:
+- document
+- core
+spec_source: gobp/core/db_config.py
 ---
 
 (Auto-generated node file. Edit the YAML above or add body content below.)

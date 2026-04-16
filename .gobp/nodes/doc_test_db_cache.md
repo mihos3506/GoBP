@@ -14,10 +14,24 @@ priority: medium
 sections:
 - heading: Skip all DB tests if PostgreSQL not configured
   level: 1
-- heading: ── Cache tests ───────────────────────────────────────────────────────────────
+- heading: "\u2500\u2500 Cache tests \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\
+    \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\
+    \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\
+    \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\
+    \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\
+    \u2500\u2500\u2500"
   level: 1
-- heading: ── SQLite db tests ───────────────────────────────────────────────────────────
+- heading: "\u2500\u2500 SQLite db tests \u2500\u2500\u2500\u2500\u2500\u2500\u2500\
+    \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\
+    \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\
+    \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\
+    \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500"
   level: 1
+description: Imported document from tests/test_db_cache.py with 3 indexed sections.
+tags:
+- document
+- tests
+spec_source: tests/test_db_cache.py
 ---
 
 (Auto-generated node file. Edit the YAML above or add body content below.)

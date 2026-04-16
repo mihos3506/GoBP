@@ -12,6 +12,11 @@ registered_at: '2026-04-15T17:47:35.089939+00:00'
 last_verified: '2026-04-15T17:47:35.089939+00:00'
 priority: medium
 sections: []
+description: Imported document from gobp/core/loader.py.
+tags:
+- document
+- core
+spec_source: gobp/core/loader.py
 ---
 
 (Auto-generated node file. Edit the YAML above or add body content below.)

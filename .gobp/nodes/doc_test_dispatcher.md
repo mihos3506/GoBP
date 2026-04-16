@@ -16,6 +16,11 @@ sections:
   level: 1
 - heading: -- dispatch routing tests ----------------------------------------------------
   level: 1
+description: Imported document from tests/test_dispatcher.py with 2 indexed sections.
+tags:
+- document
+- tests
+spec_source: tests/test_dispatcher.py
 ---
 
 (Auto-generated node file. Edit the YAML above or add body content below.)

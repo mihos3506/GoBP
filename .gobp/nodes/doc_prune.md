@@ -12,6 +12,11 @@ registered_at: '2026-04-15T17:47:38.011945+00:00'
 last_verified: '2026-04-15T17:47:38.011945+00:00'
 priority: medium
 sections: []
+description: Imported document from gobp/core/prune.py.
+tags:
+- document
+- core
+spec_source: gobp/core/prune.py
 ---
 
 (Auto-generated node file. Edit the YAML above or add body content below.)

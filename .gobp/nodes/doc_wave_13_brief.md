@@ -12,7 +12,7 @@ registered_at: '2026-04-15T17:48:33.712638+00:00'
 last_verified: '2026-04-15T17:48:33.712638+00:00'
 priority: high
 sections:
-- heading: WAVE 13 BRIEF — PAGINATION + UPSERT + GUARDRAILS + OBSERVABILITY
+- heading: "WAVE 13 BRIEF \u2014 PAGINATION + UPSERT + GUARDRAILS + OBSERVABILITY"
   level: 1
 - heading: CONTEXT
   level: 2
@@ -36,22 +36,31 @@ sections:
   level: 2
 - heading: TASKS
   level: 1
-- heading: TASK 1 — Add pagination to find()
+- heading: "TASK 1 \u2014 Add pagination to find()"
   level: 2
-- heading: TASK 2 — Add pagination to related() and tests()
+- heading: "TASK 2 \u2014 Add pagination to related() and tests()"
   level: 2
-- heading: TASK 3 — Add guardrails to write responses
+- heading: "TASK 3 \u2014 Add guardrails to write responses"
   level: 2
-- heading: TASK 4 — Add dry_run support
+- heading: "TASK 4 \u2014 Add dry_run support"
   level: 2
-- heading: 'TASK 5 — Add upsert: action'
+- heading: "TASK 5 \u2014 Add upsert: action"
   level: 2
-- heading: TASK 6 — Add in-memory stats tracking
+- heading: "TASK 6 \u2014 Add in-memory stats tracking"
   level: 2
-- heading: ── In-memory stats ───────────────────────────────────────────────────────────
+- heading: "\u2500\u2500 In-memory stats \u2500\u2500\u2500\u2500\u2500\u2500\u2500\
+    \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\
+    \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\
+    \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\
+    \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500"
   level: 1
-- heading: 'TASK 7 — Add stats: to dispatcher PROTOCOL_GUIDE'
+- heading: "TASK 7 \u2014 Add stats: to dispatcher PROTOCOL_GUIDE"
   level: 2
+description: Imported document from waves/wave_13_brief.md with 20 indexed sections.
+tags:
+- document
+- wave
+spec_source: waves/wave_13_brief.md
 ---
 
 (Updated node file.)

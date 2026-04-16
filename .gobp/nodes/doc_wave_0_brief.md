@@ -12,7 +12,7 @@ registered_at: '2026-04-15T17:48:27.559333+00:00'
 last_verified: '2026-04-15T17:48:27.559333+00:00'
 priority: high
 sections:
-- heading: WAVE 0 BRIEF — REPO BOOTSTRAP
+- heading: "WAVE 0 BRIEF \u2014 REPO BOOTSTRAP"
   level: 1
 - heading: CONTEXT
   level: 2
@@ -42,16 +42,21 @@ sections:
   level: 1
 - heading: TASKS
   level: 1
-- heading: TASK 1 — Create Python package skeleton
+- heading: "TASK 1 \u2014 Create Python package skeleton"
   level: 2
-- heading: TASK 2 — Create pyproject.toml
+- heading: "TASK 2 \u2014 Create pyproject.toml"
   level: 2
-- heading: TASK 3 — Create requirements files
+- heading: "TASK 3 \u2014 Create requirements files"
   level: 2
-- heading: TASK 4 — Set up virtual environment and install
+- heading: "TASK 4 \u2014 Set up virtual environment and install"
   level: 2
 - heading: Create venv
   level: 1
+description: Imported document from waves/wave_0_brief.md with 20 indexed sections.
+tags:
+- document
+- wave
+spec_source: waves/wave_0_brief.md
 ---
 
 (Updated node file.)

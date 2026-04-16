@@ -12,6 +12,11 @@ registered_at: '2026-04-15T17:47:59.845309+00:00'
 last_verified: '2026-04-15T17:47:59.845309+00:00'
 priority: high
 sections: []
+description: Imported document from gobp/viewer/index.html.
+tags:
+- document
+- viewer
+spec_source: gobp/viewer/index.html
 ---
 
 (Auto-generated node file. Edit the YAML above or add body content below.)

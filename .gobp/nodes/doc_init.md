@@ -12,6 +12,11 @@ registered_at: '2026-04-15T17:47:33.767635+00:00'
 last_verified: '2026-04-15T17:47:33.767635+00:00'
 priority: critical
 sections: []
+description: Imported document from gobp/core/init.py.
+tags:
+- document
+- core
+spec_source: gobp/core/init.py
 ---
 
 (Auto-generated node file. Edit the YAML above or add body content below.)

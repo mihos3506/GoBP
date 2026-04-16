@@ -18,6 +18,11 @@ sections:
   level: 1
 - heading: -- Protocol guide (included in gobp_overview response) ----------------------
   level: 1
+description: Imported document from gobp/mcp/dispatcher.py with 3 indexed sections.
+tags:
+- document
+- mcp
+spec_source: gobp/mcp/dispatcher.py
 ---
 
 (Auto-generated node file. Edit the YAML above or add body content below.)

@@ -12,27 +12,27 @@ registered_at: '2026-04-15T17:48:38.284383+00:00'
 last_verified: '2026-04-15T17:48:38.284383+00:00'
 priority: high
 sections:
-- heading: 'WAVE 6 BRIEF — ADVANCED FEATURES: LESSONS EXTRACT + MIGRATE + PRUNE'
+- heading: "WAVE 6 BRIEF \u2014 ADVANCED FEATURES: LESSONS EXTRACT + MIGRATE + PRUNE"
   level: 1
 - heading: CONTEXT
   level: 2
-- heading: CURSOR EXECUTION RULES (READ FIRST — NON-NEGOTIABLE)
+- heading: "CURSOR EXECUTION RULES (READ FIRST \u2014 NON-NEGOTIABLE)"
   level: 2
-- heading: R1 — Sequential execution
+- heading: "R1 \u2014 Sequential execution"
   level: 3
-- heading: R2 — Discovery before creation
+- heading: "R2 \u2014 Discovery before creation"
   level: 3
-- heading: R3 — 1 task = 1 commit
+- heading: "R3 \u2014 1 task = 1 commit"
   level: 3
-- heading: R4 — MCP_TOOLS.md is supreme authority
+- heading: "R4 \u2014 MCP_TOOLS.md is supreme authority"
   level: 3
-- heading: R5 — Document disagreement = STOP and suggest
+- heading: "R5 \u2014 Document disagreement = STOP and suggest"
   level: 3
-- heading: R6 — 3 retries = STOP and report
+- heading: "R6 \u2014 3 retries = STOP and report"
   level: 3
-- heading: R7 — No scope creep
+- heading: "R7 \u2014 No scope creep"
   level: 3
-- heading: R8 — Brief code blocks are authoritative
+- heading: "R8 \u2014 Brief code blocks are authoritative"
   level: 3
 - heading: STOP REPORT FORMAT
   level: 2
@@ -46,12 +46,17 @@ sections:
   level: 1
 - heading: 'Expected: Tools: 13'
   level: 1
-- heading: REQUIRED READING — WAVE START (before Task 1)
+- heading: "REQUIRED READING \u2014 WAVE START (before Task 1)"
   level: 2
 - heading: TASKS
   level: 1
-- heading: TASK 1 — Create gobp/core/lessons.py skeleton
+- heading: "TASK 1 \u2014 Create gobp/core/lessons.py skeleton"
   level: 2
+description: Imported document from waves/wave_6_brief.md with 20 indexed sections.
+tags:
+- document
+- wave
+spec_source: waves/wave_6_brief.md
 ---
 
 (Updated node file.)

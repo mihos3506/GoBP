@@ -12,6 +12,10 @@ registered_at: '2026-04-15T17:48:02.437392+00:00'
 last_verified: '2026-04-15T17:48:02.437392+00:00'
 priority: medium
 sections: []
+description: Imported document from projects.json.
+tags:
+- document
+spec_source: projects.json
 ---
 
 (Auto-generated node file. Edit the YAML above or add body content below.)

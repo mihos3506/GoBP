@@ -12,7 +12,7 @@ registered_at: '2026-04-15T17:47:22.068490+00:00'
 last_verified: '2026-04-15T17:47:22.068490+00:00'
 priority: critical
 sections:
-- heading: ◈ GoBP INPUT MODEL
+- heading: "\u25C8 GoBP INPUT MODEL"
   level: 1
 - heading: 0. CORE PRINCIPLE
   level: 2
@@ -26,15 +26,15 @@ sections:
   level: 3
 - heading: 2. THE 5 CAPTURE PATTERNS
   level: 2
-- heading: Pattern 1 — Brain dump (Idea capture)
+- heading: "Pattern 1 \u2014 Brain dump (Idea capture)"
   level: 3
-- heading: Pattern 2 — Refinement (Idea update)
+- heading: "Pattern 2 \u2014 Refinement (Idea update)"
   level: 3
-- heading: Pattern 3 — Confirmation (Decision lock)
+- heading: "Pattern 3 \u2014 Confirmation (Decision lock)"
   level: 3
-- heading: Pattern 4 — Observation (Lesson capture)
+- heading: "Pattern 4 \u2014 Observation (Lesson capture)"
   level: 3
-- heading: Pattern 5 — Reference (Document registration)
+- heading: "Pattern 5 \u2014 Reference (Document registration)"
   level: 3
 - heading: 3. VERIFICATION PROTOCOL
   level: 2
@@ -52,6 +52,11 @@ sections:
   level: 3
 - heading: 4.2 Maturity progression tracking
   level: 3
+description: Imported document from docs/INPUT_MODEL.md with 20 indexed sections.
+tags:
+- document
+- docs
+spec_source: docs/INPUT_MODEL.md
 ---
 
 (Updated node file.)

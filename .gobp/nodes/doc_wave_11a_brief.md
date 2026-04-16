@@ -12,7 +12,7 @@ registered_at: '2026-04-15T17:48:31.097129+00:00'
 last_verified: '2026-04-15T17:48:31.097129+00:00'
 priority: medium
 sections:
-- heading: WAVE 11A BRIEF — LAZY QUERY ACTIONS
+- heading: "WAVE 11A BRIEF \u2014 LAZY QUERY ACTIONS"
   level: 1
 - heading: CONTEXT
   level: 2
@@ -30,28 +30,55 @@ sections:
   level: 2
 - heading: TASKS
   level: 1
-- heading: TASK 1 — Add code_refs and invariants to schema
+- heading: "TASK 1 \u2014 Add code_refs and invariants to schema"
   level: 2
-- heading: TASK 2 — Add handler functions to read.py
+- heading: "TASK 2 \u2014 Add handler functions to read.py"
   level: 2
-- heading: TASK 3 — Add 4 actions to dispatcher
+- heading: "TASK 3 \u2014 Add 4 actions to dispatcher"
   level: 2
-- heading: TASK 4 — Smoke test all 4 new actions
+- heading: "TASK 4 \u2014 Smoke test all 4 new actions"
   level: 2
 - heading: 'Expected: 253 tests passing'
   level: 1
-- heading: TASK 5 — Create tests/test_wave11a.py
+- heading: "TASK 5 \u2014 Create tests/test_wave11a.py"
   level: 2
-- heading: ── Fixtures ──────────────────────────────────────────────────────────────────
+- heading: "\u2500\u2500 Fixtures \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\
+    \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\
+    \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\
+    \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\
+    \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\
+    \u2500\u2500\u2500\u2500\u2500\u2500"
   level: 1
-- heading: ── Schema tests ──────────────────────────────────────────────────────────────
+- heading: "\u2500\u2500 Schema tests \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\
+    \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\
+    \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\
+    \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\
+    \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\
+    \u2500\u2500"
   level: 1
-- heading: ── parse_query tests ─────────────────────────────────────────────────────────
+- heading: "\u2500\u2500 parse_query tests \u2500\u2500\u2500\u2500\u2500\u2500\u2500\
+    \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\
+    \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\
+    \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\
+    \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500"
   level: 1
-- heading: ── code_refs handler tests ───────────────────────────────────────────────────
+- heading: "\u2500\u2500 code_refs handler tests \u2500\u2500\u2500\u2500\u2500\u2500\
+    \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\
+    \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\
+    \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\
+    \u2500\u2500\u2500\u2500\u2500\u2500"
   level: 1
-- heading: ── invariants handler tests ──────────────────────────────────────────────────
+- heading: "\u2500\u2500 invariants handler tests \u2500\u2500\u2500\u2500\u2500\u2500\
+    \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\
+    \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\
+    \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\
+    \u2500\u2500\u2500\u2500\u2500"
   level: 1
+description: Imported document from waves/wave_11a_brief.md with 20 indexed sections.
+tags:
+- document
+- wave
+spec_source: waves/wave_11a_brief.md
 ---
 
 (Auto-generated node file. Edit the YAML above or add body content below.)

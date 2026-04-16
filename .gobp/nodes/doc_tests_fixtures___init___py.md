@@ -10,6 +10,11 @@ source_path: tests/fixtures/__init__.py
 content_hash: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
 registered_at: '2026-04-15T17:49:14.669114+00:00'
 last_verified: '2026-04-15T17:49:14.669114+00:00'
+description: Imported document from tests/fixtures/__init__.py.
+tags:
+- document
+- tests
+spec_source: tests/fixtures/__init__.py
 ---
 
 (Auto-generated node file. Edit the YAML above or add body content below.)

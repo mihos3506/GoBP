@@ -16,6 +16,10 @@ sections:
   level: 2
 - heading: Implementation notes
   level: 2
+description: Imported document from gobp/templates/decision.md with 2 indexed sections.
+tags:
+- document
+spec_source: gobp/templates/decision.md
 ---
 
 (Auto-generated node file. Edit the YAML above or add body content below.)

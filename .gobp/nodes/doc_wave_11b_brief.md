@@ -12,7 +12,7 @@ registered_at: '2026-04-15T17:48:32.125709+00:00'
 last_verified: '2026-04-15T17:48:32.125709+00:00'
 priority: high
 sections:
-- heading: WAVE 11B BRIEF — 3D GRAPH VIEWER
+- heading: "WAVE 11B BRIEF \u2014 3D GRAPH VIEWER"
   level: 1
 - heading: CONTEXT
   level: 2
@@ -26,7 +26,7 @@ sections:
   level: 2
 - heading: TASKS
   level: 1
-- heading: TASK 1 — Create gobp/viewer/ package
+- heading: "TASK 1 \u2014 Create gobp/viewer/ package"
   level: 2
 - heading: '`gobp/viewer/__init__.py`'
   level: 3
@@ -34,9 +34,9 @@ sections:
   level: 3
 - heading: '`gobp/viewer/server.py`'
   level: 3
-- heading: TASK 2 — Create gobp/viewer/index.html (3D viewer SPA)
+- heading: "TASK 2 \u2014 Create gobp/viewer/index.html (3D viewer SPA)"
   level: 2
-- heading: TASK 3 — Smoke test the viewer
+- heading: "TASK 3 \u2014 Smoke test the viewer"
   level: 2
 - heading: Test CLI help
   level: 1
@@ -48,10 +48,19 @@ sections:
   level: 1
 - heading: 'Expected: 276 tests passing'
   level: 1
-- heading: TASK 4 — Create tests/test_viewer.py
+- heading: "TASK 4 \u2014 Create tests/test_viewer.py"
   level: 2
-- heading: ── _load_graph_data tests ────────────────────────────────────────────────────
+- heading: "\u2500\u2500 _load_graph_data tests \u2500\u2500\u2500\u2500\u2500\u2500\
+    \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\
+    \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\
+    \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\
+    \u2500\u2500\u2500\u2500\u2500\u2500\u2500"
   level: 1
+description: Imported document from waves/wave_11b_brief.md with 20 indexed sections.
+tags:
+- document
+- wave
+spec_source: waves/wave_11b_brief.md
 ---
 
 (Auto-generated node file. Edit the YAML above or add body content below.)

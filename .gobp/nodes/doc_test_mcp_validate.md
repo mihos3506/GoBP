@@ -12,6 +12,12 @@ registered_at: '2026-04-15T17:48:15.486917+00:00'
 last_verified: '2026-04-15T17:48:15.486917+00:00'
 priority: medium
 sections: []
+description: Imported document from tests/test_mcp_validate.py.
+tags:
+- document
+- tests
+- mcp
+spec_source: tests/test_mcp_validate.py
 ---
 
 (Auto-generated node file. Edit the YAML above or add body content below.)

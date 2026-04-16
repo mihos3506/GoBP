@@ -192,6 +192,8 @@ tags:
 - brief
 - wave-7
 status: ACTIVE
+description: Imported document from waves/wave_7_brief.md with 89 indexed sections.
+spec_source: waves/wave_7_brief.md
 ---
 
 (Auto-generated node file. Edit the YAML above or add body content below.)

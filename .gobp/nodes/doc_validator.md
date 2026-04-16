@@ -12,6 +12,11 @@ registered_at: '2026-04-15T17:47:38.839055+00:00'
 last_verified: '2026-04-15T17:47:38.839055+00:00'
 priority: medium
 sections: []
+description: Imported document from gobp/core/validator.py.
+tags:
+- document
+- core
+spec_source: gobp/core/validator.py
 ---
 
 (Auto-generated node file. Edit the YAML above or add body content below.)

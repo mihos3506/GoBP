@@ -12,6 +12,11 @@ registered_at: '2026-04-15T17:48:00.622432+00:00'
 last_verified: '2026-04-15T17:48:00.622432+00:00'
 priority: low
 sections: []
+description: Imported document from gobp/viewer/launcher.py.
+tags:
+- document
+- viewer
+spec_source: gobp/viewer/launcher.py
 ---
 
 (Auto-generated node file. Edit the YAML above or add body content below.)

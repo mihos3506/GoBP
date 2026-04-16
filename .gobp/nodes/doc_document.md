@@ -16,6 +16,10 @@ sections:
   level: 2
 - heading: Related nodes
   level: 2
+description: Imported document from gobp/templates/document.md with 2 indexed sections.
+tags:
+- document
+spec_source: gobp/templates/document.md
 ---
 
 (Auto-generated node file. Edit the YAML above or add body content below.)

@@ -52,6 +52,11 @@ sections:
   level: 3
 - heading: Verify
   level: 3
+description: Imported document from docs/INSTALL.md with 20 indexed sections.
+tags:
+- document
+- docs
+spec_source: docs/INSTALL.md
 ---
 
 (Auto-generated node file. Edit the YAML above or add body content below.)

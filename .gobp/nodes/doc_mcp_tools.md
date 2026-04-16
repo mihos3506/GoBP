@@ -12,7 +12,7 @@ registered_at: '2026-04-15T17:47:23.196217+00:00'
 last_verified: '2026-04-15T17:47:23.196217+00:00'
 priority: critical
 sections:
-- heading: ◈ GoBP MCP TOOLS
+- heading: "\u25C8 GoBP MCP TOOLS"
   level: 1
 - heading: gobp() - Primary Interface (v2)
   level: 2
@@ -52,6 +52,12 @@ sections:
   level: 3
 - heading: 3.3 signature
   level: 3
+description: Imported document from docs/MCP_TOOLS.md with 20 indexed sections.
+tags:
+- document
+- docs
+- mcp
+spec_source: docs/MCP_TOOLS.md
 ---
 
 (Updated node file.)

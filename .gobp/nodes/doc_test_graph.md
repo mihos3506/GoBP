@@ -12,6 +12,11 @@ registered_at: '2026-04-15T17:48:10.025019+00:00'
 last_verified: '2026-04-15T17:48:10.025019+00:00'
 priority: medium
 sections: []
+description: Imported document from tests/test_graph.py.
+tags:
+- document
+- tests
+spec_source: tests/test_graph.py
 ---
 
 (Auto-generated node file. Edit the YAML above or add body content below.)

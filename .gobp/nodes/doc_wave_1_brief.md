@@ -12,7 +12,7 @@ registered_at: '2026-04-15T17:48:34.445213+00:00'
 last_verified: '2026-04-15T17:48:34.445213+00:00'
 priority: medium
 sections:
-- heading: WAVE 1 BRIEF — CORE ENGINE
+- heading: "WAVE 1 BRIEF \u2014 CORE ENGINE"
   level: 1
 - heading: CONTEXT
   level: 2
@@ -22,19 +22,19 @@ sections:
   level: 2
 - heading: TASKS
   level: 1
-- heading: TASK 1 — Implement loader.py frontmatter parser
+- heading: "TASK 1 \u2014 Implement loader.py frontmatter parser"
   level: 2
-- heading: TASK 2 — Implement loader.py file loading functions
+- heading: "TASK 2 \u2014 Implement loader.py file loading functions"
   level: 2
-- heading: TASK 3 — Implement validator.py ValidationResult and core validation
+- heading: "TASK 3 \u2014 Implement validator.py ValidationResult and core validation"
   level: 2
-- heading: TASK 4 — Implement validator.py validate_edge
+- heading: "TASK 4 \u2014 Implement validator.py validate_edge"
   level: 2
-- heading: TASK 5 — Implement graph.py GraphIndex class (load)
+- heading: "TASK 5 \u2014 Implement graph.py GraphIndex class (load)"
   level: 2
-- heading: TASK 6 — Implement graph.py query methods
+- heading: "TASK 6 \u2014 Implement graph.py query methods"
   level: 2
-- heading: TASK 7 — Write loader and validator tests
+- heading: "TASK 7 \u2014 Write loader and validator tests"
   level: 2
 - heading: =============================================================================
   level: 1
@@ -52,6 +52,11 @@ sections:
   level: 1
 - heading: load_node_file tests
   level: 1
+description: Imported document from waves/wave_1_brief.md with 20 indexed sections.
+tags:
+- document
+- wave
+spec_source: waves/wave_1_brief.md
 ---
 
 (Updated node file.)

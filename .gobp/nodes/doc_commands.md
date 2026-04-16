@@ -12,6 +12,10 @@ registered_at: '2026-04-15T17:47:29.935501+00:00'
 last_verified: '2026-04-15T17:47:29.935501+00:00'
 priority: medium
 sections: []
+description: Imported document from gobp/cli/commands.py.
+tags:
+- document
+spec_source: gobp/cli/commands.py
 ---
 
 (Auto-generated node file. Edit the YAML above or add body content below.)

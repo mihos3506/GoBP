@@ -12,6 +12,11 @@ registered_at: '2026-04-15T17:47:36.096954+00:00'
 last_verified: '2026-04-15T17:47:36.096954+00:00'
 priority: medium
 sections: []
+description: Imported document from gobp/core/migrate.py.
+tags:
+- document
+- core
+spec_source: gobp/core/migrate.py
 ---
 
 (Auto-generated node file. Edit the YAML above or add body content below.)

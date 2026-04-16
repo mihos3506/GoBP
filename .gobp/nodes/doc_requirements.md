@@ -12,6 +12,10 @@ registered_at: '2026-04-15T17:48:04.855637+00:00'
 last_verified: '2026-04-15T17:48:04.855637+00:00'
 priority: medium
 sections: []
+description: Imported document from requirements.txt.
+tags:
+- document
+spec_source: requirements.txt
 ---
 
 (Auto-generated node file. Edit the YAML above or add body content below.)

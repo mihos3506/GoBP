@@ -28,6 +28,11 @@ sections:
   level: 1
 - heading: -- dispatch integration tests ------------------------------------------------
   level: 1
+description: Imported document from tests/test_wave11a.py with 8 indexed sections.
+tags:
+- document
+- tests
+spec_source: tests/test_wave11a.py
 ---
 
 (Auto-generated node file. Edit the YAML above or add body content below.)

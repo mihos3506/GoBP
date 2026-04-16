@@ -28,6 +28,12 @@ sections:
   level: 2
 - heading: Notes
   level: 2
+description: Imported document from examples/mcp_configs/README.md with 8 indexed
+  sections.
+tags:
+- document
+- mcp
+spec_source: examples/mcp_configs/README.md
 ---
 
 (Updated node file.)

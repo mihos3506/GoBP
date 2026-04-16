@@ -12,6 +12,11 @@ registered_at: '2026-04-15T17:48:01.546179+00:00'
 last_verified: '2026-04-15T17:48:01.546179+00:00'
 priority: medium
 sections: []
+description: Imported document from gobp/viewer/server.py.
+tags:
+- document
+- viewer
+spec_source: gobp/viewer/server.py
 ---
 
 (Updated node file.)

@@ -16,6 +16,10 @@ sections:
   level: 2
 - heading: Notes
   level: 2
+description: Imported document from gobp/templates/testcase.md with 2 indexed sections.
+tags:
+- document
+spec_source: gobp/templates/testcase.md
 ---
 
 (Auto-generated node file. Edit the YAML above or add body content below.)

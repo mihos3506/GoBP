@@ -12,7 +12,7 @@ registered_at: '2026-04-15T17:47:18.198969+00:00'
 last_verified: '2026-04-15T17:47:18.198969+00:00'
 priority: high
 sections:
-- heading: CLAUDE.md — GoBP Project Instructions for Claude CLI (v2)
+- heading: "CLAUDE.md \u2014 GoBP Project Instructions for Claude CLI (v2)"
   level: 1
 - heading: YOUR ROLE
   level: 2
@@ -52,6 +52,10 @@ sections:
   level: 2
 - heading: ESCALATION TO CEO
   level: 2
+description: Imported document from CLAUDE.md with 20 indexed sections.
+tags:
+- document
+spec_source: CLAUDE.md
 ---
 
 (Auto-generated node file. Edit the YAML above or add body content below.)

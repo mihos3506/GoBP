@@ -20,25 +20,25 @@ sections:
   level: 1
 - heading: '---------------------------------------------------------------------------'
   level: 1
-- heading: 'Tests: P1 — failed sessions'
+- heading: "Tests: P1 \u2014 failed sessions"
   level: 1
 - heading: '---------------------------------------------------------------------------'
   level: 1
 - heading: '---------------------------------------------------------------------------'
   level: 1
-- heading: 'Tests: P2 — recurring uncertainty'
+- heading: "Tests: P2 \u2014 recurring uncertainty"
   level: 1
 - heading: '---------------------------------------------------------------------------'
   level: 1
 - heading: '---------------------------------------------------------------------------'
   level: 1
-- heading: 'Tests: P3 — premature decisions'
+- heading: "Tests: P3 \u2014 premature decisions"
   level: 1
 - heading: '---------------------------------------------------------------------------'
   level: 1
 - heading: '---------------------------------------------------------------------------'
   level: 1
-- heading: 'Tests: P4 — orphan nodes'
+- heading: "Tests: P4 \u2014 orphan nodes"
   level: 1
 - heading: '---------------------------------------------------------------------------'
   level: 1
@@ -48,6 +48,11 @@ sections:
   level: 1
 - heading: '---------------------------------------------------------------------------'
   level: 1
+description: Imported document from tests/test_lessons.py with 18 indexed sections.
+tags:
+- document
+- tests
+spec_source: tests/test_lessons.py
 ---
 
 (Auto-generated node file. Edit the YAML above or add body content below.)

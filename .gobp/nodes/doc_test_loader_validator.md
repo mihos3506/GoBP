@@ -52,6 +52,12 @@ sections:
   level: 1
 - heading: ValidationResult tests
   level: 1
+description: Imported document from tests/test_loader_validator.py with 20 indexed
+  sections.
+tags:
+- document
+- tests
+spec_source: tests/test_loader_validator.py
 ---
 
 (Auto-generated node file. Edit the YAML above or add body content below.)

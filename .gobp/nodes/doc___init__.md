@@ -12,6 +12,11 @@ registered_at: '2026-04-15T17:48:05.562437+00:00'
 last_verified: '2026-04-15T17:48:05.562437+00:00'
 priority: medium
 sections: []
+description: Imported document from tests/__init__.py.
+tags:
+- document
+- tests
+spec_source: tests/__init__.py
 ---
 
 (Updated node file.)

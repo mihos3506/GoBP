@@ -12,6 +12,11 @@ registered_at: '2026-04-15T17:48:20.187030+00:00'
 last_verified: '2026-04-15T17:48:20.187030+00:00'
 priority: medium
 sections: []
+description: Imported document from tests/test_prune.py.
+tags:
+- document
+- tests
+spec_source: tests/test_prune.py
 ---
 
 (Auto-generated node file. Edit the YAML above or add body content below.)

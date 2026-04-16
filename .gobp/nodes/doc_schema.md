@@ -12,7 +12,7 @@ registered_at: '2026-04-15T17:47:23.819319+00:00'
 last_verified: '2026-04-15T17:47:23.819319+00:00'
 priority: high
 sections:
-- heading: ◈ GoBP SCHEMA
+- heading: "\u25C8 GoBP SCHEMA"
   level: 1
 - heading: 0. PURPOSE
   level: 2
@@ -52,6 +52,12 @@ sections:
   level: 3
 - heading: 3.3 implements
   level: 3
+description: Imported document from docs/SCHEMA.md with 20 indexed sections.
+tags:
+- document
+- docs
+- schema
+spec_source: docs/SCHEMA.md
 ---
 
 (Updated node file.)

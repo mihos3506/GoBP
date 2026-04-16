@@ -52,6 +52,10 @@ sections:
   level: 2
 - heading: Code standards
   level: 2
+description: Imported document from CONTRIBUTING.md with 20 indexed sections.
+tags:
+- document
+spec_source: CONTRIBUTING.md
 ---
 
 (Auto-generated node file. Edit the YAML above or add body content below.)

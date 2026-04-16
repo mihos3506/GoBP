@@ -12,7 +12,7 @@ registered_at: '2026-04-15T17:48:37.549555+00:00'
 last_verified: '2026-04-15T17:48:37.549555+00:00'
 priority: high
 sections:
-- heading: WAVE 5 BRIEF — WRITE TOOLS + IMPORT TOOLS + VALIDATE
+- heading: "WAVE 5 BRIEF \u2014 WRITE TOOLS + IMPORT TOOLS + VALIDATE"
   level: 1
 - heading: CONTEXT
   level: 2
@@ -26,19 +26,19 @@ sections:
   level: 2
 - heading: TASKS
   level: 1
-- heading: TASK 1 — Create write tools module skeleton
+- heading: "TASK 1 \u2014 Create write tools module skeleton"
   level: 2
 - heading: 'After: result = handler(_index, _project_root, arguments)'
   level: 1
 - heading: 'Add:'
   level: 1
-- heading: TASK 2 — Implement node_upsert
+- heading: "TASK 2 \u2014 Implement node_upsert"
   level: 2
-- heading: TASK 3 — Implement decision_lock
+- heading: "TASK 3 \u2014 Implement decision_lock"
   level: 2
-- heading: TASK 4 — Implement session_log
+- heading: "TASK 4 \u2014 Implement session_log"
   level: 2
-- heading: TASK 5 — Write tests for write tools
+- heading: "TASK 5 \u2014 Write tests for write tools"
   level: 2
 - heading: =============================================================================
   level: 1
@@ -52,6 +52,11 @@ sections:
   level: 1
 - heading: =============================================================================
   level: 1
+description: Imported document from waves/wave_5_brief.md with 20 indexed sections.
+tags:
+- document
+- wave
+spec_source: waves/wave_5_brief.md
 ---
 
 (Updated node file.)

@@ -18,6 +18,12 @@ sections:
   level: 1
 - heading: -- Multi-project server tests -------------------------------------------------
   level: 1
+description: Imported document from tests/test_viewer.py with 3 indexed sections.
+tags:
+- document
+- tests
+- viewer
+spec_source: tests/test_viewer.py
 ---
 
 (Auto-generated node file. Edit the YAML above or add body content below.)

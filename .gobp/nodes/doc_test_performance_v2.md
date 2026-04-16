@@ -12,8 +12,13 @@ registered_at: '2026-04-15T17:48:19.377736+00:00'
 last_verified: '2026-04-15T17:48:19.377736+00:00'
 priority: medium
 sections:
-- heading: Max latency targets (ms) aligned with docs/MCP_TOOLS.md §10.
+- heading: "Max latency targets (ms) aligned with docs/MCP_TOOLS.md \xA710."
   level: 1
+description: Imported document from tests/test_performance_v2.py with 1 indexed sections.
+tags:
+- document
+- tests
+spec_source: tests/test_performance_v2.py
 ---
 
 (Auto-generated node file. Edit the YAML above or add body content below.)

@@ -12,7 +12,7 @@ registered_at: '2026-04-15T17:48:35.198009+00:00'
 last_verified: '2026-04-15T17:48:35.198009+00:00'
 priority: high
 sections:
-- heading: WAVE 2 BRIEF — FILE STORAGE + HISTORY + MUTATOR
+- heading: "WAVE 2 BRIEF \u2014 FILE STORAGE + HISTORY + MUTATOR"
   level: 1
 - heading: CONTEXT
   level: 2
@@ -24,19 +24,19 @@ sections:
   level: 2
 - heading: TASKS
   level: 1
-- heading: TASK 1 — Implement history.append_event
+- heading: "TASK 1 \u2014 Implement history.append_event"
   level: 2
-- heading: TASK 2 — Implement mutator helper _atomic_write
+- heading: "TASK 2 \u2014 Implement mutator helper _atomic_write"
   level: 2
-- heading: TASK 3 — Implement mutator.create_node
+- heading: "TASK 3 \u2014 Implement mutator.create_node"
   level: 2
-- heading: TASK 4 — Implement mutator.update_node and delete_node
+- heading: "TASK 4 \u2014 Implement mutator.update_node and delete_node"
   level: 2
-- heading: TASK 5 — Implement mutator.create_edge and delete_edge
+- heading: "TASK 5 \u2014 Implement mutator.create_edge and delete_edge"
   level: 2
-- heading: TASK 6 — Write history tests
+- heading: "TASK 6 \u2014 Write history tests"
   level: 2
-- heading: TASK 7 — Write mutator tests
+- heading: "TASK 7 \u2014 Write mutator tests"
   level: 2
 - heading: =============================================================================
   level: 1
@@ -52,6 +52,11 @@ sections:
   level: 1
 - heading: =============================================================================
   level: 1
+description: Imported document from waves/wave_2_brief.md with 20 indexed sections.
+tags:
+- document
+- wave
+spec_source: waves/wave_2_brief.md
 ---
 
 (Updated node file.)

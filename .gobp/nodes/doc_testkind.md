@@ -18,6 +18,10 @@ sections:
   level: 2
 - heading: Template guidance
   level: 2
+description: Imported document from gobp/templates/testkind.md with 3 indexed sections.
+tags:
+- document
+spec_source: gobp/templates/testkind.md
 ---
 
 (Auto-generated node file. Edit the YAML above or add body content below.)

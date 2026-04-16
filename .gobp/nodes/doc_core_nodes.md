@@ -18,6 +18,12 @@ sections:
   level: 1
 - heading: 'Schema version: 1.0'
   level: 1
+description: Imported document from gobp/schema/core_nodes.yaml with 3 indexed sections.
+tags:
+- document
+- schema
+- core
+spec_source: gobp/schema/core_nodes.yaml
 ---
 
 (Auto-generated node file. Edit the YAML above or add body content below.)

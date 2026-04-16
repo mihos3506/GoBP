@@ -12,7 +12,8 @@ registered_at: '2026-04-15T17:48:32.828054+00:00'
 last_verified: '2026-04-15T17:48:32.828054+00:00'
 priority: high
 sections:
-- heading: WAVE 12 BRIEF — LAUNCHER + PROJECT PICKER + SCHEMA MERGE + BETTER VIEWER
+- heading: "WAVE 12 BRIEF \u2014 LAUNCHER + PROJECT PICKER + SCHEMA MERGE + BETTER\
+    \ VIEWER"
   level: 1
 - heading: CONTEXT
   level: 2
@@ -38,20 +39,25 @@ sections:
   level: 2
 - heading: TASKS
   level: 1
-- heading: TASK 1 — Create projects.json + GoBP_Viewer.bat + launcher.py
+- heading: "TASK 1 \u2014 Create projects.json + GoBP_Viewer.bat + launcher.py"
   level: 2
-- heading: TASK 2 — Update server.py for multi-project + edge format fix
+- heading: "TASK 2 \u2014 Update server.py for multi-project + edge format fix"
   level: 2
-- heading: TASK 3 — Add MIHOS node types to schema
+- heading: "TASK 3 \u2014 Add MIHOS node types to schema"
   level: 2
-- heading: TASK 4 — Replace index.html with improved viewer
+- heading: "TASK 4 \u2014 Replace index.html with improved viewer"
   level: 2
-- heading: TASK 5 — Smoke test viewer with both projects
+- heading: "TASK 5 \u2014 Smoke test viewer with both projects"
   level: 2
 - heading: Start launcher (no browser)
   level: 1
 - heading: Test /api/projects
   level: 1
+description: Imported document from waves/wave_12_brief.md with 20 indexed sections.
+tags:
+- document
+- wave
+spec_source: waves/wave_12_brief.md
 ---
 
 (Auto-generated node file. Edit the YAML above or add body content below.)

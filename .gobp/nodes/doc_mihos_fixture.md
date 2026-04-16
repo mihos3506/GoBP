@@ -12,6 +12,11 @@ registered_at: '2026-04-15T17:48:07.532283+00:00'
 last_verified: '2026-04-15T17:48:07.532283+00:00'
 priority: critical
 sections: []
+description: Imported document from tests/fixtures/mihos_fixture.py.
+tags:
+- document
+- tests
+spec_source: tests/fixtures/mihos_fixture.py
 ---
 
 (Auto-generated node file. Edit the YAML above or add body content below.)

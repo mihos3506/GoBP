@@ -26,6 +26,12 @@ sections:
   level: 1
 - heading: doc_sections (3)
   level: 1
+description: Imported document from tests/test_mcp_tools.py with 7 indexed sections.
+tags:
+- document
+- tests
+- mcp
+spec_source: tests/test_mcp_tools.py
 ---
 
 (Auto-generated node file. Edit the YAML above or add body content below.)

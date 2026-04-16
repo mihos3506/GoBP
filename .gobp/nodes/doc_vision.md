@@ -12,15 +12,15 @@ registered_at: '2026-04-15T17:47:24.434914+00:00'
 last_verified: '2026-04-15T17:47:24.434914+00:00'
 priority: high
 sections:
-- heading: ◈ GoBP VISION
+- heading: "\u25C8 GoBP VISION"
   level: 1
 - heading: ONE-LINER
   level: 2
 - heading: WHY GoBP EXISTS
   level: 2
-- heading: Pain 1 — AI session amnesia
+- heading: "Pain 1 \u2014 AI session amnesia"
   level: 3
-- heading: Pain 2 — Context bloat khi dev
+- heading: "Pain 2 \u2014 Context bloat khi dev"
   level: 3
 - heading: WHAT GoBP IS
   level: 2
@@ -38,20 +38,25 @@ sections:
   level: 3
 - heading: WHAT GoBP IS NOT
   level: 2
-- heading: ❌ Not a chatbot interface
+- heading: "\u274C Not a chatbot interface"
   level: 3
-- heading: ❌ Not a human note-taking app
+- heading: "\u274C Not a human note-taking app"
   level: 3
-- heading: ❌ Not a replacement for project DOCs
+- heading: "\u274C Not a replacement for project DOCs"
   level: 3
-- heading: ❌ Not a production database
+- heading: "\u274C Not a production database"
   level: 3
-- heading: ❌ Not a code intelligence tool
+- heading: "\u274C Not a code intelligence tool"
   level: 3
-- heading: ❌ Not an LLM memory layer (generic)
+- heading: "\u274C Not an LLM memory layer (generic)"
   level: 3
-- heading: ❌ Not an enterprise knowledge management system
+- heading: "\u274C Not an enterprise knowledge management system"
   level: 3
+description: Imported document from docs/VISION.md with 20 indexed sections.
+tags:
+- document
+- docs
+spec_source: docs/VISION.md
 ---
 
 (Updated node file.)
