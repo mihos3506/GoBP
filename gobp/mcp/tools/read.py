@@ -1012,6 +1012,58 @@ def node_related(index: GraphIndex, project_root: Path, args: dict[str, Any]) ->
     }
 
 
+def get_batch(
+    index: GraphIndex,
+    project_root: Path,
+    args: dict[str, Any],
+) -> dict[str, Any]:
+    """Fetch multiple nodes in one call.
+
+    Args:
+        ids: comma-separated node IDs or list
+        mode: summary|brief|full (default: brief)
+        max: max nodes to return (default: 20, max: 50)
+
+    Returns:
+        ok, nodes[], found, not_found[], mode
+    """
+    del project_root
+    raw_ids = args.get("ids", args.get("query", ""))
+    if isinstance(raw_ids, str):
+        ids = [i.strip() for i in raw_ids.split(",") if i.strip()]
+    else:
+        ids = [str(i).strip() for i in list(raw_ids) if str(i).strip()]
+
+    mode = str(args.get("mode", "brief")).lower()
+    if mode not in {"summary", "brief", "full", "standard"}:
+        mode = "brief"
+    max_nodes = min(int(args.get("max", 20)), 50)
+    ids = ids[:max_nodes]
+
+    nodes: list[dict[str, Any]] = []
+    not_found: list[str] = []
+
+    for node_id in ids:
+        node = index.get_node(node_id)
+        if node:
+            if mode == "summary":
+                nodes.append(_node_summary(node, index))
+            elif mode == "brief":
+                nodes.append(_node_brief(node, index))
+            else:
+                nodes.append(dict(node))
+        else:
+            not_found.append(node_id)
+
+    return {
+        "ok": True,
+        "nodes": nodes,
+        "found": len(nodes),
+        "not_found": not_found,
+        "mode": mode,
+    }
+
+
 # Required and optional edges per NodeType (AI declaration guide)
 _NODE_EDGE_REQUIREMENTS: dict[str, dict[str, list[dict[str, str]]]] = {
     "Flow": {

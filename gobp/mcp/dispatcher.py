@@ -397,6 +397,15 @@ async def dispatch(
                 ctx_args["edge_limit"] = params["edge_limit"]
             result = tools_read.context(index, project_root, ctx_args)
 
+        elif action == "get_batch":
+            raw_ids = params.get("ids") or params.get("query", "")
+            args = {
+                "ids": raw_ids,
+                "mode": params.get("mode", "brief"),
+                "max": params.get("max", 20),
+            }
+            result = tools_read.get_batch(index, project_root, args)
+
         elif action == "signature":
             node_id = params.get("query") or params.get("id") or params.get("node_id", "")
             result = tools_read.signature(index, project_root, {"node_id": node_id})
@@ -912,6 +921,8 @@ PROTOCOL_GUIDE = {
         "find:<NodeType> <keyword>": "Search by type + keyword",
         "get: <node_id>": "Full node + edges + decisions",
         "get: <node_id> mode=brief": "Brief node detail",
+        "get_batch: ids='node:a,node:b,node:c'": "Fetch multiple nodes (mode=brief)",
+        "get_batch: ids='node:a,node:b' mode=summary": "Lightweight batch fetch",
         "signature: <node_id>": "Minimal node summary",
         "recent: <n>": "Latest N sessions",
         "decisions: <topic>": "Locked decisions for topic",
