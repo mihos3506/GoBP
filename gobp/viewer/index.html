@@ -153,13 +153,12 @@ const NODE_TIERS = {
 };
 
 const TIER_Y = {
-  core: -300,
-  domain: -150,
-  ops: 0,
-  test: 150,
-  meta: 300,
+    core:   -800,
+    domain: -400,
+    ops:      0,
+    test:   400,
+    meta:   800,
 };
-
 const TYPE_GROUP = {
   Decision: "core", Invariant: "core", Concept: "core",
   Entity: "domain",
@@ -360,12 +359,12 @@ function initGraph() {
     .onNodeClick(n => showDetail(n))
     .onBackgroundClick(() => document.getElementById('detail').classList.remove('visible'));
 
-  FG.d3Force('charge').strength(-120);
-  FG.d3Force('link').distance(l => l.type==='belongs_to'?30:60);
+  FG.d3Force('charge').strength(-80);
+  FG.d3Force('link').distance(l => l.type==='belongs_to'?30:80);
   FG.d3Force('y', d3.forceY(n => {
-    const group = TYPE_GROUP[n.type] || 'meta';
-    return TIER_Y[group] ?? 0;
-  }).strength(0.12));
+             const group = TYPE_GROUP[n.type] || 'meta';
+            return TIER_Y[group] ?? 0;
+    }).strength(0.25));
 }
 
 function makeSprite(text, color) {
