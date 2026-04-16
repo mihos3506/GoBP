@@ -36,6 +36,42 @@ def _truncate(text: str | None, max_chars: int = 100) -> str:
     return text[: max_chars - 3] + "..."
 
 
+def _node_summary(node: dict[str, Any], index: GraphIndex | None = None) -> dict[str, Any]:
+    """Return lightweight node summary (~50 tokens)."""
+    node_id = node.get("id", "")
+    edge_count = 0
+    if index and node_id:
+        edge_count = len(index.get_edges_from(node_id)) + len(index.get_edges_to(node_id))
+    return {
+        "id": node_id,
+        "type": node.get("type", ""),
+        "name": node.get("name", ""),
+        "status": node.get("status", ""),
+        "priority": node.get("priority", "medium"),
+        "edge_count": edge_count,
+        "detail_available": True,
+    }
+
+
+def _node_brief(node: dict[str, Any], index: GraphIndex | None = None) -> dict[str, Any]:
+    """Return brief node payload (~150 tokens)."""
+    base = _node_summary(node, index)
+    skip = {
+        "id", "type", "name", "status", "priority", "created", "updated",
+        "session_id", "x", "y", "z", "vx", "vy", "vz",
+    }
+    extra_fields = {k: v for k, v in node.items() if k not in skip and v}
+    base.update({k: v for k, v in list(extra_fields.items())[:5]})
+    if index:
+        out_types: dict[str, int] = {}
+        for edge in index.get_edges_from(node.get("id", "")):
+            t = edge.get("type", "")
+            out_types[t] = out_types.get(t, 0) + 1
+        if out_types:
+            base["outgoing_edges"] = out_types
+    return base
+
+
 def gobp_overview(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> dict[str, Any]:
     """Return project metadata, stats, main topics, and suggested next queries.
 
@@ -230,6 +266,7 @@ def find(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> dict[st
         sort: Sort field (default: 'id')
         direction: 'asc' or 'desc' (default: 'asc')
     """
+    del project_root
     query_str = str(args.get("query", "") or "")
     if "query" not in args:
         return {"ok": False, "error": "Missing required field: query"}
@@ -304,23 +341,30 @@ def find(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> dict[st
     has_more = len(candidates) > page_size
     next_cursor = page[-1].get("id") if has_more and page else None
 
-    # Format results
-    matches = [
-        {
-            "id": n.get("id"),
-            "type": n.get("type"),
-            "name": n.get("name", ""),
-            "status": n.get("status", ""),
-            "priority": n.get("priority", "medium"),
-            "match": n.get("match", "substring"),
-        }
-        for n in page
-    ]
+    mode = str(args.get("mode", "standard")).lower()
+    if mode == "summary":
+        matches = [_node_summary(n, index) for n in page]
+    elif mode == "brief":
+        matches = [_node_brief(n, index) for n in page]
+    else:
+        # Backward compatible default payload.
+        matches = [
+            {
+                "id": n.get("id"),
+                "type": n.get("type"),
+                "name": n.get("name", ""),
+                "status": n.get("status", ""),
+                "priority": n.get("priority", "medium"),
+                "match": n.get("match", "substring"),
+            }
+            for n in page
+        ]
 
     return {
         "ok": True,
         "matches": matches,
         "count": len(matches),
+        "mode": mode,
         "truncated": has_more,
         "page_info": {
             "next_cursor": next_cursor,
