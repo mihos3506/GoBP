@@ -14,17 +14,9 @@ import yaml
 
 from gobp.core.graph import GraphIndex
 from gobp.core.id_config import parse_external_id
-from gobp.mcp.tools.read_governance import (
-    _METADATA_REQUIREMENTS,
-    metadata_lint,
-    schema_governance,
-)
+from gobp.mcp.tools.read_governance import metadata_lint, schema_governance
 from gobp.mcp.tools.read_priority import recompute_priorities
-from gobp.mcp.tools.read_interview import (
-    _NODE_EDGE_REQUIREMENTS,
-    node_interview,
-    node_template,
-)
+from gobp.mcp.tools.read_interview import node_interview, node_template
 
 
 _FIND_PRIORITY: dict[str, int] = {"exact_id": 0, "exact_name": 1, "substring": 2}
