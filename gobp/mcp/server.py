@@ -41,6 +41,13 @@ _READ_ONLY_ACTIONS: frozenset[str] = frozenset({
 _READ_ONLY: bool = os.environ.get("GOBP_READ_ONLY", "").lower() in ("true", "1", "yes")
 
 
+def _inject_protocol(result: Any) -> Any:
+    """Attach protocol version metadata for MCP clients."""
+    if isinstance(result, dict):
+        result["_protocol"] = "2.0"
+    return result
+
+
 def _get_project_root() -> Path:
     """Determine project root from env var or cwd."""
     env_root = os.environ.get("GOBP_PROJECT_ROOT")
@@ -157,7 +164,7 @@ async def call_tool(
     global _index, _project_root
 
     if name != "gobp":
-        result = {"ok": False, "error": f"Unknown tool: {name}. Use gobp()."}
+        result = _inject_protocol({"ok": False, "error": f"Unknown tool: {name}. Use gobp()."})
         return [types.TextContent(type="text", text=json.dumps(result, ensure_ascii=False))]
 
     # Lazy load index
@@ -172,13 +179,13 @@ async def call_tool(
     action, _, _ = parse_query(query)
 
     if _READ_ONLY and action in _READ_ONLY_ACTIONS:
-        result = {
+        result = _inject_protocol({
             "ok": False,
             "error": f"Read-only mode: '{action}' is a write action.",
             "hint": "Set GOBP_READ_ONLY=false (or unset) to enable writes.",
             "read_only": True,
             "blocked_action": action,
-        }
+        })
         return [types.TextContent(type="text", text=json.dumps(result, ensure_ascii=False))]
 
     if action == "stats":
@@ -186,14 +193,14 @@ async def call_tool(
         sub = parts[1].strip() if len(parts) > 1 else ""
         if sub == "reset":
             _stats.clear()
-            result = {"ok": True, "message": "Stats reset"}
+            result = _inject_protocol({"ok": True, "message": "Stats reset"})
         elif sub:
             s = _stats.get(
                 sub,
                 {"calls": 0, "total_ms": 0.0, "errors": 0, "last_called": None, "recent_queries": []},
             )
             calls = s.get("calls", 0)
-            result = {
+            result = _inject_protocol({
                 "ok": True,
                 "action": sub,
                 "stats": {
@@ -203,10 +210,10 @@ async def call_tool(
                     "last_called": s.get("last_called"),
                     "recent_queries": s.get("recent_queries", []),
                 },
-            }
+            })
         else:
             # Keep stats: lightweight for low-latency polling.
-            result = {"ok": True, **_get_stats_summary(include_recent_queries=False)}
+            result = _inject_protocol({"ok": True, **_get_stats_summary(include_recent_queries=False)})
         return [types.TextContent(type="text", text=json.dumps(result, ensure_ascii=False))]
 
     start = _time.time()
@@ -215,6 +222,7 @@ async def call_tool(
         from gobp.mcp.dispatcher import dispatch
 
         result = await dispatch(query, _index, _project_root)
+        _inject_protocol(result)
         if not result.get("ok"):
             error = True
 
@@ -230,11 +238,11 @@ async def call_tool(
                 pass
     except Exception as e:
         error = True
-        result = {
+        result = _inject_protocol({
             "ok": False,
             "error": str(e),
             "hint": "Call gobp(query='overview:') to see available actions",
-        }
+        })
     finally:
         elapsed = (_time.time() - start) * 1000
         _record_stat(action, elapsed, error, query[:100])
