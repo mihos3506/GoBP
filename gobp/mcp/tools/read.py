@@ -466,6 +466,12 @@ def find(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> dict[st
             for n in page
         ]
 
+    if _truthy(args.get("compact")):
+        matches = [
+            {"id": m.get("id"), "name": m.get("name", ""), "type": m.get("type", "")}
+            for m in matches
+        ]
+
     return {
         "ok": True,
         "matches": matches,
@@ -545,6 +551,19 @@ def context(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> dict
     node = index.get_node(node_id)
     if not node:
         return {"ok": False, "error": f"Node not found: {node_id}"}
+
+    if _truthy(args.get("compact")):
+        nid = str(node_id)
+        ec = len(index.get_edges_from(nid)) + len(index.get_edges_to(nid))
+        return {
+            "ok": True,
+            "node": {
+                "id": node.get("id"),
+                "name": node.get("name", ""),
+                "type": node.get("type", ""),
+            },
+            "edge_count": ec,
+        }
 
     mode = str(args.get("mode", "")).lower()
     if not mode:
@@ -1501,6 +1520,32 @@ def explore_action(index: GraphIndex, project_root: Path, args: dict[str, Any]) 
                 "note": note,
             }
         )
+
+    if _truthy(args.get("compact")):
+        edge_lines: list[str] = []
+        for e in all_edges:
+            other = e.get("node") or {}
+            nm = other.get("name", "")
+            typ = other.get("type", "")
+            et = str(e.get("type", "relates_to"))
+            if e.get("dir") == "out":
+                edge_lines.append(f"--{et}--> {nm} ({typ})")
+            else:
+                edge_lines.append(f"<--{et}-- {nm} ({typ})")
+        also_lines = [
+            f"{n.get('id')} ({n.get('type')}) — {n.get('note', '')}" for n in also_found
+        ]
+        return {
+            "ok": True,
+            "node": {
+                "id": node_id,
+                "name": best_node.get("name", ""),
+                "type": best_node.get("type", ""),
+            },
+            "edges": edge_lines,
+            "edge_count": len(all_edges),
+            "also_found": also_lines,
+        }
 
     return {
         "ok": True,

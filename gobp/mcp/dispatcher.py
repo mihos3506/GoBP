@@ -166,6 +166,8 @@ async def dispatch(
                 args["mode"] = params["mode"]
             if "include_sessions" in params:
                 args["include_sessions"] = params["include_sessions"]
+            if "compact" in params:
+                args["compact"] = params["compact"]
             result = tools_read.find(index, project_root, args)
 
         elif action in ("get", "context"):
@@ -177,6 +179,8 @@ async def dispatch(
                 ctx_args["brief"] = params["brief"]
             if "edge_limit" in params:
                 ctx_args["edge_limit"] = params["edge_limit"]
+            if "compact" in params:
+                ctx_args["compact"] = params["compact"]
             result = tools_read.context(index, project_root, ctx_args)
 
         elif action == "get_batch":

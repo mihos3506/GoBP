@@ -921,12 +921,24 @@ def batch_action(index: GraphIndex, project_root: Path, args: dict[str, Any]) ->
     parts = [f"{k}:{tally[k][0]}/{tally[k][1]}" for k in sorted(tally.keys()) if tally[k][1]]
     summary = " ".join(parts) if parts else f"ops:{total}"
 
-    return {
+    verbose = str(args.get("verbose", "false")).strip().lower() in ("true", "1", "yes", "on")
+    result: dict[str, Any] = {
         "ok": len(errors) == 0,
         "summary": summary,
         "total_ops": total,
         "succeeded": succeeded,
-        "skipped": skipped,
         "errors": errors,
-        "warnings": warnings,
     }
+    if verbose:
+        result["skipped"] = skipped
+        result["warnings"] = warnings
+    else:
+        if skipped:
+            result["skipped"] = skipped[:10]
+            if len(skipped) > 10:
+                result["skipped_truncated"] = True
+        if warnings:
+            result["warnings"] = warnings[:10]
+            if len(warnings) > 10:
+                result["warnings_truncated"] = True
+    return result
