@@ -145,13 +145,13 @@ async def dispatch(
             args: dict[str, Any] = {}
             if "query" in params:
                 args["query"] = params["query"]
+                if node_type:
+                    args["type"] = node_type
             elif node_type:
-                args["query"] = node_type
-                node_type = ""
+                args["type"] = node_type
+                args["query"] = ""
             else:
                 args["query"] = ""
-            if node_type:
-                args["type"] = node_type
             if "limit" in params:
                 args["limit"] = int(params["limit"])
             if "page_size" in params:
@@ -164,6 +164,8 @@ async def dispatch(
                 args["direction"] = params["direction"]
             if "mode" in params:
                 args["mode"] = params["mode"]
+            if "include_sessions" in params:
+                args["include_sessions"] = params["include_sessions"]
             result = tools_read.find(index, project_root, args)
 
         elif action in ("get", "context"):
