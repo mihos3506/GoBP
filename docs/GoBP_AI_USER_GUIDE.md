@@ -173,11 +173,23 @@ Do **not** hand-craft snowflake digits; use auto `create:` / `batch` or follow s
 **Fix (order matters):**
 
 1. Replace project copy of **`gobp/schema/core_nodes.yaml`** with a **valid** file from the GoBP package (or `git pull` the fix).  
-2. **Restart the MCP server** (Cursor / IDE) so it reloads schema from disk — hot edits are not always picked up.  
+2. **Restart the MCP server** so it reloads schema from disk — hot edits are not always picked up. See **§10.2** (Cursor).  
 3. Run: **`python -m gobp.cli seed-universal`** (with `GOBP_PROJECT_ROOT` or `cd` to project root) — re-seeds canonical **TestKind** nodes (correct `group` / `scope` fields) and repairs **`schema_version`**.  
 4. Re-run **`session:end`** (or the failing action).
 
 Data already written to `.gobp/nodes/` is usually **safe**; repair targets schema files + config + missing seeds.
+
+### 10.2 Restart MCP (Cursor)
+
+Labels vary by Cursor version; one of these always works:
+
+1. **Command Palette** (`Ctrl+Shift+P` / `Cmd+Shift+P`) → **`Developer: Reload Window`** — reloads the window and reconnects MCP (most reliable after schema edits).  
+2. **Settings → MCP** (or **Cursor Settings → Features → MCP**) → turn your **GoBP** server **Off**, save, then **On** again.  
+3. **Quit Cursor completely** and reopen the project (if the server is a stuck child process).
+
+If GoBP runs from **your own terminal** (stdio MCP): stop that terminal (`Ctrl+C`), then start the same command again from project root with `GOBP_PROJECT_ROOT` set.
+
+**Không cần** commit snapshot `.gobp/nodes` / history vào Git để MCP chạy — chỉ cần process đọc đúng thư mục project trên disk.
 
 ---
 
