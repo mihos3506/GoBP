@@ -5,6 +5,28 @@ Format: [Wave N — Title] with date, what was added/changed/fixed.
 
 ---
 
+## [Wave 16A06] — Delete + Retype nodes — 2026-04-17
+
+### Added
+
+- **delete: action** — remove a node file and strip edges that reference it from edge YAML lists.
+  - Protected types: **Session**, **Document** cannot be deleted.
+  - Usage: `delete: {node_id} session_id='x'`
+
+- **retype: action** — change node type by hard-deleting the old node and creating a new node with a new ID in the correct group, then re-adding edges.
+  - Usage: `retype: id='{id}' new_type='Engine' session_id='x'`
+
+### Why
+
+- Nodes created with the wrong type keep a wrong group segment in the ID; retype fixes tier/priority without manual file surgery.
+
+### Tests
+
+- `tests/test_wave16a06.py` — delete, protected session, retype group change, edge migration, PROTOCOL_GUIDE.
+- **486** tests passing (full suite).
+
+---
+
 ## [Wave 16A05] — MCP Generator + Project Identity + Task Queue — 2026-04-16
 
 ### Added
