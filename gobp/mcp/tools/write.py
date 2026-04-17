@@ -114,7 +114,12 @@ def node_upsert(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> 
         )
 
     now = datetime.now(timezone.utc).isoformat()
-    status_default = "PENDING" if node_type == "Task" else "ACTIVE"
+    if node_type == "Task":
+        status_default = "PENDING"
+    elif node_type in ("CtoDevHandoff", "QaCodeDevHandoff"):
+        status_default = "OPEN"
+    else:
+        status_default = "ACTIVE"
     node: dict[str, Any] = {
         "id": node_id,
         "type": node_type,

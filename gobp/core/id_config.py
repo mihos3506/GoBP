@@ -48,6 +48,8 @@ DEFAULT_GROUPS: dict[str, dict[str, Any]] = {
             "Repository",
             "Idea",
             "Task",
+            "CtoDevHandoff",
+            "QaCodeDevHandoff",
         ],
         "sequence_scale": "medium",
         "tier_weight": 0,
@@ -76,6 +78,8 @@ TYPE_PREFIXES: dict[str, str] = {
     "Repository": "repo",
     "Idea": "idea",
     "Task": "task",
+    "CtoDevHandoff": "ctodev",
+    "QaCodeDevHandoff": "qacodev",
 }
 
 SEQUENCE_PADDING: dict[str, int] = {

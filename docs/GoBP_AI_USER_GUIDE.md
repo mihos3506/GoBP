@@ -71,6 +71,8 @@ Each row is one **`type`** value (PascalCase). Many **nodes** per type. IDs are 
 | **Repository** | Code / VCS grouping (when used). |
 | **Wave** | Delivery wave / batch of work. |
 | **Task** | Assignable work item for agents. |
+| **CtoDevHandoff** | CTO-DEV lane: structured handoff CTO ↔ dev tools; **thread:** first node anchors to **Wave** via edges only once; later nodes **chain to previous handoff** only. |
+| **QaCodeDevHandoff** | QAcode-DEV lane: same threading rule as **CtoDevHandoff** (single Wave anchor per thread; then linear chain). |
 
 **Schema field truth:** required/optional per type live in `gobp/schema/core_nodes.yaml` — use **`template: <Type>`** instead of guessing.
 

@@ -641,3 +641,59 @@ node_types:
       priority: {type: enum, enum_values: ["critical", "high", "medium", "low"], default: "medium"}
       error: {type: str}
       result_summary: {type: str}
+
+  CtoDevHandoff:
+    description: >
+      CTO-DEV lane: structured message between CTO-side and dev tooling (Cursor, Augment, etc.).
+      Threading convention: only the thread head links to a Wave via graph edges; every later
+      node links only to the previous handoff node (one direction), never a second edge to the Wave.
+    id_prefix: "ctodev"
+    parent: null
+    required:
+      id: {type: str, pattern: '^([a-z0-9_]{1,40}\.meta\.[0-9]{8}|(?:meta)\.ctodev:[0-9]+|ctodev:.+)$'}
+      type: {type: str, enum_values: ["CtoDevHandoff"]}
+      name: {type: str}
+      status: {type: enum, enum_values: ["OPEN", "ACKED", "SUPERSEDED", "ARCHIVED"], default: "OPEN"}
+      created: {type: timestamp}
+      updated: {type: timestamp}
+    optional:
+      session_id:
+        type: node_ref
+      continues_from:
+        type: node_ref
+        description: "Previous handoff in the same thread (omit on first node)"
+      summary:
+        type: str
+      body:
+        type: str
+      tags:
+        type: list[str]
+        default: []
+
+  QaCodeDevHandoff:
+    description: >
+      QAcode-DEV lane: structured message between QA-code review and dev tooling.
+      Same threading convention as CtoDevHandoff: single Wave anchor per thread via edges;
+      subsequent handoffs chain only to the prior node.
+    id_prefix: "qacodev"
+    parent: null
+    required:
+      id: {type: str, pattern: '^([a-z0-9_]{1,40}\.meta\.[0-9]{8}|(?:meta)\.qacodev:[0-9]+|qacodev:.+)$'}
+      type: {type: str, enum_values: ["QaCodeDevHandoff"]}
+      name: {type: str}
+      status: {type: enum, enum_values: ["OPEN", "ACKED", "SUPERSEDED", "ARCHIVED"], default: "OPEN"}
+      created: {type: timestamp}
+      updated: {type: timestamp}
+    optional:
+      session_id:
+        type: node_ref
+      continues_from:
+        type: node_ref
+        description: "Previous handoff in the same thread (omit on first node)"
+      summary:
+        type: str
+      body:
+        type: str
+      tags:
+        type: list[str]
+        default: []

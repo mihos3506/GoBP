@@ -8,8 +8,10 @@ from pathlib import Path
 from gobp.core.graph import GraphIndex
 from gobp.core.id_config import DEFAULT_GROUPS, merge_id_groups_with_defaults
 from gobp.core.init import init_project, seed_universal_nodes
-from gobp.mcp.dispatcher import dispatch
 import asyncio
+
+from gobp.mcp.dispatcher import dispatch
+from gobp.mcp.parser import parse_query
 
 
 def test_seed_universal_only_missing_restores_deleted(tmp_path: Path) -> None:
@@ -71,3 +73,24 @@ def test_create_testkind_gets_defaults(tmp_path: Path) -> None:
     assert node.get("group") == "functional"
     assert node.get("scope") == "project"
     assert isinstance(node.get("template"), dict)
+
+
+def test_parse_create_handoff_types() -> None:
+    a, t, p = parse_query("create:CtoDevHandoff name='m' session_id='s'")
+    assert a == "create" and t == "CtoDevHandoff" and p.get("name") == "m"
+    a2, t2, p2 = parse_query("create:QaCodeDevHandoff name='q' session_id='s'")
+    assert t2 == "QaCodeDevHandoff"
+
+
+def test_create_ctodev_handoff_node(tmp_path: Path) -> None:
+    init_project(tmp_path, force=True)
+    index = GraphIndex.load_from_disk(tmp_path)
+    sid = asyncio.run(dispatch("session:start actor='t' goal='t'", index, tmp_path))["session_id"]
+    index = GraphIndex.load_from_disk(tmp_path)
+    q = f"create:CtoDevHandoff name='Thread head' session_id={sid} id='ctodev:thread_a'"
+    r = asyncio.run(dispatch(q, index, tmp_path))
+    assert r.get("ok"), r
+    index = GraphIndex.load_from_disk(tmp_path)
+    n = index.get_node("ctodev:thread_a")
+    assert n and n.get("type") == "CtoDevHandoff"
+    assert n.get("status") == "OPEN"

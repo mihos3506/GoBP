@@ -30,6 +30,8 @@ _TYPE_CANONICAL: dict[str, str] = {
     "repository": "Repository",
     "wave": "Wave",
     "task": "Task",
+    "ctodevhandoff": "CtoDevHandoff",
+    "qacodedevhandoff": "QaCodeDevHandoff",
 }
 
 
