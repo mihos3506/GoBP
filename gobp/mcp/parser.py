@@ -256,6 +256,8 @@ PROTOCOL_GUIDE = {
         "related: <node_id>": "Neighbor nodes summary",
         "related: <node_id> mode=summary": "Lightweight neighbors",
         "related: <node_id> direction='outgoing'": "Only outgoing neighbors",
+        "explore: TrustGate": "Best-matching node + edges + also_found in one call (skips discovered_in)",
+        "explore: Mi Hốt": "Vietnamese-aware search + neighborhood context in one call",
         "template: Engine": "Input frame for Engine type (required/optional fields from schema)",
         "template: Flow": "Input frame for Flow type (required/optional fields from schema)",
         "template: Entity": "Input frame for Entity type",

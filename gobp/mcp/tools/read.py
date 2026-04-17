@@ -14,7 +14,7 @@ import yaml
 
 from gobp.core.graph import GraphIndex
 from gobp.core.id_config import get_group_for_type, load_groups, parse_external_id
-from gobp.core.search import normalize_text, search_score
+from gobp.core.search import normalize_text, search_nodes, search_score
 from gobp.mcp.tools.read_governance import metadata_lint, schema_governance
 from gobp.mcp.tools.read_priority import recompute_priorities
 from gobp.mcp.tools.read_interview import node_interview, node_template
@@ -1257,6 +1257,95 @@ def template_action(index: GraphIndex, project_root: Path, args: dict[str, Any])
         "hint": (
             "Use batch session_id='…' ops='…' for many creates/updates in one call. "
             "Use explore: before creating to avoid duplicates."
+        ),
+    }
+
+
+def explore_action(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> dict[str, Any]:
+    """Return best-matching node plus edges and close matches (explore: keyword)."""
+    del project_root
+    query = str(args.get("query", "")).strip()
+    if not query:
+        return {"ok": False, "error": "Query required"}
+
+    results = search_nodes(index, query, exclude_types=["Session"], limit=10)
+    if not results:
+        return {
+            "ok": False,
+            "error": f"No nodes found for: {query}",
+            "hint": "Try different keywords or use find: for broader search",
+        }
+
+    best_score, best_node = results[0]
+    node_id = str(best_node.get("id", ""))
+
+    edges_out: list[dict[str, Any]] = []
+    edges_in: list[dict[str, Any]] = []
+
+    for edge in index.all_edges():
+        edge_type = str(edge.get("type", "relates_to"))
+        if edge_type == "discovered_in":
+            continue
+        if edge.get("from") == node_id:
+            target = index.get_node(str(edge.get("to", "")))
+            if target:
+                edges_out.append(
+                    {
+                        "dir": "out",
+                        "type": edge_type,
+                        "node": {
+                            "id": target.get("id"),
+                            "name": target.get("name", ""),
+                            "type": target.get("type", ""),
+                        },
+                    }
+                )
+        elif edge.get("to") == node_id:
+            source = index.get_node(str(edge.get("from", "")))
+            if source:
+                edges_in.append(
+                    {
+                        "dir": "in",
+                        "type": edge_type,
+                        "node": {
+                            "id": source.get("id"),
+                            "name": source.get("name", ""),
+                            "type": source.get("type", ""),
+                        },
+                    }
+                )
+
+    all_edges = edges_out + edges_in
+    also_found: list[dict[str, Any]] = []
+    for score, node in results[1:6]:
+        nid = str(node.get("id", ""))
+        ec = len(index.get_edges_from(nid)) + len(index.get_edges_to(nid))
+        note = "potential duplicate" if score >= 80 else "related"
+        also_found.append(
+            {
+                "id": node.get("id"),
+                "type": node.get("type", ""),
+                "name": node.get("name", ""),
+                "edge_count": ec,
+                "note": note,
+            }
+        )
+
+    return {
+        "ok": True,
+        "node": {
+            "id": node_id,
+            "type": best_node.get("type", ""),
+            "name": best_node.get("name", ""),
+            "description": best_node.get("description", ""),
+            "priority": best_node.get("priority", ""),
+            "match_score": best_score,
+        },
+        "edges": all_edges,
+        "edge_count": len(all_edges),
+        "also_found": also_found,
+        "hint": (
+            "Use retype: or delete: to clean duplicates. Use edge: or batch ops to add relationships."
         ),
     }
 

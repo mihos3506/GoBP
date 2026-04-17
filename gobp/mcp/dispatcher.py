@@ -256,6 +256,14 @@ async def dispatch(
                 args["cursor"] = params["cursor"]
             result = tools_read.node_related(index, project_root, args)
 
+        elif action == "explore":
+            explore_q = str(
+                params.get("query") or params.get("keyword") or node_type or ""
+            ).strip()
+            result = tools_read.explore_action(
+                index, project_root, {"query": explore_q, **params}
+            )
+
         elif action == "template":
             node_type_arg = _normalize_type(
                 str(params.get("query") or params.get("node_type") or node_type or "")
