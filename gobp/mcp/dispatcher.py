@@ -260,8 +260,10 @@ async def dispatch(
             node_type_arg = _normalize_type(
                 str(params.get("query") or params.get("node_type") or node_type or "")
             )
-            result = tools_read.node_template(
-                index, project_root, {"query": node_type_arg}
+            result = tools_read.template_action(
+                index,
+                project_root,
+                {"query": node_type_arg, "node_type": node_type_arg, **params},
             )
 
         elif action == "interview":

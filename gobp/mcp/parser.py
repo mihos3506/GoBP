@@ -256,8 +256,10 @@ PROTOCOL_GUIDE = {
         "related: <node_id>": "Neighbor nodes summary",
         "related: <node_id> mode=summary": "Lightweight neighbors",
         "related: <node_id> direction='outgoing'": "Only outgoing neighbors",
-        "template: Flow": "Declaration template for Flow node",
-        "template:": "All NodeType templates",
+        "template: Engine": "Input frame for Engine type (required/optional fields from schema)",
+        "template: Flow": "Input frame for Flow type (required/optional fields from schema)",
+        "template: Entity": "Input frame for Entity type",
+        "template:": "Catalog of node types; use template: <Type> for schema-driven input frame",
         "interview: node:flow_auth": "Interview questions for node relationships",
         "interview: node:x answered='implements,references'": (
             "Continue interview, skip declared edges"

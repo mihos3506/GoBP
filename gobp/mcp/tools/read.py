@@ -13,7 +13,7 @@ import gobp
 import yaml
 
 from gobp.core.graph import GraphIndex
-from gobp.core.id_config import parse_external_id
+from gobp.core.id_config import get_group_for_type, load_groups, parse_external_id
 from gobp.core.search import normalize_text, search_score
 from gobp.mcp.tools.read_governance import metadata_lint, schema_governance
 from gobp.mcp.tools.read_priority import recompute_priorities
@@ -1173,6 +1173,91 @@ def get_batch(
         "found": len(nodes),
         "not_found": not_found,
         "mode": mode,
+    }
+
+
+_TEMPLATE_SKIP_FIELDS = frozenset(
+    {"id", "type", "created", "updated"},
+)
+
+
+def _schema_field_entry(spec: Any) -> dict[str, Any]:
+    """Normalize a core_nodes.yaml field spec to a JSON-serializable frame entry."""
+    if isinstance(spec, dict):
+        entry: dict[str, Any] = {}
+        raw_type = spec.get("type", "string")
+        entry["type"] = str(raw_type) if raw_type is not None else "string"
+        if "enum_values" in spec and spec["enum_values"] is not None:
+            entry["values"] = list(spec["enum_values"])
+        desc = spec.get("description")
+        if desc:
+            entry["description"] = str(desc)
+        if "default" in spec:
+            entry["default"] = spec["default"]
+        return entry
+    if isinstance(spec, str):
+        return {"type": spec}
+    return {"type": "string"}
+
+
+def template_action(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> dict[str, Any]:
+    """Return schema-driven input frame for a node type (template: Engine).
+
+    Skips auto-managed identity/timestamp fields so the frame focuses on
+    values callers typically supply before ``create:``.
+    """
+    node_type = str(
+        args.get("query", args.get("type", args.get("node_type", "")))
+    ).strip()
+    schema = getattr(index, "_nodes_schema", None) or {}
+    node_types = schema.get("node_types", {}) if isinstance(schema, dict) else {}
+
+    if not node_type:
+        names = sorted(str(k) for k in node_types.keys())
+        return {
+            "ok": True,
+            "catalog": True,
+            "node_types": names,
+            "hint": "Use template: <NodeType> for required/optional fields from schema.",
+        }
+
+    type_def = node_types.get(node_type)
+    if not type_def:
+        return {
+            "ok": False,
+            "error": f"Unknown type: {node_type}",
+            "available": sorted(str(k) for k in node_types.keys()),
+        }
+
+    required: dict[str, Any] = {}
+    for field, spec in (type_def.get("required") or {}).items():
+        if field in _TEMPLATE_SKIP_FIELDS:
+            continue
+        required[field] = _schema_field_entry(spec)
+
+    optional: dict[str, Any] = {}
+    for field, spec in (type_def.get("optional") or {}).items():
+        if field in _TEMPLATE_SKIP_FIELDS:
+            continue
+        optional[field] = _schema_field_entry(spec)
+
+    groups = load_groups(project_root)
+    group = get_group_for_type(node_type, groups)
+
+    batch_format = f"create: {node_type}: {{name}} | {{description}}"
+    batch_example = f"create: {node_type}: ExampleName | Short description of what this does"
+
+    return {
+        "ok": True,
+        "type": node_type,
+        "group": group,
+        "frame": {"required": required, "optional": optional},
+        "batch_format": batch_format,
+        "batch_example": batch_example,
+        "hint": (
+            "Use batch session_id='…' ops='…' for many creates/updates in one call. "
+            "Use explore: before creating to avoid duplicates."
+        ),
     }
 
 
