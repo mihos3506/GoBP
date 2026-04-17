@@ -338,14 +338,14 @@ def find(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> dict[st
     cursor = args.get("cursor")
     sort_field = args.get("sort", "id")
     direction = str(args.get("direction", "asc")).lower()
-    include_sessions = str(args.get("include_sessions", "false")).lower() == "true"
+    include_sessions_param = str(args.get("include_sessions", "false")).lower() == "true"
 
     if page_size < 1:
         page_size = 1
 
-    exclude_types: list[str] = []
-    if not include_sessions and type_filter != "Session":
-        exclude_types = ["Session"]
+    explicit_session_filter = type_filter == "Session"
+    include_sessions = explicit_session_filter or include_sessions_param
+    exclude_types: list[str] = [] if include_sessions else ["Session"]
 
     candidates: list[dict[str, Any]] = []
     seen_ids: set[str] = set()
