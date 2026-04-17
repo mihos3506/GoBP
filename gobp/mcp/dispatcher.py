@@ -280,6 +280,16 @@ async def dispatch(
                 {"query": node_type_arg, "node_type": node_type_arg, **params},
             )
 
+        elif action == "template_batch":
+            node_type_arg = _normalize_type(
+                str(params.get("query") or params.get("node_type") or node_type or "")
+            )
+            result = tools_read.template_batch_action(
+                index,
+                project_root,
+                {"query": node_type_arg, "node_type": node_type_arg, **params},
+            )
+
         elif action == "interview":
             node_id = str(params.get("node_id") or params.get("query") or "")
             answered_raw = params.get("answered", "")

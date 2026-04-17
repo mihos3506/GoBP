@@ -1377,6 +1377,61 @@ def template_action(index: GraphIndex, project_root: Path, args: dict[str, Any])
     }
 
 
+def template_batch_action(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> dict[str, Any]:
+    """Return a fillable batch template for ``count`` nodes of one type (``template_batch: Engine``)."""
+    node_type = str(
+        args.get("query", args.get("type", args.get("node_type", "")))
+    ).strip()
+    count = int(args.get("count", 3))
+    count = max(1, min(count, 50))
+
+    template_result = template_action(
+        index,
+        project_root,
+        {
+            "query": node_type,
+            "node_type": node_type,
+            **{k: v for k, v in args.items() if k != "count"},
+        },
+    )
+    if not template_result.get("ok"):
+        return template_result
+
+    suggested_edges = template_result.get("suggested_edges", [])
+    outgoing_edges = [e for e in suggested_edges if e.get("direction") == "outgoing"]
+
+    blocks: list[str] = []
+    for i in range(1, count + 1):
+        block_lines = [f"create: {node_type}: {{name_{i}}} | {{description_{i}}}"]
+        for edge in outgoing_edges[:5]:
+            et = str(edge.get("type", "relates_to"))
+            block_lines.append(f"edge+: {{name_{i}}} --{et}--> {{target_name}}")
+        blocks.append("\n".join(block_lines))
+
+    batch_template = "\n\n".join(blocks)
+
+    return {
+        "ok": True,
+        "type": node_type,
+        "count": count,
+        "frame_per_node": template_result.get("frame", {}),
+        "suggested_edges": suggested_edges,
+        "batch_template": batch_template,
+        "instructions": [
+            "Replace {placeholders} with actual values",
+            "Add or remove edge+ lines freely — no limit per node",
+            "Remove entire edge+ line if not applicable",
+            "Add or remove node blocks — count is a suggestion",
+            "Submit via: batch session_id='x' ops='<filled template>'",
+            "Max 50 operations per batch call",
+            "If more than 50 ops: split into multiple batch calls, each with own session_id",
+        ],
+        "note": (
+            f"Generated {count} blocks. Adjust freely — no hard limits on nodes or edges."
+        ),
+    }
+
+
 def explore_action(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> dict[str, Any]:
     """Return best-matching node plus edges and close matches (explore: keyword)."""
     del project_root

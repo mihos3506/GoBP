@@ -299,6 +299,12 @@ PROTOCOL_GUIDE = {
         "template: Flow": "Input frame for Flow type (required/optional fields from schema)",
         "template: Entity": "Input frame for Entity type",
         "template:": "Catalog of node types; use template: <Type> for schema-driven input frame",
+        "template_batch: Engine count=5": (
+            "Fillable batch template for 5 engines with edge suggestions"
+        ),
+        "template_batch: Flow": (
+            "Fillable batch template for flows (default count=3)"
+        ),
         "interview: node:flow_auth": "Interview questions for node relationships",
         "interview: node:x answered='implements,references'": (
             "Continue interview, skip declared edges"
