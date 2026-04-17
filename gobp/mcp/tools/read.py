@@ -1455,8 +1455,8 @@ def template_batch_action(index: GraphIndex, project_root: Path, args: dict[str,
             "Remove entire edge+ line if not applicable",
             "Add or remove node blocks — count is a suggestion",
             "Submit via: batch session_id='x' ops='<filled template>'",
-            "Max 50 operations per batch call",
-            "If more than 50 ops: split into multiple batch calls, each with own session_id",
+            "Max 500 operations per batch call",
+            "If more than 500 ops: split into multiple batch calls, each with own session_id",
         ],
         "note": (
             f"Generated {count} blocks. Adjust freely — no hard limits on nodes or edges."

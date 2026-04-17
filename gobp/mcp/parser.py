@@ -320,7 +320,7 @@ PROTOCOL_GUIDE = {
         "suggest: Payment Flow": "Keyword overlap — surfaces existing engines/entities to reuse",
         "suggest: auth login": "Finds related nodes from short context text",
         "batch session_id='x' ops='create: Engine: A | desc\\nedge+: A --implements--> B'": (
-            "Unified batch: create/update/delete/retype/merge/edge ops (max 50 lines)"
+            "Unified batch: create/update/delete/retype/merge/edge ops (max 500 ops per call)"
         ),
         "template: Engine": "Input frame for Engine type (required/optional fields from schema)",
         "template: Flow": "Input frame for Flow type (required/optional fields from schema)",

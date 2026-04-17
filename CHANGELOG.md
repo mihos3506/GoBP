@@ -5,6 +5,27 @@ Format: [Wave N — Title] with date, what was added/changed/fixed.
 
 ---
 
+## [Wave 16A11] — Batch Performance Fix — 2026-04-18
+
+### Changed
+
+- **batch: single-load/single-save** — eliminated per-op disk reload for create / `edge+` paths; flush pending writes before ops that need disk consistency, then reload.
+  - **GraphIndex:** `add_node_in_memory()`, `add_edge_in_memory()`, `remove_node_in_memory()`, `save_new_nodes_to_disk()`, `save_new_edges_to_disk()`, `flush_pending_writes()`
+  - **mutator / history:** batched node file writes and batched edge append + history lines where applicable
+
+- **Batch limit raised** from 50 to **500** ops per call (`MAX_BATCH_OPS` in `gobp/mcp/tools/write.py`). PROTOCOL_GUIDE and template_batch instructions updated.
+
+### Impact
+
+- Large imports (e.g. hundreds of nodes + edges) complete in one batch call without reloading the full index every op.
+
+### Tests
+
+- `tests/test_wave16a11.py` — in-memory GraphIndex helpers, batch limit, mixed create+edge, PROTOCOL_GUIDE batch limit text.
+- **581** tests (full suite).
+
+---
+
 ## [Wave 16A10] — Smart Template + Compact + AI Query Rules — 2026-04-17
 
 ### Added
