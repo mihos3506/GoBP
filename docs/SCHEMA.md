@@ -3,14 +3,16 @@
 **File:** `D:\GoBP\docs\SCHEMA.md`
 **Version:** v0.1
 **Status:** draft
-**Depends on:** ARCHITECTURE.md (must read first)
+**Depends on:** ARCHITECTURE.md / `GoBP_ARCHITECTURE.md` (must read first)
 **Audience:** Cursor implementing schema, AI agents validating data
+
+**Packaged schema files:** `gobp/schema/core_nodes.yaml` (**21** node types), `gobp/schema/core_edges.yaml` (**14** edge kinds). Validator loads YAML first; this document should stay aligned (use `gobp(query="validate: schema-docs")` to cross-check).
 
 ---
 
 ## 0. PURPOSE
 
-SCHEMA.md is the **machine-readable contract** for GoBP data. Every node and edge must conform to schemas defined here. Validator uses these definitions to accept or reject writes.
+SCHEMA.md documents the shapes enforced by the packaged YAML under `gobp/schema/`. Every node and edge must conform; the validator loads the YAML packs. Keep this file aligned with those files (see `validate: schema-docs`).
 
 This doc is the source of truth for:
 - What fields each node type requires
@@ -545,7 +547,7 @@ node_type:
 
 ### 2.7 Concept
 
-Stores a defined concept or framework idea for AI orientation. When AI connects to a project, it reads Concept nodes via `gobp_overview()` to understand the project's vocabulary and thinking framework without CEO re-explanation.
+Stores a defined concept or framework idea for AI orientation. When AI connects to a project, it discovers Concept nodes via `gobp(query="find:Concept …")` or project orientation (`gobp(query="overview:")`) to understand the project's vocabulary and thinking framework without CEO re-explanation.
 
 **Required fields:**
 - `id` — e.g. `concept:test_taxonomy`
@@ -1119,69 +1121,74 @@ Using a reserved name in custom schema is a hard error at load time.
 
 ## 9. COMPLETE CORE SCHEMA FILES
 
-Ship structure for v1:
+Ship layout (core schema + optional extensions). **Authoritative counts:** 21 node types in `core_nodes.yaml`, 14 edge types in `core_edges.yaml`. Project config `.gobp/config.yaml` uses integer `schema_version` (baseline **2** — see `gobp.core.init.INIT_SCHEMA_VERSION`).
 
 ```
 gobp/schema/
-├── core_nodes.yaml       # 9 node types above
-├── core_edges.yaml       # 7 edge types above
-├── core_validation.yaml  # cross-cutting validation rules
-└── README.md             # how to read this
+├── core_nodes.yaml       # all core node types (21)
+├── core_edges.yaml       # all core edge types (14)
+└── extensions/           # optional packs (e.g. mihos.yaml)
 ```
+
+Cross-cutting validation rules are enforced in loader/graph code and via `gobp(query="validate: …")` (see `docs/MCP_TOOLS.md`); there is no separate `core_validation.yaml` file in the tree.
 
 ### 9.1 core_nodes.yaml (abbreviated)
 
 ```yaml
-schema_version: 2.0
+schema_version: "2.0"
 node_types:
-  Node:         {...}  # Section 2.1 expanded
-  Idea:         {...}  # Section 2.2 expanded
-  Decision:     {...}  # Section 2.3 expanded
-  Session:      {...}  # Section 2.4 expanded
-  Document:     {...}  # Section 2.5 expanded
-  Lesson:       {...}  # Section 2.6 expanded
-  Concept:      {...}  # Section 2.7 expanded
-  TestKind:     {...}  # Section 2.8 expanded
-  TestCase:     {...}  # Section 2.9 expanded
+  Node:           {...}  # §2.1
+  Idea:           {...}  # §2.2
+  Decision:       {...}  # §2.3
+  Session:        {...}  # §2.4
+  Document:       {...}  # §2.5
+  Lesson:         {...}  # §2.6
+  Concept:        {...}  # §2.7
+  TestKind:       {...}  # §2.8
+  TestCase:       {...}  # §2.9
+  Engine:         {...}
+  Flow:           {...}
+  Entity:         {...}
+  Feature:        {...}
+  Invariant:      {...}
+  Screen:         {...}
+  APIEndpoint:    {...}
+  Repository:     {...}
+  Wave:           {...}
+  Task:           {...}
+  CtoDevHandoff:  {...}
+  QaCodeDevHandoff: {...}
 ```
 
 ### 9.2 core_edges.yaml (abbreviated)
 
 ```yaml
-schema_version: 2.0
+schema_version: "2.0"
 edge_types:
-  relates_to:    {...}  # Section 3.1 expanded
-  supersedes:    {...}  # Section 3.2 expanded
-  implements:    {...}  # Section 3.3 expanded
-  discovered_in: {...}  # Section 3.4 expanded
-  references:   {...}  # Section 3.5 expanded
-  covers:       {...}  # Section 3.6 expanded
-  of_kind:      {...}  # Section 3.7 expanded
+  relates_to:     {...}  # §3.1
+  supersedes:     {...}  # §3.2
+  implements:     {...}  # §3.3
+  discovered_in:  {...}  # §3.4
+  references:     {...}  # §3.5
+  covers:         {...}  # §3.6
+  of_kind:        {...}  # §3.7
+  depends_on:     {...}
+  tested_by:      {...}
+  enforces:       {...}
+  triggers:       {...}
+  validates:      {...}
+  produces:       {...}
 ```
 
-### 9.3 core_validation.yaml
+### 9.3 Validation (runtime)
 
-```yaml
-schema_version: 1.0
+Graph and schema checks run through the MCP query protocol, for example:
 
-global_rules:
-  - every_node_must_have_discovered_in_edge:
-      description: Every non-Session node should have discovered_in edge
-      severity: warning  # soft rule
-  
-  - no_orphan_edges:
-      description: Both endpoints of edge must exist
-      severity: hard
-  
-  - no_supersedes_cycles:
-      description: supersedes chain cannot cycle
-      severity: hard
-      scope: [Idea, Decision, Node]
-  
-  - locked_decision_must_have_session:
-      description: Decision with status=LOCKED needs session_id
-      severity: hard
-```
+- `validate: all` — full graph check
+- `validate: nodes` / `validate: edges` — scoped checks
+- `validate: schema-docs` — documentation vs packaged YAML (when implemented)
+
+Conceptual rules (examples): non-Session nodes should have `discovered_in`; edges must reference existing nodes; `supersedes` must not cycle; locked decisions should be attributable to a session. Exact behavior is defined in code and tests under `tests/`.
 
 ---
 
@@ -1203,7 +1210,7 @@ tests/fixtures/
     └── orphan_edge.yaml        # Should fail "referential check"
 ```
 
-Test command: `gobp validate tests/fixtures/` — expect valid to pass, invalid to fail with specific errors.
+Test command: `pytest tests/` — schema and graph behavior are covered by the test suite (see `tests/test_*.py`).
 
 ---
 

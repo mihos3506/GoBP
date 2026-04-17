@@ -16,7 +16,7 @@
 As of Wave 10A, GoBP exposes a single MCP tool: `gobp()`.
 
 **Why:** MCP clients may limit visible tools per server. `gobp()` provides
-access to all 14 capabilities through 1 tool using structured query protocol.
+access to all capabilities through 1 tool using structured query protocol (see `overview:` / `PROTOCOL_GUIDE` in code).
 
 ### Protocol
 
@@ -98,7 +98,15 @@ For a single node, prefer `gobp(query="signature: <id>")` or `gobp(query="get: <
 
 ## 0. PURPOSE
 
-MCP_TOOLS.md is the **API contract** for GoBP v1. Every tool is documented with:
+**Primary contract (use this):** protocol **v2** — a single MCP tool `gobp` and the query strings documented in **§ gobp() - Primary Interface (v2)** at the top of this file.
+
+**Historical appendix:** The subsections **§1 onward** document the older **v1** era when each capability had its own MCP tool name. Implementations today still map those names to the same Python helpers, but clients should call **`gobp()`** only.
+
+MCP_TOOLS.md (full file) therefore mixes:
+- **v2** — what you ship and test against (`gobp` + `query`)
+- **v1 inventory** — field-level detail kept for parity with internal function names
+
+Every legacy tool subsection is documented with:
 - Name and purpose
 - Input schema (required, optional, types)
 - Output schema (success, error)
@@ -106,34 +114,37 @@ MCP_TOOLS.md is the **API contract** for GoBP v1. Every tool is documented with:
 - Examples
 - Error cases
 
-If a tool is not in this doc, it doesn't exist in GoBP v1.
+If a capability is not described here, it is not part of the supported contract. In **v2**, it must be reachable via **`gobp(query="…")`** (see top of this file and `gobp/mcp/parser.py` `PROTOCOL_GUIDE`).
 
 ---
 
-## 1. TOOL INVENTORY
+## 1. TOOL INVENTORY (historical v1 — discrete MCP tools)
 
-GoBP v1 exposes exactly **13 tools** over MCP. Grouped by purpose:
+**Current product:** use the single tool **`gobp()`** (section at top of this doc).  
+The list below describes the **older v1 surface** when each capability was a separate MCP tool name. It is kept for reference.
+
+GoBP v1 originally exposed **13** discrete tools over MCP. Grouped by purpose:
 
 ### Read tools (7)
-1. `gobp_overview` — orientation tool, first call for new AI connections
-2. `find` — search by name/id/substring
-3. `signature` — minimal node summary
-4. `context` — node + relations + applicable decisions
-5. `session_recent` — latest N sessions
-6. `decisions_for` — locked decisions for a topic
-7. `doc_sections` — sections of a Document node
+1. `gobp_overview` — orientation tool, first call for new AI connections → **`gobp(query="overview:")`**
+2. `find` — search by name/id/substring → **`gobp(query="find: …")`**
+3. `signature` — minimal node summary → **`gobp(query="signature: …")`**
+4. `context` — node + relations + applicable decisions → **`gobp(query="get: …")`**
+5. `session_recent` — latest N sessions → **`gobp(query="recent: N")`**
+6. `decisions_for` — locked decisions for a topic → **`gobp(query="decisions: …")`**
+7. `doc_sections` — sections of a Document node → **`gobp(query="sections: …")`**
 
 ### Write tools (3)
-7. `node_upsert` — create or update a node
-8. `decision_lock` — lock a decision (with verification)
-9. `session_log` — start/end/update session
+8. `node_upsert` — create or update a node → **`create:` / `update:` / `upsert:`** via `gobp()`
+9. `decision_lock` — lock a decision (with verification) → **`gobp(query="lock:Decision …")`**
+10. `session_log` — start/end/update session → **`gobp(query="session:start …")` / `session:end …`**
 
 ### Import tools (2)
-10. `import_proposal` — AI proposes batch import
-11. `import_commit` — commit approved proposal
+11. `import_proposal` — AI proposes batch import → **`gobp(query="import: …")`**
+12. `import_commit` — commit approved proposal → **`gobp(query="commit: …")`**
 
 ### Maintenance tools (1)
-12. `validate` — run schema check on graph
+13. `validate` — run schema check on graph → **`gobp(query="validate: …")`**
 
 ---
 
@@ -294,10 +305,10 @@ suggested_next_queries: list[string]
 - `suggested_next_queries` is a static list (hints for AI to know what tools exist)
 - All counts read live from GraphIndex at call time (no caching)
 
-**Rule:** No read tool should be callable only with ID. Every tool must have a path from zero knowledge (keyword, topic, type) to useful output. Only `signature` and `context` require ID, and they are called after `find` or `gobp_overview` returns IDs.
+**Rule:** No read tool should be callable only with ID. Every tool must have a path from zero knowledge (keyword, topic, type) to useful output. Only `signature` and `context` require ID, and they are called after `find` or `overview:` returns IDs.
 
 **Errors:**
-- No errors expected under normal operation. If GraphIndex has load errors, they are reported in server logs but `gobp_overview` still returns best-effort data.
+- No errors expected under normal operation. If GraphIndex has load errors, they are reported in server logs but the overview action still returns best-effort data.
 
 ---
 
@@ -1344,6 +1355,8 @@ def protocol_0(gobp, user_context):
 
 ## 10. PERFORMANCE TARGETS
 
+> **Note:** This table names **internal actions** (same helpers `gobp()` dispatches to). The MCP process exposes **one** round-trip per user query (`gobp`); latency is dominated by graph reload + the selected action.
+
 | Tool | Target latency | Max latency | Target tokens | Max tokens |
 |---|---|---|---|---|
 | gobp_overview | 30ms | 100ms | 800 | 1500 |
@@ -1360,7 +1373,7 @@ def protocol_0(gobp, user_context):
 | import_commit | 200ms | 1000ms | 200 | 500 |
 | validate | 500ms | 5000ms | 500 | 3000 |
 
-Numbers based on MIHOS M1 baseline (5 tools, 625 nodes) scaled to 12 tools and 1K-10K nodes.
+Numbers based on MIHOS M1 baseline (5 tools, 625 nodes) scaled to the **v2** action set and 1K-10K nodes.
 
 Performance tested in Wave 8 (MIHOS integration test).
 
@@ -1368,81 +1381,38 @@ Performance tested in Wave 8 (MIHOS integration test).
 
 ## 11. TOOL REGISTRATION (MCP SERVER CODE PATTERN)
 
+**Shipped implementation:** `gobp/mcp/server.py` registers **exactly one** MCP tool named `gobp` with a required string field `query`. All actions route through `parse_query` → `dispatch`.
+
 ```python
-# Pseudocode for gobp/mcp/server.py
-
-from mcp.server import Server
-import mcp.types as types
-
-server = Server("gobp")
+# Accurate shape (simplified) — see repository for full inputSchema text
 
 @server.list_tools()
 async def list_tools() -> list[types.Tool]:
     return [
         types.Tool(
-            name="gobp_overview",
-            description="Orientation tool. Returns project metadata, stats, topics, recent activity. Call first.",
+            name="gobp",
+            description="GoBP knowledge graph (protocol v2) — pass query per PROTOCOL_GUIDE.",
             inputSchema={
                 "type": "object",
-                "properties": {},
-                "required": []
-            }
-        ),
-        types.Tool(
-            name="find",
-            description="Fuzzy search GoBP nodes by id, name, or keyword",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "query": {"type": "string"},
-                    "limit": {"type": "integer", "default": 20}
-                },
-                "required": ["query"]
-            }
-        ),
-        types.Tool(
-            name="signature",
-            description="Get minimal spec of a node",
-            inputSchema={
-                "type": "object",
-                "properties": {"node_id": {"type": "string"}},
-                "required": ["node_id"]
-            }
-        ),
-        # ... 10 more tools
+                "properties": {"query": {"type": "string"}},
+                "required": ["query"],
+            },
+        )
     ]
 
 @server.call_tool()
 async def call_tool(name: str, arguments: dict) -> list[types.TextContent]:
-    dispatch = {
-        "gobp_overview": tools_read.gobp_overview,
-        "find": tools_read.find,
-        "signature": tools_read.signature,
-        "context": tools_read.context,
-        "session_recent": tools_read.session_recent,
-        "decisions_for": tools_read.decisions_for,
-        "doc_sections": tools_read.doc_sections,
-        "node_upsert": tools_write.node_upsert,
-        "decision_lock": tools_write.decision_lock,
-        "session_log": tools_write.session_log,
-        "import_proposal": tools_import.proposal,
-        "import_commit": tools_import.commit,
-        "validate": tools_maintain.validate,
-    }
-    
-    handler = dispatch.get(name)
-    if not handler:
-        result = {"ok": False, "error": f"Unknown tool: {name}"}
-    else:
-        try:
-            result = await handler(arguments)
-        except Exception as e:
-            result = {"ok": False, "error": str(e), "tool": name}
-    
-    return [types.TextContent(type="text", text=json.dumps(result, ensure_ascii=False))]
+    if name != "gobp":
+        return [error_json(f"Unknown tool: {name}. Use gobp().")]
+    query = arguments.get("query", "overview:")
+    result = await dispatch(query, index, project_root)
+    # ... wrap as MCP TextContent JSON
+
+# Historical v1 (pre–single-tool) dispatch map — not used by the shipped server:
+# tools_read.gobp_overview, find, context, … — now reached only via dispatch(query, …).
 ```
 
-Pattern inherited from MIHOS M1 `mcp_server.py`. Simple dispatch, explicit routing.
+Older MIHOS M1 servers used a per-tool name map; GoBP **v2** replaces that with `parse_query` + `dispatch`.
 
 ---
 
@@ -1490,7 +1460,7 @@ def check_session(session_id):
 
 ## 13. VERSION STABILITY
 
-MCP_TOOLS.md defines v1 API. Changes to v1 after ship:
+MCP_TOOLS.md defines the **contract** for GoBP capabilities. The **wire protocol** for clients is **v2** (`gobp` + `query`). Legacy §1–§9 tool names describe the same behavior for humans and for code that maps actions to Python helpers. Changes after ship:
 
 **Allowed without version bump:**
 - Bug fixes

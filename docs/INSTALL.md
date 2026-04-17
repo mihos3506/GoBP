@@ -1,5 +1,7 @@
 # GoBP Installation Guide
 
+**Documentation (repo `docs/`):** `SCHEMA.md` (node/edge contracts), `MCP_TOOLS.md` (`gobp()` protocol), `GoBP_AI_USER_GUIDE.md` (AI usage), `VISION.md` / `GoBP_ARCHITECTURE.md` (design).
+
 ## Requirements
 
 - Python 3.10+
@@ -123,31 +125,20 @@ claude
 Once your MCP client is connected, ask the AI:
 
 ```
-Call gobp_overview and tell me what you see.
+Call gobp(query="overview:") (or gobp(query="version:")) and summarize what you see.
 ```
 
-Expected response includes: project name, node count (0 if new), available tools (14).
+Expected response includes: project name, node/edge counts (0 if new), and protocol hints. The MCP server registers **one** tool named `gobp`; all reads and writes go through the query string.
 
 ---
 
-## 5. Available MCP tools (14)
+## 5. MCP surface (protocol v2)
 
-| Tool | Purpose |
+| Surface | Purpose |
 |---|---|
-| `gobp_overview` | Project orientation — call first |
-| `find` | Fuzzy search nodes by keyword |
-| `signature` | Minimal summary of a node |
-| `context` | Full node + edges + decisions bundle |
-| `session_recent` | Latest N sessions |
-| `decisions_for` | Locked decisions by topic or node |
-| `doc_sections` | Sections of a Document node |
-| `node_upsert` | Create or update any node |
-| `decision_lock` | Lock a Decision with verification |
-| `session_log` | Start / update / end a session |
-| `import_proposal` | AI proposes batch import |
-| `import_commit` | Commit approved import |
-| `validate` | Full schema + constraint check |
-| `lessons_extract` | Scan for lesson candidates |
+| `gobp` | **Only** MCP tool — pass `query="…"` using the structured protocol (`overview:`, `find:…`, `get:…`, `session:start`, `batch …`, etc.) |
+
+Legacy docs may list older per-capability tool names (`find`, `context`, …); those map to **actions** inside `gobp()`, not separate MCP tool registrations.
 
 Full specs: `docs/MCP_TOOLS.md`.
 

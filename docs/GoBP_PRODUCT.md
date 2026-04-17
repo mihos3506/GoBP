@@ -67,27 +67,35 @@ The founder never edits GoBP files directly. The founder talks to AI. AI writes 
 GoBP speaks MCP — the universal protocol for AI tool integration. Any AI that supports MCP can use GoBP: Claude, Cursor, Claude CLI, Continue.dev, Windsurf, and any future MCP client.
 
 ### One tool, all capabilities
-GoBP exposes a single MCP tool: `gobp()`. All 22 actions are accessible via structured query protocol. This works even in MCP clients that limit tool count.
+GoBP exposes a single MCP tool: `gobp()`. Actions are listed in `gobp/mcp/parser.py` (`PROTOCOL_GUIDE`) and surfaced via `overview:` / `overview: full_interface=true`. This works even in MCP clients that limit tool count.
 
 ---
 
 ## What GoBP Stores
 
-### Node Types (9)
+### Node Types (21 in packaged `core_nodes.yaml`)
+
 | Type | Purpose | Example ID |
 |---|---|---|
-| Node | Features, flows, engines, components | `node:flow_auth` |
+| Node | Generic container | `node:flow_auth` |
 | Idea | Raw brainstorm from conversation | `idea:i001` |
 | Decision | Locked architectural choice | `dec:d001` |
-| Session | AI working session record | `session:2026-04-15_a3f7c2` |
-| Document | Registered project document | `doc:DOC-07` |
+| Session | AI working session record | `meta.session.YYYY-MM-DD.*` |
+| Document | Registered project document | `doc:…` |
 | Lesson | Learned pattern from experience | `lesson:ll001` |
 | Concept | Framework concept for AI orientation | `concept:test_taxonomy` |
-| TestKind | Test category template (16 seeded on init) | `testkind:unit` |
-| TestCase | Individual test instance | `tc:login_otp_valid` |
+| TestKind | Test category (16 kinds seeded on init); field `group` = process / functional / non_functional / security | `testkind:unit` |
+| TestCase | Individual test instance; `kind_id` → TestKind | `tc:…` |
+| Engine, Flow, Entity, Feature | Product graph | `engine:…`, `flow:…`, … |
+| Invariant, Screen, APIEndpoint, Repository | Constraints, UI, API, repo metadata | … |
+| Wave, Task | Sprint / AI queue work | … |
+| CtoDevHandoff, QaCodeDevHandoff | Structured handoffs | … |
 
-### Edge Types (7)
-`relates_to`, `supersedes`, `implements`, `discovered_in`, `references`, `covers`, `of_kind`
+**Full field definitions:** `docs/SCHEMA.md`.
+
+### Edge Types (14 in `core_edges.yaml`)
+
+`relates_to`, `supersedes`, `implements`, `discovered_in`, `references`, `covers`, `depends_on`, `tested_by`, `of_kind`, `enforces`, `triggers`, `validates`, `produces` — plus any project extensions. **Details:** `docs/SCHEMA.md` section 3.
 
 ### Per-node fields
 Every node can have:

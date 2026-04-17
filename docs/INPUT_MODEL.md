@@ -3,8 +3,10 @@
 **File:** `D:\GoBP\docs\INPUT_MODEL.md`
 **Version:** v0.1
 **Status:** draft, awaiting CEO approval
-**Depends on:** VISION.md, ARCHITECTURE.md (must read first)
+**Depends on:** VISION.md, ARCHITECTURE.md, SCHEMA.md (must read first)
 **Audience:** AI agents that capture knowledge from conversation with human
+
+**MCP entrypoint (v2):** the server exposes a single tool, `gobp`, with a structured `query` string (`overview:`, `find:…`, `create:…`, `batch …`, …). Prose below sometimes uses legacy names (`find()`, `node_upsert()`, `session_log`) for readability; implement them as the corresponding `gobp(query="…")` actions (see `docs/MCP_TOOLS.md`).
 
 ---
 
@@ -468,19 +470,17 @@ Implementation: MCP server reloads files on each query (or uses file watcher in 
 
 When founder says "tiếp tục session hôm qua" to a new AI:
 
-```python
-# New AI executes at session start
-recent = session_recent(n=3)
+```text
+# New AI executes at session start (MCP: single tool gobp())
+gobp(query="recent: 3")
 → Returns latest 3 sessions
 
-# New AI finds yesterday's session
-yesterday = session_recent(n=1, before=today)
-→ Returns yesterday's session with pending items
+# Narrow further (e.g. before a timestamp) by filtering client-side or
+# using session fields from the response; optional filters may be added
+# to the handler over time.
 
-# New AI loads pending work
-for item in yesterday.pending:
-  context = context_for(item)
-  # AI now understands what to continue
+# New AI loads pending work from handoff
+gobp(query="get: node:…")   # full context for the active node
 ```
 
 Founder doesn't need to re-explain. New AI loads state from GoBP.
@@ -544,30 +544,31 @@ Founder doesn't need to re-explain. New AI loads state from GoBP.
 Projects using GoBP should include this in AI system prompts:
 
 ```
-You have access to GoBP (Graph of Brainstorm Project) via MCP. GoBP is the 
-project's persistent memory shared with other AI agents.
+You have access to GoBP via MCP. The server exposes one tool: gobp(query="…").
+GoBP is the project's persistent memory shared with other AI agents.
 
 Session start protocol:
-1. Call session_recent(n=3) to see what happened recently
-2. Call session_log() to start your session
-3. Call any relevant context() for current topic
+1. gobp(query="overview:") once per day (first session), then
+2. gobp(query="recent: 3") to see what happened recently
+3. gobp(query="session:start actor='…' goal='…'") to start your session
+4. gobp(query="get: node:…") for the node you are continuing
 
 During conversation:
-- When founder brainstorms → idea_add() with raw_quote verbatim
-- When founder changes mind → idea_add() with supersedes link
-- When founder confirms "chốt" → VERIFY first, then decision_lock()
-- When founder mentions a file/doc → node_upsert(type=Document)
-- When you observe a lesson → node_upsert(type=Lesson)
+- When founder brainstorms → create:Idea (or batch) with raw_quote verbatim
+- When founder changes mind → link supersedes or update the idea
+- When founder confirms "chốt" → VERIFY first, then lock:Decision …
+- When founder mentions a file/doc → create:Document or import: …
+- When you observe a lesson → create:Lesson
 
 Always:
 - Preserve raw_quote verbatim (no paraphrasing)
-- Verify before decision_lock() — ask founder to confirm 3-5 key facts
-- Query GoBP before proposing new nodes (find() first)
+- Verify before decision lock — ask founder to confirm 3-5 key facts
+- Query GoBP before proposing new nodes (find: … first)
 - Link new nodes to current session (discovered_in)
-- Keep tool responses under 500 tokens
+- Prefer batch: for multi-step writes; keep responses concise (mode=summary)
 
 Never:
-- Edit GoBP files directly (always via MCP tools)
+- Edit GoBP files directly (always via gobp() / batch)
 - Lock decisions without verification
 - Auto-promote ideas to decisions without explicit "chốt" signal
 - Duplicate existing nodes — update or supersede instead
@@ -680,30 +681,30 @@ At scale (A2A multi-agent, team of 3), token waste multiplies by agent count. Th
 ### 10.2 Session start checklist (Protocol 0)
 
 **First session of the day** (no prior context):
-□ 1. gobp_overview()
+□ 1. gobp(query="overview:")
 → full project orientation: node counts, recent decisions, topics
 → call ONCE per day, not every session
-□ 2. session_recent(n=3)
+□ 2. gobp(query="recent: 3")
 → what happened in the last 3 sessions
 → read handoff_notes of the most recent session
-□ 3. decisions_for(topic=<current_topic>)
+□ 3. gobp(query="decisions: <current_topic>")
 → load locked decisions relevant to today's work
 → skip if no specific topic yet
-□ 4. session_log(action="start", actor=<my_name>, goal=<stated_goal>)
+□ 4. gobp(query="session:start actor='<my_name>' goal='<stated_goal>'")
 → register this session in GoBP
 → use founder's stated goal as-is, don't paraphrase
 □ Ready to participate with full context loaded.
 
 **Subsequent sessions same day** (already oriented):
-□ 1. session_recent(n=1)
+□ 1. gobp(query="recent: 1")
 → fetch the last session only
 → read handoff_notes field carefully
-□ 2. context(node_id=<node_from_handoff>)
+□ 2. gobp(query="get: <node_id_from_handoff>")
 → load only the active node being worked on
 → do not load the full graph
-□ 3. session_log(action="start", actor=<my_name>, goal="continue: <handoff_summary>")
+□ 3. gobp(query="session:start actor='<my_name>' goal='continue: <handoff_summary>'")
 → register continuation session
-□ Ready. DO NOT call gobp_overview() — wastes ~800 tokens you don't need.
+□ Ready. DO NOT call gobp(query="overview:") again — wastes tokens you don't need.
 
 Target: < 10 MCP calls · < 30 seconds · < 5K tokens loaded.
 
@@ -711,16 +712,11 @@ Target: < 10 MCP calls · < 30 seconds · < 5K tokens loaded.
 
 ### 10.3 Mandatory session end
 
-Every session MUST end with:
-session_log(
-action="end",
-session_id=<current_session_id>,
-outcome="<what was accomplished, 1-2 sentences>",
-pending=["<unfinished item 1>", "<unfinished item 2>"],
-nodes_touched=[<list of node_ids modified>],
-decisions_locked=[<list of decision_ids if any>],
-handoff_notes="<active node> + <next action> + <blockers if any>"
-)
+Every session MUST end with `session:end` via MCP, for example:
+
+`gobp(query="session:end outcome='…' handoff='…' session_id='meta.session.…'")`
+
+`outcome` is required. Use `handoff=` for `handoff_notes` (continuity for the next session). Optional: `pending=`, and other session fields supported by `gobp.mcp.tools.write.session_log` (see code / `docs/MCP_TOOLS.md`).
 
 **This is the single most important call in a session.** Without it, the next AI session has no continuity — it must re-explore the full graph to understand where things stand.
 
@@ -779,14 +775,14 @@ Before calling any GoBP tool, ask: "Do I already have this information in my con
 
 | Situation | Correct call | Wrong call |
 |---|---|---|
-| Brand new session, first of day | `gobp_overview()` | — |
-| Continuing same day | `session_recent(n=1)` + `context(last_node)` | `gobp_overview()` |
-| Need a specific feature | `find(query="login", type="Node")` | Loading all nodes |
-| Need decisions on topic | `decisions_for(topic="auth:login.method")` | `gobp_overview()` |
-| Deep dive on 1 node | `context(node_id)` | `gobp_overview()` |
-| Check test coverage | `find(type="TestCase", query="login")` | — |
-| Understand a concept | `find(type="Concept", query="test taxonomy")` | — |
-| **Never do** | `gobp_overview()` if already oriented in same day | — |
+| Brand new session, first of day | `gobp(query="overview:")` | — |
+| Continuing same day | `gobp(query="recent: 1")` + `gobp(query="get: <node_id>")` | `gobp(query="overview:")` |
+| Need a specific feature | `gobp(query="find:Node login")` | Loading all nodes |
+| Need decisions on topic | `gobp(query="decisions: auth:login.method")` | `gobp(query="overview:")` |
+| Deep dive on 1 node | `gobp(query="get: node_id")` | `gobp(query="overview:")` |
+| Check test coverage | `gobp(query="find:TestCase login")` | — |
+| Understand a concept | `gobp(query="find:Concept test taxonomy")` | — |
+| **Never do** | `gobp(query="overview:")` if already oriented in same day | — |
 
 ---
 
@@ -800,9 +796,9 @@ Active session: session:2026-04-15_wave4.
 Read context('wave_4_task_1_spec') if exists."
 Cursor → Claude:   "Task 1 done. Commit: abc123.
 6 tests pass. Node created: node:init_module.
-session_recent(n=1) for full report."
+gobp(query=\"recent: 1\") for full report."
 Claude → CLI:      "Audit Task 1. Brief: waves/wave_4_brief.md §Task1.
-Cursor report: session_recent(n=1)."
+Cursor report: gobp(query=\"recent: 1\")."
 
 Total tokens per task handoff: ~100 tokens instead of ~5,000.
 

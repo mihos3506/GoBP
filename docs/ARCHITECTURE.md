@@ -1,5 +1,7 @@
 **Architecture doc model:** The long-form base spec is [`GoBP_ARCHITECTURE.md`](./GoBP_ARCHITECTURE.md). **This file** (`ARCHITECTURE.md`) holds **patches, deltas, and pasted update blocks** relative to that base—read both when auditing or implementing anything that touches project layout, MCP wiring, or scaling notes.
 
+**Current runtime (2026):** The MCP server exposes a **single** tool, `gobp`, with the **gobp query protocol v2** (`gobp(query="overview:")`, `find:…`, `get:…`, `batch …`, …). Older sections below that mention separate tools such as `gobp_find` / `gobp_overview` describe the **same capabilities** routed through `gobp()` — see [`MCP_TOOLS.md`](./MCP_TOOLS.md) for the authoritative contract.
+
 ---
 
 ## MCP tools structure (Wave 16A04)
@@ -8,6 +10,7 @@ Runtime layout under `gobp/mcp/`:
 
 - `parser.py` — Query parsing (`parse_query`, `_normalize_type`, coercion helpers).
 - `dispatcher.py` — Routes parsed actions to tool implementations.
+- `batch_parser.py` — Parses multi-line `batch` operations.
 - `server.py` — MCP stdio server entrypoint.
 - `tools/read.py` — Core reads: `find`, `get`/`context`, `related`, `sections`, batch helpers, etc.
 - `tools/read_governance.py` — `schema_governance`, `metadata_lint`.
@@ -31,6 +34,8 @@ These are additions to existing foundational docs. CEO (or Cursor) pastes each s
 **Location:** Near the top of the tools list, before `gobp_find()`. This is the **first tool AI should call** when connecting to a new GoBP instance.
 
 **Section to add:**
+
+> **Status (2026):** This wave brief targets the old multi-tool MCP surface. The shipped server registers only `gobp`; use **`gobp(query="overview:")`** for the behavior below.
 
 ---
 

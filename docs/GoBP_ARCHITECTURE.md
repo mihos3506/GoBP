@@ -67,9 +67,11 @@ GoBP is a layered system with clear separation:
 
 ---
 
-## 2. NODE TYPES (9 core types)
+## 2. NODE TYPES (packaged core schema)
 
-Every piece of knowledge in GoBP is a node. There are 9 core types in schema v2. More types can be added per project via schema extensions.
+Every piece of knowledge in GoBP is a node. The packaged file `gobp/schema/core_nodes.yaml` defines **21** core node types (schema v2)—including e.g. `TestKind`, `TestCase`, `Engine`, `Flow`, `Wave`, `CtoDevHandoff`, `QaCodeDevHandoff`, and more. **Authoritative field lists:** `docs/SCHEMA.md`. Project-specific types may be added via schema extensions.
+
+The subsections below (2.1 onward) are a **narrative introduction** to an older subset; they do not enumerate every type. When in doubt, read `SCHEMA.md` and `core_nodes.yaml`.
 
 ### 2.1 Node (generic container)
 
@@ -274,7 +276,7 @@ nodes_touched: []
 decisions_locked:
   - dec:d020 (GoBP rename from BKP)
   - dec:d021 (License deferred)
-  - dec:d022 (9 core node types in schema v2)
+  - dec:d022 (core node types in schema v2 — see SCHEMA.md; 21 types in packaged `core_nodes.yaml`)
 pending:
   - INPUT_MODEL.md
   - IMPORT_MODEL.md
@@ -424,9 +426,11 @@ Structured lessons in a queryable store are the next iteration.
 
 ---
 
-## 3. EDGE TYPES (7 core types)
+## 3. EDGE TYPES (packaged core schema)
 
-Edges connect nodes. Each edge has a type that defines semantic meaning.
+Edges connect nodes. `gobp/schema/core_edges.yaml` defines **14** edge kinds (e.g. `relates_to`, `implements`, `depends_on`, `tested_by`, `covers`, `of_kind`, `enforces`, …). **Full list:** `docs/SCHEMA.md` section 3.
+
+The subsections below (3.1–3.5) describe an illustrative subset only.
 
 ### 3.1 relates_to
 
@@ -537,8 +541,8 @@ Inside a GoBP-enabled project, the knowledge lives in a `.gobp/` folder at proje
 │
 ├── gobp/                           ← schema files (copied from package on init)
 │   └── schema/
-│       ├── core_nodes.yaml         ← 9 core node type definitions (schema v2)
-│       └── core_edges.yaml         ← 7 core edge type definitions (schema v2)
+│       ├── core_nodes.yaml         ← 21 core node type definitions (schema v2)
+│       └── core_edges.yaml         ← 14 core edge type definitions (schema v2)
 │
 ├── src/                            ← project's actual code (not GoBP)
 ├── docs/                           ← project's actual docs (referenced by GoBP)
@@ -556,7 +560,7 @@ not project-specific data.
 - Edges live as YAML files under `.gobp/edges/` (typically one file per edge or small groups), not a mandatory single `edges.yaml`
 - History as JSONL (one event per line, append-only)
 - `archive/` holds pruned node files after `gobp prune`; optional until prune runs
-- Core schema v2 defines **9 node types** and **7 edge types** (see `gobp/schema/*.yaml` and `docs/SCHEMA.md`)
+- Core schema v2 defines **21 node types** and **14 edge kinds** (see `gobp/schema/*.yaml` and `docs/SCHEMA.md`)
 - `config.yaml` holds `schema_version`, `gobp_version`, and multi-user placeholders — there is no separate `.gobp-version` file
 - **Persistent SQLite index** (`index.db`) is derived from node/edge files, gitignored, rebuildable via `gobp validate --reindex`
 - `gobp/schema/` at **project root** is required for `GraphIndex.load_from_disk()` (schemas copied on `gobp init`)
@@ -678,25 +682,28 @@ gobp/
 │   └── history.py        ← Append-only log
 ├── schema/
 │   ├── __init__.py
-│   ├── core_nodes.yaml   ← 9 core node type definitions (schema v2)
-│   ├── core_edges.yaml   ← 7 core edge type definitions (schema v2)
+│   ├── core_nodes.yaml   ← 21 core node type definitions (schema v2)
+│   ├── core_edges.yaml   ← 14 core edge type definitions (schema v2)
 │   └── extensions.py     ← Load project-specific extensions
 ├── mcp/
 │   ├── __init__.py
-│   ├── server.py         ← MCP server entry point
+│   ├── server.py         ← MCP stdio entry
+│   ├── dispatcher.py     ← routes `gobp(query=…)` actions
+│   ├── batch_parser.py   ← batch op lines
 │   └── tools/
 │       ├── __init__.py
-│       ├── read.py       ← 6 read tools
-│       ├── write.py      ← 3 write tools
-│       ├── import_.py    ← 2 import tools
-│       └── maintain.py   ← 1 maintenance tool
+│       ├── read.py       ← find, get/context, overview, batch helpers, …
+│       ├── write.py      ← upsert, sessions, decisions, batch executor
+│       ├── import_.py    ← import proposal/commit
+│       ├── maintain.py   ← validate, stats, …
+│       ├── read_interview.py, read_priority.py, read_governance.py, advanced.py
 └── cli/
     ├── __init__.py
     ├── __main__.py       ← `gobp` command entry
     └── commands.py       ← init, validate, rebuild commands
 ```
 
-**Module count: 12 Python files total for v1.** Manageable.
+**Note:** Module count grows with waves; layout above is representative.
 
 ### 6.2 GraphIndex class (core data structure)
 

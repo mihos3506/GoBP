@@ -3,7 +3,7 @@
 **File:** `D:\GoBP\docs\IMPORT_MODEL.md`
 **Version:** v0.1
 **Status:** draft
-**Depends on:** VISION.md, ARCHITECTURE.md, INPUT_MODEL.md
+**Depends on:** VISION.md, ARCHITECTURE.md, INPUT_MODEL.md, SCHEMA.md
 **Audience:** AI agents importing existing project content into GoBP
 
 ---
@@ -239,10 +239,10 @@ Founder: "Ừ, duyệt"
 
 AI:
   9. Call import_commit(proposal_id="imp:2026-04-14_DOC-07") → commits atomically
-  10. Returns: 9 nodes created, 10 edges created
+  10. Returns: N nodes created, M edges created (counts from the committed proposal)
 
 AI (to founder):
-  "Import xong. 9 nodes + 10 edges. Tôi log session này. 
+  "Import xong. N nodes + M edges. Tôi log session này. 
   Anh muốn import DOC nào tiếp theo?"
 ```
 

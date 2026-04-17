@@ -6,6 +6,8 @@
 **Audience:** Any AI agent that will read, write, or extend GoBP
 **Must read:** YES — this is the first file any AI touching GoBP should read
 
+**Related docs (same folder):** `SCHEMA.md` (data contract), `MCP_TOOLS.md` / `GoBP_AI_USER_GUIDE.md` (how to call `gobp()`), `GoBP_ARCHITECTURE.md` (system shape).
+
 ---
 
 ## ONE-LINER
