@@ -378,7 +378,14 @@ node_types:
         default: []
 
   TestKind:
-    description: "A category of software test with template and seed examples"
+    description: |
+      A category of software test with template and seed examples.
+      One node type, many nodes: each TestKind row is a separate category (e.g. ids
+      testkind:unit, testkind:integration, or project ids testkind:<slug>).
+      Example display names (illustrative — add your own as separate TestKind nodes):
+      Unit Test; Entity Test; TrustGate Matrix; E2E Flow Test; Middleware Test;
+      Level System Test; Integration Test; Performance Test; Security Test;
+      Infrastructure Test.
     id_prefix: "testkind"
     parent: null
 
