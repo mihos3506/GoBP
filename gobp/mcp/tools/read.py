@@ -14,6 +14,7 @@ import yaml
 
 from gobp.core.graph import GraphIndex
 from gobp.core.id_config import parse_external_id
+from gobp.core.search import normalize_text, search_score
 from gobp.mcp.tools.read_governance import metadata_lint, schema_governance
 from gobp.mcp.tools.read_priority import recompute_priorities
 from gobp.mcp.tools.read_interview import node_interview, node_template
@@ -289,12 +290,39 @@ def gobp_overview(index: GraphIndex, project_root: Path, args: dict[str, Any]) -
     return base
 
 
+def _legacy_substring_hit(query_lower: str, node: dict[str, Any]) -> bool:
+    """True if legacy wide substring search would match (topic, title, etc.)."""
+    node_id = node.get("id", "")
+    node_name = node.get("name", "")
+    legacy_id = node.get("legacy_id", "")
+    fts_slug = _extract_fts_slug(node_id)
+    searchable = f"{node_id} {node_name} {legacy_id} {fts_slug}".lower()
+    for field in ("topic", "subject", "title", "description", "definition", "group"):
+        val = node.get(field, "")
+        if val:
+            searchable += f" {str(val).lower()}"
+    return query_lower in searchable
+
+
+def _find_match_label(node: dict[str, Any], query_str: str, query_norm: str, score: int) -> str:
+    """Map search hit to legacy match labels (exact_id / exact_name / substring)."""
+    node_id = node.get("id", "")
+    if node_id == query_str:
+        return "exact_id"
+    if node.get("name", "").lower() == query_str.lower():
+        return "exact_name"
+    if score == 100 or normalize_text(node.get("name", "")) == query_norm:
+        return "exact_name"
+    return "substring"
+
+
 def find(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> dict[str, Any]:
     """Search nodes by keyword with cursor-based pagination.
 
     Args:
         query: Search keyword (optional; empty means all nodes)
-        type: Node type filter (optional)
+        type / type_filter: Node type filter (optional, exact field match)
+        include_sessions: If true, include Session nodes (default false)
         limit: Deprecated alias for page_size
         page_size: Max results per page (default 20, max 100)
         cursor: Opaque pagination cursor (node id of last item)
@@ -305,64 +333,95 @@ def find(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> dict[st
     query_str = str(args.get("query", "") or "")
     if "query" not in args:
         return {"ok": False, "error": "Missing required field: query"}
-    type_filter = args.get("type")
+    type_filter = args.get("type_filter") or args.get("type")
     page_size = min(int(args.get("page_size", args.get("limit", 20))), 100)
     cursor = args.get("cursor")
     sort_field = args.get("sort", "id")
     direction = str(args.get("direction", "asc")).lower()
+    include_sessions = str(args.get("include_sessions", "false")).lower() == "true"
 
     if page_size < 1:
         page_size = 1
 
-    q = query_str.lower()
+    exclude_types: list[str] = []
+    if not include_sessions and type_filter != "Session":
+        exclude_types = ["Session"]
+
     candidates: list[dict[str, Any]] = []
     seen_ids: set[str] = set()
 
-    for node in index.all_nodes():
-        if type_filter and node.get("type") != type_filter:
-            continue
+    if not query_str.strip():
+        # Empty query: list all matching nodes (legacy), with optional session exclusion.
+        for node in index.all_nodes():
+            if type_filter and node.get("type") != type_filter:
+                continue
+            if node.get("type", "") in exclude_types:
+                continue
 
-        node_id = node.get("id", "")
-        node_name = node.get("name", "")
-        node_name_lower = node_name.lower()
+            node_id = node.get("id", "")
+            if node_id in seen_ids:
+                continue
 
-        legacy_id = node.get("legacy_id", "")
-        fts_slug = _extract_fts_slug(node_id)
-        searchable = f"{node_id} {node_name} {legacy_id} {fts_slug}".lower()
-        for field in ("topic", "subject", "title", "description", "definition", "group"):
-            val = node.get(field, "")
-            if val:
-                searchable += f" {str(val).lower()}"
+            seen_ids.add(node_id)
+            enriched = dict(node)
+            enriched["match"] = "substring"
+            enriched["_score"] = 0
+            candidates.append(enriched)
 
-        match_type = ""
-        if not query_str:
-            match_type = "substring"
-        elif node_id == query_str:
-            match_type = "exact_id"
-        elif node_name_lower == q:
-            match_type = "exact_name"
-        elif q in searchable:
-            match_type = "substring"
+        reverse = direction == "desc"
+        candidates.sort(
+            key=lambda n: (
+                _FIND_PRIORITY.get(str(n.get("match", "")), 99),
+                str(n.get(sort_field, n.get("id", ""))),
+            ),
+            reverse=reverse,
+        )
+    else:
+        # Vietnamese-aware relevance + legacy wide fields (topic, title, …).
+        query_norm = normalize_text(query_str.strip())
+        query_lower = query_str.lower()
 
-        if not match_type:
-            continue
-        if node_id in seen_ids:
-            continue
+        scored_map: dict[str, tuple[int, dict[str, Any]]] = {}
+        for node in index.all_nodes():
+            if type_filter and node.get("type") != type_filter:
+                continue
+            if node.get("type", "") in exclude_types:
+                continue
+            node_id = node.get("id", "")
+            if not node_id:
+                continue
+            base = search_score(query_norm, node)
+            if base == 0 and _legacy_substring_hit(query_lower, node):
+                base = 20
+            if base == 0:
+                continue
+            prev = scored_map.get(node_id)
+            if prev is None or base > prev[0]:
+                scored_map[node_id] = (base, node)
 
-        seen_ids.add(node_id)
-        enriched = dict(node)
-        enriched["match"] = match_type
-        candidates.append(enriched)
+        scored = sorted(scored_map.values(), key=lambda x: -x[0])
 
-    # Sort: keep relevance first, then stable field sort.
-    reverse = direction == "desc"
-    candidates.sort(
-        key=lambda n: (
-            _FIND_PRIORITY.get(str(n.get("match", "")), 99),
-            str(n.get(sort_field, n.get("id", ""))),
-        ),
-        reverse=reverse,
-    )
+        for score, node in scored:
+            node_id = node.get("id", "")
+            if node_id in seen_ids:
+                continue
+            seen_ids.add(node_id)
+            enriched = dict(node)
+            enriched["match"] = _find_match_label(enriched, query_str, query_norm, score)
+            enriched["_score"] = score
+            candidates.append(enriched)
+
+        # Stable sort: tie-break by sort_field/direction, then exact_id / exact_name / substring + score.
+        candidates.sort(
+            key=lambda n: str(n.get(sort_field, n.get("id", ""))),
+            reverse=(direction == "desc"),
+        )
+        candidates.sort(
+            key=lambda n: (
+                _FIND_PRIORITY.get(str(n.get("match", "")), 99),
+                -int(n.get("_score", 0)),
+            ),
+        )
 
     # Apply cursor (keyset pagination)
     total_estimate = len(candidates)
@@ -380,9 +439,17 @@ def find(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> dict[st
 
     mode = str(args.get("mode", "standard")).lower()
     if mode == "summary":
-        matches = [_node_summary(n, index) for n in page]
+        matches = []
+        for n in page:
+            entry = _node_summary(n, index)
+            entry["_score"] = n.get("_score", 0)
+            matches.append(entry)
     elif mode == "brief":
-        matches = [_node_brief(n, index) for n in page]
+        matches = []
+        for n in page:
+            entry = _node_brief(n, index)
+            entry["_score"] = n.get("_score", 0)
+            matches.append(entry)
     else:
         # Backward compatible default payload.
         matches = [
@@ -393,6 +460,7 @@ def find(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> dict[st
                 "status": n.get("status", ""),
                 "priority": n.get("priority", "medium"),
                 "match": n.get("match", "substring"),
+                "_score": n.get("_score", 0),
             }
             for n in page
         ]
@@ -403,6 +471,13 @@ def find(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> dict[st
         "count": len(matches),
         "mode": mode,
         "truncated": has_more,
+        "query": query_str,
+        "type_filter": type_filter,
+        "sessions_excluded": bool(exclude_types),
+        "hint": (
+            "Use include_sessions=true to include Session nodes. "
+            "Use type_filter for exact type match."
+        ),
         "page_info": {
             "next_cursor": next_cursor,
             "has_more": has_more,
