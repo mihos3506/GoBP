@@ -607,7 +607,84 @@ def session_log(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> 
     }
 
 
-MAX_BATCH_OPS = 50
+MAX_BATCH_OPS = 500
+
+
+def _batch_build_create_node(
+    index: GraphIndex,
+    project_root: Path,
+    op: dict[str, Any],
+    session_id: str,
+) -> tuple[dict[str, Any] | None, str | None]:
+    """Build a node dict for batch create (same shape as :func:`node_upsert` create path)."""
+    node_type = str(op.get("node_type", ""))
+    name = str(op.get("name", ""))
+    desc = str(op.get("description", ""))
+    if not node_type or not name:
+        return None, "missing node_type or name"
+
+    session = index.get_node(session_id)
+    if not session:
+        return None, f"Session not found: {session_id}"
+    if session.get("status") == "COMPLETED":
+        return None, "Session already ended, start new one"
+
+    fields: dict[str, Any] = {}
+    if desc:
+        fields["description"] = desc
+
+    node_id = str(op.get("id", "")).strip() if op.get("id") else ""
+    if not node_id:
+        testkind = str(fields.get("kind_id", ""))
+        node_id = generate_external_id(
+            node_type,
+            name=name,
+            testkind=testkind,
+            gobp_root=project_root,
+        )
+
+    now = datetime.now(timezone.utc).isoformat()
+    if node_type == "Task":
+        status_default = "PENDING"
+    elif node_type in ("CtoDevHandoff", "QaCodeDevHandoff"):
+        status_default = "OPEN"
+    else:
+        status_default = "ACTIVE"
+    node: dict[str, Any] = {
+        "id": node_id,
+        "type": node_type,
+        "name": name,
+        "status": fields.get("status", status_default),
+        "created": now,
+        "updated": now,
+        "session_id": session_id,
+    }
+    node.update(fields)
+    node["id"] = node_id
+    node["type"] = node_type
+    node["name"] = name
+    node["session_id"] = session_id
+    if node_type == "Task":
+        if not node.get("assignee"):
+            node["assignee"] = "cursor"
+
+    if node_type == "TestKind":
+        if not node.get("group"):
+            node["group"] = "process"
+        if not node.get("scope"):
+            node["scope"] = "project"
+        if node.get("template") is None:
+            node["template"] = {}
+        if not node.get("description"):
+            node["description"] = (
+                f'Project-local TestKind "{name}". Edit description and template as needed.'
+            )
+
+    nodes_schema = load_schema(package_schema_dir() / "core_nodes.yaml")
+    result = validate_node(node, nodes_schema)
+    if not result.ok:
+        return None, str(result.errors)
+    return node, None
 
 
 def _batch_require_open_session(index: GraphIndex, session_id: str) -> dict[str, Any] | None:
@@ -755,15 +832,20 @@ def batch_action(index: GraphIndex, project_root: Path, args: dict[str, Any]) ->
     nodes_schema = load_schema(package_schema_dir() / "core_nodes.yaml")
     edges_schema = load_schema(package_schema_dir() / "core_edges.yaml")
 
+    working_index = GraphIndex.load_from_disk(project_root)
+
     for op in ops:
         kind = str(op.get("kind", ""))
         tally[kind][1] += 1
-        idx = GraphIndex.load_from_disk(project_root)
+        if kind not in ("create", "edge_add"):
+            if working_index.has_pending_writes():
+                working_index.flush_pending_writes(project_root)
+            working_index = GraphIndex.load_from_disk(project_root)
+        idx = working_index
         try:
             if kind == "create":
                 nt = str(op.get("node_type", ""))
                 name = str(op.get("name", ""))
-                desc = str(op.get("description", ""))
                 sim = find_similar_nodes(idx, name, nt, threshold=80)
                 if sim:
                     skipped.append(
@@ -774,21 +856,17 @@ def batch_action(index: GraphIndex, project_root: Path, args: dict[str, Any]) ->
                         }
                     )
                     continue
-                fields: dict[str, Any] = {}
-                if desc:
-                    fields["description"] = desc
-                res = node_upsert(
-                    idx,
-                    project_root,
-                    {
-                        "type": nt,
-                        "name": name,
-                        "fields": fields,
-                        "session_id": session_id,
-                    },
+                node_dict, build_err = _batch_build_create_node(
+                    idx, project_root, op, session_id
                 )
-                if not res.get("ok"):
-                    errors.append(f"create {name!r}: {res.get('error', res)}")
+                if build_err:
+                    errors.append(f"create {name!r}: {build_err}")
+                    continue
+                try:
+                    nid = idx.add_node_in_memory(node_dict)
+                    idx.add_edge_in_memory(nid, session_id, "discovered_in")
+                except ValueError as exc:
+                    errors.append(f"create {name!r}: {exc}")
                     continue
                 tally[kind][0] += 1
 
@@ -804,6 +882,7 @@ def batch_action(index: GraphIndex, project_root: Path, args: dict[str, Any]) ->
                 node["updated"] = datetime.now(timezone.utc).isoformat()
                 update_node(project_root, node, nodes_schema, actor="batch_action")
                 tally[kind][0] += 1
+                working_index = GraphIndex.load_from_disk(project_root)
                 if kind == "replace":
                     warnings.append(
                         {
@@ -822,6 +901,7 @@ def batch_action(index: GraphIndex, project_root: Path, args: dict[str, Any]) ->
                     errors.append(f"delete {nid!r}: {res.get('error', res)}")
                     continue
                 tally[kind][0] += 1
+                working_index = GraphIndex.load_from_disk(project_root)
 
             elif kind == "retype":
                 res = retype_node_action(
@@ -837,6 +917,7 @@ def batch_action(index: GraphIndex, project_root: Path, args: dict[str, Any]) ->
                     errors.append(f"retype: {res.get('error', res)}")
                     continue
                 tally[kind][0] += 1
+                working_index = GraphIndex.load_from_disk(project_root)
 
             elif kind == "merge":
                 res = merge_nodes_action(
@@ -852,6 +933,7 @@ def batch_action(index: GraphIndex, project_root: Path, args: dict[str, Any]) ->
                 tally[kind][0] += 1
                 for w in res.get("warnings", []) or []:
                     warnings.append(w)
+                working_index = GraphIndex.load_from_disk(project_root)
 
             elif kind == "edge_add":
                 fid = _resolve_node_ref(idx, str(op.get("from_name", "")))
@@ -860,14 +942,23 @@ def batch_action(index: GraphIndex, project_root: Path, args: dict[str, Any]) ->
                 if not fid or not tid:
                     errors.append(f"edge+: unresolved endpoint(s) in {op.get('raw')!r}")
                     continue
-                edge = {"from": fid, "to": tid, "type": et}
-                out = create_edge(project_root, edge, edges_schema, actor="batch_action")
-                if out.get("action") == "skipped":
-                    skipped.append({"op": "edge+", "reason": out.get("reason", "skipped")})
-                elif out.get("ok"):
-                    tally[kind][0] += 1
+                try:
+                    added = idx.add_edge_in_memory(fid, tid, et)
+                except ValueError as exc:
+                    errors.append(f"edge+: {exc}")
+                    continue
+                if not added:
+                    skipped.append(
+                        {
+                            "op": "edge+",
+                            "reason": "duplicate edge",
+                            "from": fid,
+                            "to": tid,
+                            "type": et,
+                        }
+                    )
                 else:
-                    errors.append(f"edge+: {out}")
+                    tally[kind][0] += 1
 
             elif kind == "edge_remove":
                 fid = _resolve_node_ref(idx, str(op.get("from_name", "")))
@@ -882,6 +973,7 @@ def batch_action(index: GraphIndex, project_root: Path, args: dict[str, Any]) ->
                         {"op": "edge-", "note": "edge not found", "from": fid, "to": tid, "type": et}
                     )
                 tally[kind][0] += 1
+                working_index = GraphIndex.load_from_disk(project_root)
 
             elif kind == "edge_ret_type":
                 fid = _resolve_node_ref(idx, str(op.get("from_name", "")))
@@ -899,6 +991,7 @@ def batch_action(index: GraphIndex, project_root: Path, args: dict[str, Any]) ->
                     actor="batch_action",
                 )
                 tally[kind][0] += 1
+                working_index = GraphIndex.load_from_disk(project_root)
 
             elif kind == "edge_replace_all":
                 fid = _resolve_node_ref(idx, str(op.get("from_name", "")))
@@ -927,11 +1020,15 @@ def batch_action(index: GraphIndex, project_root: Path, args: dict[str, Any]) ->
                         actor="batch_action",
                     )
                 tally[kind][0] += 1
+                working_index = GraphIndex.load_from_disk(project_root)
 
             else:
                 errors.append(f"unsupported op kind {kind!r}")
         except Exception as exc:
             errors.append(f"{kind}: {exc}")
+
+    if working_index.has_pending_writes():
+        working_index.flush_pending_writes(project_root)
 
     succeeded = sum(v[0] for v in tally.values())
     total = sum(v[1] for v in tally.values())

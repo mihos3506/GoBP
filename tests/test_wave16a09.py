@@ -239,7 +239,7 @@ def test_batch_edge_add_by_name(proj: Path) -> None:
 def test_batch_max_ops_guard(proj: Path) -> None:
     sid = _sid(proj)
     index = GraphIndex.load_from_disk(proj)
-    lines = "\n".join([f"create: Engine: N{i} | x" for i in range(60)])
+    lines = "\n".join([f"create: Engine: N{i} | x" for i in range(501)])
     r = asyncio.run(dispatch(f"batch session_id='{sid}' ops='{lines}'", index, proj))
     assert not r["ok"]
 
