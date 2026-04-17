@@ -5,6 +5,38 @@ Format: [Wave N — Title] with date, what was added/changed/fixed.
 
 ---
 
+## [Wave 16A07] — Search Quality + Edge Types + Duplicate Detection — 2026-04-17
+
+### Added
+
+- **gobp/core/search.py** — Vietnamese-aware search module
+  - normalize_text(): strips diacritics ("mi hốt" == "mihot" == "Mi Hot")
+  - search_score(): relevance ranking (exact name=100, contains=60, desc=20); space-insensitive name match for queries like "mihot"
+  - search_nodes(): type filter by field, Session excluded by default
+  - find_similar_nodes(): duplicate detection helper
+
+- **depends_on edge type** — Engine/Flow requires another node
+- **tested_by edge type** — Flow/Engine validated by TestCase
+- **covers edge type** — extended (many-to-many) TestCase covers Flow/Engine/Feature
+
+- **Duplicate detection** — warning when creating a node with similar name
+
+### Changed
+
+- find() in read.py: uses search.py instead of substring-only match
+  - find: mihot → finds "Mi Hốt Standard Online" ✓
+  - find:Engine → only Engine nodes (exact type filter) ✓
+  - Session nodes excluded by default ✓
+  - Results sorted by relevance score ✓
+- dispatcher find: type prefix (e.g. find:Engine) sets type filter, not search text
+
+### Tests
+
+- `tests/test_wave16a07.py` — normalization, ranking, edges, duplicates, find sessions
+- **507** tests passing (full suite).
+
+---
+
 ## [Wave 16A06] — Delete + Retype nodes — 2026-04-17
 
 ### Added

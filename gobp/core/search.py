@@ -48,6 +48,22 @@ def search_score(query_norm: str, node: dict[str, Any]) -> int:
         return 40
     if query_norm in desc_norm:
         return 20
+    # Space-insensitive match: "mihot" vs name "Mi Hốt Standard" → "mi hot standard" vs "mihot"
+    qc = query_norm.replace(" ", "")
+    if len(qc) >= 3:
+        name_c = name_norm.replace(" ", "")
+        id_c = id_norm.replace(" ", "")
+        desc_c = desc_norm.replace(" ", "")
+        if name_c == qc:
+            return 100
+        if name_c.startswith(qc):
+            return 80
+        if len(qc) >= 4 and qc in name_c:
+            return 60
+        if len(qc) >= 4 and qc in id_c:
+            return 40
+        if len(qc) >= 4 and qc in desc_c:
+            return 20
     return 0
 
 
