@@ -5,6 +5,29 @@ Format: [Wave N — Title] with date, what was added/changed/fixed.
 
 ---
 
+## [Wave 16A09] — Batch Ops + Explore + Suggest + Template — 2026-04-17
+
+### Added
+
+- **template:** — schema-driven input frame per node type (`required` / `optional`), plus `batch_format` hint.
+- **explore:** — best match + incident edges (skips `discovered_in`) + `also_found` close matches.
+- **suggest:** — `suggest_related()` keyword overlap; excludes Session/Document by default.
+- **batch** — unified executor (max 50 ops): `create`, `update`, `replace`, `delete`, `retype`, `merge`, `edge+`, `edge-`, `edge~`, `edge*` (see `gobp/mcp/batch_parser.py`).
+- **remove_edge_from_disk()** in mutator — removes a triple from any `.gobp/edges/**/*.yaml` bundle.
+- **scripts/wave16a09_smoke.py** — smoke check for template, batch, explore, suggest, dedupe.
+
+### Changed
+
+- **parse_query** — special-case `batch` so colons inside `ops='…'` do not split the action.
+- **parse_query** — multi-word `suggest:` / `explore:` queries join bare tokens into one `query`.
+
+### Tests
+
+- `tests/test_wave16a09.py` — template, explore, suggest, batch parse/execute, merge, protocol.
+- **548** tests passing (full suite).
+
+---
+
 ## [Wave 16A08] — Proper Text Normalization — 2026-04-17
 
 ### Changed
