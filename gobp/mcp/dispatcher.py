@@ -264,6 +264,12 @@ async def dispatch(
                 index, project_root, {"query": explore_q, **params}
             )
 
+        elif action == "suggest":
+            suggest_ctx = str(params.get("query", "")).strip()
+            result = tools_read.suggest_action(
+                index, project_root, {"query": suggest_ctx, **params}
+            )
+
         elif action == "template":
             node_type_arg = _normalize_type(
                 str(params.get("query") or params.get("node_type") or node_type or "")

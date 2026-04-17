@@ -141,3 +141,78 @@ def find_similar_nodes(
         limit=5,
     )
     return [node for score, node in results if score >= threshold]
+
+
+def suggest_related(
+    index: "GraphIndex",
+    context: str,
+    exclude_types: list[str] | None = None,
+    limit: int = 10,
+) -> list[dict[str, Any]]:
+    """Find nodes that might relate to a free-text task or feature name.
+
+    Uses normalized keyword overlap between ``context`` and each node's
+    ``name`` + ``description``. Intended to surface reusable graph nodes
+    before creating duplicates.
+
+    Args:
+        index: Graph index.
+        context: Short natural-language description (e.g. ``\"Payment Flow\"``).
+        exclude_types: Node types to skip (defaults skip noisy metadata types).
+        limit: Maximum suggestions to return.
+
+    Returns:
+        List of dicts with ``id``, ``type``, ``name``, ``why``, ``relevance``.
+    """
+    if exclude_types is None:
+        exclude_types = ["Session", "Document"]
+
+    exclude_set = set(exclude_types)
+    context_norm = normalize_text(context)
+    keywords = [w for w in context_norm.split() if len(w) >= 3]
+    if not keywords:
+        return []
+
+    context_key = context_norm.replace(" ", "")
+    suggestions: list[dict[str, Any]] = []
+
+    for node in index.all_nodes():
+        node_type = str(node.get("type", ""))
+        if node_type in exclude_set:
+            continue
+
+        name = str(node.get("name", "") or "")
+        desc = str(node.get("description", "") or "")
+        name_norm = normalize_text(name).replace(" ", "")
+        if context_key and name_norm == context_key:
+            continue
+
+        node_text = normalize_text(f"{name} {desc}")
+        matched_keywords = [kw for kw in keywords if kw in node_text]
+        if not matched_keywords:
+            continue
+
+        overlap_score = len(matched_keywords) / max(len(keywords), 1)
+        name_norm_spaced = normalize_text(name)
+        name_matches = [kw for kw in keywords if kw in name_norm_spaced]
+        if name_matches:
+            overlap_score += 0.3
+
+        relevance = "high" if overlap_score >= 0.6 else "medium" if overlap_score >= 0.3 else "low"
+
+        suggestions.append(
+            {
+                "id": node.get("id"),
+                "type": node_type,
+                "name": name,
+                "why": f"keyword: {', '.join(matched_keywords)}",
+                "relevance": relevance,
+                "_score": overlap_score,
+            }
+        )
+
+    suggestions.sort(key=lambda s: float(s.get("_score", 0.0)), reverse=True)
+    for s in suggestions:
+        s.pop("_score", None)
+
+    return suggestions[:limit]

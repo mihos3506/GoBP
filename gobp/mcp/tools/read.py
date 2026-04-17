@@ -14,7 +14,7 @@ import yaml
 
 from gobp.core.graph import GraphIndex
 from gobp.core.id_config import get_group_for_type, load_groups, parse_external_id
-from gobp.core.search import normalize_text, search_nodes, search_score
+from gobp.core.search import normalize_text, search_nodes, search_score, suggest_related
 from gobp.mcp.tools.read_governance import metadata_lint, schema_governance
 from gobp.mcp.tools.read_priority import recompute_priorities
 from gobp.mcp.tools.read_interview import node_interview, node_template
@@ -1347,6 +1347,28 @@ def explore_action(index: GraphIndex, project_root: Path, args: dict[str, Any]) 
         "hint": (
             "Use retype: or delete: to clean duplicates. Use edge: or batch ops to add relationships."
         ),
+    }
+
+
+def suggest_action(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> dict[str, Any]:
+    """Suggest reusable nodes from a short natural-language context."""
+    del project_root
+    context = str(args.get("query", "")).strip()
+    if not context:
+        return {
+            "ok": False,
+            "error": "Context required. Example: suggest: Payment Flow",
+        }
+
+    lim = int(args.get("limit", 10))
+    suggestions = suggest_related(index, context, limit=lim)
+
+    return {
+        "ok": True,
+        "context": context,
+        "suggestions": suggestions,
+        "count": len(suggestions),
+        "hint": "Consider linking to these nodes with edge: or batch ops instead of creating new ones.",
     }
 
 

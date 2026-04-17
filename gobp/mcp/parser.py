@@ -201,6 +201,11 @@ def parse_query(query: str) -> tuple[str, str, dict[str, Any]]:
                 params["query"] = value
             positional_consumed = True
 
+    if action in ("suggest", "explore") and tokens:
+        bare = [t.strip("'\"") for t in tokens if "=" not in t]
+        if bare:
+            params["query"] = " ".join(bare)
+
     return action, node_type, params
 
 
@@ -258,6 +263,8 @@ PROTOCOL_GUIDE = {
         "related: <node_id> direction='outgoing'": "Only outgoing neighbors",
         "explore: TrustGate": "Best-matching node + edges + also_found in one call (skips discovered_in)",
         "explore: Mi Hốt": "Vietnamese-aware search + neighborhood context in one call",
+        "suggest: Payment Flow": "Keyword overlap — surfaces existing engines/entities to reuse",
+        "suggest: auth login": "Finds related nodes from short context text",
         "template: Engine": "Input frame for Engine type (required/optional fields from schema)",
         "template: Flow": "Input frame for Flow type (required/optional fields from schema)",
         "template: Entity": "Input frame for Entity type",
