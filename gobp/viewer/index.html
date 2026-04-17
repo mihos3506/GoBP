@@ -230,27 +230,35 @@ const NODE_TIERS = {
 };
 
 /**
- * Semantic tier weights (for documentation / spacing). Target Y uses explicit bands below.
- * core=20 … meta=0 → mapped to Y: 0 → 1200 with ~180px per weight step feel.
+ * Semantic tier weights (doc). Positions use large 3D units so force+links don’t collapse tiers.
  */
 const TIER_WEIGHT = { core: 20, domain: 10, ops: 8, test: 2, meta: 0 };
 
-/** Vertical band centers (3D Y). Enough gap so tiers don’t collapse into one column. */
+/** Vertical band centers (3D Y) — large gaps (~2k+) so layers read as separate bands. */
 const TIER_Y = {
   core: 0,
-  domain: 400,
-  ops: 600,
-  test: 900,
-  meta: 1200,
+  domain: 2200,
+  ops: 3600,
+  test: 5200,
+  meta: 6800,
 };
 
-/** Horizontal band centers — tiers fan left→right (core left, meta right). */
+/** Horizontal band centers — strong left→right separation. */
 const TIER_X = {
-  core: -520,
-  domain: -260,
+  core: -2200,
+  domain: -1100,
   ops: 0,
-  test: 260,
-  meta: 520,
+  test: 1100,
+  meta: 2200,
+};
+
+/** Depth (Z) band — breaks the “one pillar” when viewed from default camera. */
+const TIER_Z = {
+  core: -1400,
+  domain: -700,
+  ops: 0,
+  test: 700,
+  meta: 1400,
 };
 
 const TYPE_GROUP = {
@@ -270,8 +278,10 @@ function stableHash(input) {
   return Math.abs(h);
 }
 
-/** Horizontal jitter half-width per tier (wider = less single vertical column). */
-const TIER_X_JITTER = 900;
+/** Horizontal jitter half-width (large → nodes fan instead of a single column). */
+const TIER_X_JITTER = 2400;
+/** Depth jitter half-width (spreads graph along Z). */
+const TIER_Z_JITTER = 2600;
 
 function tierTargetX(node) {
   const group = TYPE_GROUP[node.type] || 'meta';
@@ -283,10 +293,29 @@ function tierTargetX(node) {
 function tierTargetY(node) {
   const group = TYPE_GROUP[node.type] || 'meta';
   const base = TIER_Y[group] ?? TIER_Y.meta;
-  // Sub-band jitter inside a tier so nodes don’t stack on one line (uses tier_weight spacing feel).
   const w = TIER_WEIGHT[group] ?? 0;
-  const micro = ((stableHash((node.id || '') + ':y') % 180) - 90) * (0.15 + w / 200);
+  // Wide intra-tier jitter (was too small → everything looked like one stripe).
+  const micro = ((stableHash((node.id || '') + ':y') % 900) - 450) * (0.5 + w / 80);
   return base + micro;
+}
+
+function tierTargetZ(node) {
+  const group = TYPE_GROUP[node.type] || 'meta';
+  const center = TIER_Z[group] ?? TIER_Z.meta;
+  const jitter = (stableHash((node.id || '') + ':z') % (TIER_Z_JITTER * 2)) - TIER_Z_JITTER;
+  return center + jitter;
+}
+
+/** Seed positions before simulation so links don’t start from a point cloud blob. */
+function seedTierLayout(nodes) {
+  nodes.forEach((n) => {
+    n.x = tierTargetX(n);
+    n.y = tierTargetY(n);
+    n.z = tierTargetZ(n);
+    n.vx = 0;
+    n.vy = 0;
+    n.vz = 0;
+  });
 }
 const EDGE_STATIC_COLORS = {
   implements: 'rgba(255, 214, 66, 0.92)',
@@ -354,6 +383,11 @@ async function loadGraph(root) {
     GRAPH_DATA = data;
     initFilters();
     applyFilters();
+    if (FG && GRAPH_DATA.nodes && GRAPH_DATA.nodes.length) {
+      setTimeout(() => {
+        FG.cameraPosition({ x: 0, y: 3400, z: 9200 }, { x: 0, y: 3400, z: 0 }, 900);
+      }, 80);
+    }
     document.getElementById('loading').style.display = 'none';
     if (!GRAPH_DATA.nodes || GRAPH_DATA.nodes.length === 0) {
       document.getElementById('status-left').textContent =
@@ -446,6 +480,7 @@ function applyFilters(searchSet=null, hits=null) {
   });
 
   nodes.forEach(n => { n.__hit = hits ? hits.has(n.id) : false; });
+  seedTierLayout(nodes);
   FG.graphData({nodes, links});
   document.getElementById('status-left').textContent =
     `${nodes.length} / ${GRAPH_DATA.nodes.length} nodes`;
@@ -481,18 +516,30 @@ function initGraph() {
     .onNodeClick(n => showDetail(n))
     .onBackgroundClick(() => document.getElementById('detail').classList.remove('visible'));
 
-  FG.d3Force('charge').strength(-120);
-  FG.d3Force('link').distance(l => {
-    if (l.type === 'belongs_to') return 45;
+  FG.d3Force('charge').strength(-320);
+  const linkForce = FG.d3Force('link');
+  linkForce.distance((l) => {
+    if (l.type === 'belongs_to') return 120;
     const sourceTier = NODE_TIERS[(l.source && l.source.type) || 'Node'] || 3;
     const targetTier = NODE_TIERS[(l.target && l.target.type) || 'Node'] || 3;
     const delta = Math.abs(sourceTier - targetTier);
-    return 105 + (delta * 28);
+    return 220 + (delta * 90);
   });
-  // Softer Y: tiers stay separated but nodes can spread within the band (less “one column”).
-  FG.d3Force('x', d3.forceX(n => tierTargetX(n)).strength(0.09));
-  FG.d3Force('y', d3.forceY(n => tierTargetY(n)).strength(0.12));
-  FG.d3Force('collide', d3.forceCollide(n => (PRIORITY_SIZE[n.priority] || 3) * 5 + 14).strength(0.85));
+  // Weaker links so tier positioning wins (reduces dense “beam” between hubs).
+  if (typeof linkForce.strength === 'function') {
+    linkForce.strength(() => 0.12);
+  }
+  // Gentle pulls toward tier targets — initial seed + charge do most of the spread.
+  FG.d3Force('x', d3.forceX((n) => tierTargetX(n)).strength(0.045));
+  FG.d3Force('y', d3.forceY((n) => tierTargetY(n)).strength(0.045));
+  if (typeof d3.forceZ === 'function') {
+    FG.d3Force('z', d3.forceZ((n) => tierTargetZ(n)).strength(0.045));
+  }
+  FG.d3Force('collide', d3.forceCollide((n) => (PRIORITY_SIZE[n.priority] || 3) * 8 + 28).strength(0.92));
+  FG.d3VelocityDecay(0.28);
+  if (typeof FG.cooldownTicks === 'function') {
+    FG.cooldownTicks(450);
+  }
 }
 
 function makeSprite(text, color) {
@@ -704,10 +751,12 @@ function showDetail(node) {
 }
 
 function focusNode(n) {
-  if(!n.x) return;
-  const d = 120;
-  const r = 1 + d/Math.hypot(n.x||0, n.y||0, n.z||0);
-  FG.cameraPosition({x:n.x*r, y:n.y*r, z:n.z*r}, n, 800);
+  if (n.x == null && n.y == null && n.z == null) return;
+  const cx = n.x || 0, cy = n.y || 0, cz = n.z || 0;
+  const d = 2800;
+  const dist = Math.hypot(cx, cy, cz) || 1;
+  const r = 1 + d / dist;
+  FG.cameraPosition({ x: cx * r, y: cy * r, z: cz * r }, n, 800);
 }
 
 function esc(s) {
@@ -731,7 +780,7 @@ document.getElementById('btn-labels').addEventListener('click', () => {
   SHOW_LABELS = !SHOW_LABELS; FG.refresh();
 });
 document.getElementById('btn-reset').addEventListener('click', () => {
-  FG.cameraPosition({x:0,y:0,z:600},{x:0,y:0,z:0},800);
+  FG.cameraPosition({ x: 0, y: 3400, z: 9200 }, { x: 0, y: 3400, z: 0 }, 900);
 });
 document.getElementById('btn-refresh').addEventListener('click', () => {
   loadGraph(CURRENT_ROOT);
