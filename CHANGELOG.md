@@ -5,6 +5,34 @@ Format: [Wave N — Title] with date, what was added/changed/fixed.
 
 ---
 
+## [Wave 16A10] — Smart Template + Compact + AI Query Rules — 2026-04-17
+
+### Added
+
+- **template: suggested_edges** — edge suggestions from schema per node type
+  - AI sees which edge types commonly apply (from `core_edges.yaml` `allowed_node_types`)
+  - `batch_example` includes sample `edge+:` lines
+
+- **template_batch:** — fillable multi-node template
+  - `template_batch: Engine count=5` → repeated blocks with placeholders and edge hints
+  - No hard limit on nodes or edges per node in the template text; executor still caps ops per call
+  - Instructions for splitting large batches
+
+- **compact=true flag** — minimal token responses
+  - `explore` compact: string edge lines + slim `node` / `also_found`
+  - `batch`: summary by default; `verbose=true` restores full `skipped` / `warnings` lists
+  - `find` / `get` (`context`) compact: `id` + `name` + `type` (and `edge_count` on get)
+
+- **AI Query Rules** — 10 rules + `token_guide` on `PROTOCOL_GUIDE` (`gobp/mcp/parser.py`)
+  - Covers overview once, template before create, batch for writes, compact explore, error retry discipline
+
+### Tests
+
+- `tests/test_wave16a10.py` — template edges, template_batch, compact modes, protocol guide, integration.
+- **562+** tests passing (full suite).
+
+---
+
 ## [Wave 16A09] — Batch Ops + Explore + Suggest + Template — 2026-04-17
 
 ### Added
