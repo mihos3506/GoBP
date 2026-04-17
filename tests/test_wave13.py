@@ -56,6 +56,49 @@ def test_find_cursor_pagination(gobp_root: Path) -> None:
     assert ids1.isdisjoint(ids2), "Pages should not overlap"
 
 
+def test_find_pagination_walk_no_duplicate_ids(gobp_root: Path) -> None:
+    """Walking with next_cursor until has_more is false must not repeat node ids."""
+    init_project(gobp_root, force=True)
+    index = GraphIndex.load_from_disk(gobp_root)
+
+    seen: set[str] = set()
+    cursor: str | None = None
+    pages = 0
+    while pages < 200:
+        args: dict = {"query": "", "page_size": 7}
+        if cursor:
+            args["cursor"] = cursor
+        r = tools_read.find(index, gobp_root, args)
+        assert r["ok"] is True
+        for m in r["matches"]:
+            nid = str(m["id"])
+            assert nid not in seen, f"duplicate id {nid} on page {pages}"
+            seen.add(nid)
+        pages += 1
+        if not r["page_info"]["has_more"]:
+            break
+        cursor = r["page_info"]["next_cursor"]
+        assert cursor is not None
+    assert pages < 200, "pagination loop — has_more never cleared"
+    assert len(seen) == r["page_info"]["total_estimate"]
+
+
+def test_find_cursor_coerced_to_string_id(gobp_root: Path) -> None:
+    """Cursor must match node id even if caller passes a non-str type."""
+    init_project(gobp_root, force=True)
+    index = GraphIndex.load_from_disk(gobp_root)
+    r1 = tools_read.find(index, gobp_root, {"query": "", "page_size": 3})
+    if not r1["page_info"]["has_more"]:
+        pytest.skip("Not enough nodes")
+    raw = r1["page_info"]["next_cursor"]
+    assert raw is not None
+    r2 = tools_read.find(index, gobp_root, {"query": "", "page_size": 3, "cursor": raw})
+    assert r2["ok"] and r2["matches"]
+    # Same cursor as str — should match same as above
+    r3 = tools_read.find(index, gobp_root, {"query": "", "page_size": 3, "cursor": str(raw)})
+    assert {m["id"] for m in r2["matches"]} == {m["id"] for m in r3["matches"]}
+
+
 def test_find_backward_compat_matches_key(gobp_root: Path) -> None:
     """find() still returns matches key (backward compatible)."""
     init_project(gobp_root, force=True)

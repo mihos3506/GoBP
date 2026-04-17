@@ -336,7 +336,11 @@ def find(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> dict[st
         return {"ok": False, "error": "Missing required field: query"}
     type_filter = args.get("type_filter") or args.get("type")
     page_size = min(int(args.get("page_size", args.get("limit", 20))), 100)
-    cursor = args.get("cursor")
+    cursor_raw = args.get("cursor")
+    if cursor_raw is not None and str(cursor_raw).strip() != "":
+        cursor: str | None = str(cursor_raw).strip()
+    else:
+        cursor = None
     sort_field = args.get("sort", "id")
     direction = str(args.get("direction", "asc")).lower()
     include_sessions_param = str(args.get("include_sessions", "false")).lower() == "true"
@@ -374,6 +378,7 @@ def find(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> dict[st
             key=lambda n: (
                 _FIND_PRIORITY.get(str(n.get("match", "")), 99),
                 str(n.get(sort_field, n.get("id", ""))),
+                str(n.get("id", "")),
             ),
             reverse=reverse,
         )
@@ -412,9 +417,12 @@ def find(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> dict[st
             enriched["_score"] = score
             candidates.append(enriched)
 
-        # Stable sort: tie-break by sort_field/direction, then exact_id / exact_name / substring + score.
+        # Stable sort: (match, score) primary; preserve prior order for sort_field ties, then id.
         candidates.sort(
-            key=lambda n: str(n.get(sort_field, n.get("id", ""))),
+            key=lambda n: (
+                str(n.get(sort_field, n.get("id", ""))),
+                str(n.get("id", "")),
+            ),
             reverse=(direction == "desc"),
         )
         candidates.sort(
@@ -428,15 +436,19 @@ def find(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> dict[st
     total_estimate = len(candidates)
     if cursor:
         try:
-            cursor_idx = next(i for i, n in enumerate(candidates) if n.get("id") == cursor)
+            cursor_idx = next(
+                i for i, n in enumerate(candidates) if str(n.get("id", "")) == cursor
+            )
             candidates = candidates[cursor_idx + 1:]
         except StopIteration:
             candidates = []
 
+    remaining_after_cursor = len(candidates)
     # Page
     page = candidates[:page_size]
     has_more = len(candidates) > page_size
-    next_cursor = page[-1].get("id") if has_more and page else None
+    next_raw = page[-1].get("id") if has_more and page else None
+    next_cursor = str(next_raw) if next_raw is not None else None
 
     mode = str(args.get("mode", "standard")).lower()
     if mode == "summary":
@@ -489,6 +501,7 @@ def find(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> dict[st
             "next_cursor": next_cursor,
             "has_more": has_more,
             "total_estimate": total_estimate,
+            "remaining_after_cursor": remaining_after_cursor,
             "page_size": page_size,
         },
     }
