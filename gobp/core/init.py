@@ -93,25 +93,28 @@ def init_project(
             shutil.copy(src, dst)
             created.append(str(dst.relative_to(project_root)))
 
-    # Seed universal TestKind + Concept nodes
-    seeded = _seed_universal_nodes(project_root)
+    # Seed universal TestKind + Concept nodes (fresh tree: write all)
+    seed_out = seed_universal_nodes(project_root, only_missing=False)
 
     return {
         "ok": True,
         "message": f"Initialized GoBP project '{name}' at {project_root}",
         "created": created,
-        "seeded_nodes": seeded,
+        "seeded_nodes": seed_out.get("created", []),
         "already_exists": False,
     }
 
 
-def _seed_universal_nodes(project_root: Path) -> list[str]:
-    """Seed 16 universal TestKind nodes + 1 Concept node on project init.
+def seed_universal_nodes(project_root: Path, *, only_missing: bool = False) -> dict[str, Any]:
+    """Seed 16 universal TestKind nodes + 1 Concept node (canonical taxonomy).
 
-    These encode universal software test taxonomy so any AI connecting
-    to any GoBP project immediately understands what kinds of tests exist.
+    Args:
+        project_root: GoBP project root (contains ``.gobp/nodes/``).
+        only_missing: If True, skip node files that already exist (safe repair).
+            If False, overwrite or create every seed file (``init`` behavior).
 
-    Returns list of created node IDs.
+    Returns:
+        Dict with ``ok``, ``created`` (ids written this run), ``skipped`` (ids skipped).
     """
     now = datetime.now(timezone.utc).isoformat()
     nodes_dir = project_root / ".gobp" / "nodes"
@@ -480,17 +483,22 @@ def _seed_universal_nodes(project_root: Path) -> list[str]:
     ]
 
     created_ids: list[str] = []
+    skipped_ids: list[str] = []
     for node in seeds:
         node_id = node["id"]
         slug = node_id.replace(":", "_")
         node_path = nodes_dir / f"{slug}.md"
         import yaml as _yaml
 
+        if only_missing and node_path.exists():
+            skipped_ids.append(node_id)
+            continue
+
         fm = _yaml.dump(node, allow_unicode=True, default_flow_style=False)
         node_path.write_text(f"---\n{fm}---\n", encoding="utf-8")
         created_ids.append(node_id)
 
-    return created_ids
+    return {"ok": True, "created": created_ids, "skipped": skipped_ids}
 
 
 

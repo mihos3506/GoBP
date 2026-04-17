@@ -134,6 +134,18 @@ def node_upsert(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> 
         if not node.get("assignee"):
             node["assignee"] = "cursor"
 
+    if node_type == "TestKind":
+        if not node.get("group"):
+            node["group"] = "functional"
+        if not node.get("scope"):
+            node["scope"] = "project"
+        if node.get("template") is None:
+            node["template"] = {}
+        if not node.get("description"):
+            node["description"] = (
+                f'Project-local TestKind "{name}". Edit description and template as needed.'
+            )
+
     try:
         nodes_schema = load_schema(package_schema_dir() / "core_nodes.yaml")
         edges_schema = load_schema(package_schema_dir() / "core_edges.yaml")

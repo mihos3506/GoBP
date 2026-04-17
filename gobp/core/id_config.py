@@ -6,6 +6,7 @@ Falls back to DEFAULT_GROUPS if not configured.
 
 from __future__ import annotations
 
+import copy
 from pathlib import Path
 from typing import Any
 
@@ -116,6 +117,61 @@ def get_group_for_type(node_type: str, groups: dict | None = None) -> str:
         if node_type in group_config.get("types", []):
             return group_name
     return "meta"  # fallback
+
+
+def merge_id_groups_with_defaults(gobp_root: Path) -> dict[str, Any]:
+    """Merge ``DEFAULT_GROUPS`` into ``.gobp/config.yaml`` ``id_groups`` (additive only).
+
+    Repairs projects whose ``id_groups`` dropped node types (e.g. ``TestKind``)
+    after a partial config edit. Never removes custom types or groups.
+
+    Args:
+        gobp_root: Project root containing ``.gobp/config.yaml``.
+
+    Returns:
+        ``ok``, ``changed`` (whether the file was rewritten).
+    """
+    config_path = gobp_root / ".gobp" / "config.yaml"
+    if not config_path.exists():
+        return {"ok": False, "error": f"Missing config: {config_path}", "changed": False}
+    raw: dict[str, Any] = yaml.safe_load(config_path.read_text(encoding="utf-8")) or {}
+    changed = False
+    merged = raw.get("id_groups")
+    if not isinstance(merged, dict) or not merged:
+        raw["id_groups"] = copy.deepcopy(DEFAULT_GROUPS)
+        changed = True
+    else:
+        for gname, gdef in DEFAULT_GROUPS.items():
+            if gname not in merged:
+                merged[gname] = copy.deepcopy(gdef)
+                changed = True
+                continue
+            entry = merged[gname]
+            if not isinstance(entry, dict):
+                merged[gname] = copy.deepcopy(gdef)
+                changed = True
+                continue
+            default_types = list(gdef.get("types", []))
+            cur = list(entry.get("types", []))
+            for t in default_types:
+                if t not in cur:
+                    cur.append(t)
+                    changed = True
+            entry["types"] = cur
+            for key in ("sequence_scale", "tier_weight", "tier_y"):
+                if key in gdef and key not in entry:
+                    entry[key] = gdef[key]
+                    changed = True
+    if changed:
+        with open(config_path, "w", encoding="utf-8") as fh:
+            yaml.safe_dump(
+                raw,
+                fh,
+                allow_unicode=True,
+                default_flow_style=False,
+                sort_keys=False,
+            )
+    return {"ok": True, "changed": changed}
 
 
 def get_type_prefix(node_type: str) -> str:

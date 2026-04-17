@@ -2,6 +2,7 @@
 
 Usage:
     python -m gobp.cli init [--name NAME] [--force]
+    python -m gobp.cli seed-universal [--rewrite --confirm CEO] [--skip-id-groups]
     python -m gobp.cli validate [--scope SCOPE]
     python -m gobp.cli status
 
@@ -167,6 +168,49 @@ def cmd_status(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_seed_universal(args: argparse.Namespace) -> int:
+    """Restore canonical TestKind + Concept node files (and optionally id_groups)."""
+    from gobp.core.id_config import merge_id_groups_with_defaults
+    from gobp.core.init import seed_universal_nodes
+
+    root = _get_project_root()
+    if not (root / ".gobp").exists():
+        print(
+            f"Error: No .gobp/ at {root}. Run `python -m gobp.cli init` first.",
+            file=sys.stderr,
+        )
+        return 1
+
+    if not args.skip_id_groups:
+        mg = merge_id_groups_with_defaults(root)
+        if not mg.get("ok"):
+            print(mg.get("error", "id_groups merge failed"), file=sys.stderr)
+            return 1
+        print(f"id_groups: merged defaults (config changed={mg.get('changed')})")
+
+    if args.rewrite:
+        if args.confirm != "CEO":
+            print(
+                "Error: --rewrite overwrites all seed files. Re-run with --confirm CEO "
+                "(human approval gate).",
+                file=sys.stderr,
+            )
+            return 1
+        only_missing = False
+    else:
+        only_missing = True
+
+    out = seed_universal_nodes(root, only_missing=only_missing)
+    created = out.get("created", [])
+    skipped = out.get("skipped", [])
+    preview = ", ".join(created[:8])
+    if len(created) > 8:
+        preview += ", ..."
+    print(f"seed-universal: wrote {len(created)} file(s){(' — ' + preview) if created else ''}")
+    print(f"seed-universal: skipped {len(skipped)} existing file(s)")
+    return 0
+
+
 def main() -> int:
     """CLI entry point."""
     parser = argparse.ArgumentParser(prog="gobp", description="GoBP CLI")
@@ -193,6 +237,28 @@ def main() -> int:
 
     p_stat = sub.add_parser("status", help="Show project summary")
     p_stat.set_defaults(func=cmd_status)
+
+    p_seed = sub.add_parser(
+        "seed-universal",
+        help="Restore canonical TestKind + Concept seeds (after DB/file cleanup)",
+    )
+    p_seed.add_argument(
+        "--rewrite",
+        action="store_true",
+        help="Overwrite every built-in seed file (requires --confirm CEO)",
+    )
+    p_seed.add_argument(
+        "--confirm",
+        default="",
+        metavar="TEXT",
+        help="Must be exactly CEO when using --rewrite",
+    )
+    p_seed.add_argument(
+        "--skip-id-groups",
+        action="store_true",
+        help="Skip merging default id_groups into .gobp/config.yaml",
+    )
+    p_seed.set_defaults(func=cmd_seed_universal)
 
     args = parser.parse_args()
     return args.func(args)
