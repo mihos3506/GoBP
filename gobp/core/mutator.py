@@ -170,6 +170,61 @@ def create_node(
     return node_file
 
 
+def create_nodes_batch(
+    gobp_root: Path,
+    nodes: list[dict[str, Any]],
+    schema: dict[str, Any],
+    actor: str = "unknown",
+) -> dict[str, Any]:
+    """Create many node files with one cache invalidate and batched history (Wave 16A11)."""
+    from gobp.core.history import append_events_batch
+
+    paths: list[Path] = []
+    history_items: list[tuple[str, dict[str, Any], str]] = []
+    try:
+        _db.init_schema(gobp_root)
+    except Exception:
+        pass
+    for node in nodes:
+        result = validate_node(node, schema)
+        if not result.ok:
+            raise ValueError(f"Node validation failed: {result.errors}")
+        node_id = node.get("id")
+        if not node_id:
+            raise ValueError("Node missing 'id' field")
+        node_file = _node_file_path(gobp_root, node_id)
+        if node_file.exists():
+            raise FileExistsError(
+                f"Node file already exists: {node_file}. Use update_node instead."
+            )
+        frontmatter_yaml = yaml.safe_dump(
+            node, default_flow_style=False, sort_keys=False, allow_unicode=True
+        )
+        content = (
+            f"---\n{frontmatter_yaml}---\n\n"
+            "(Auto-generated node file. Edit the YAML above or add body content below.)\n"
+        )
+        _atomic_write(node_file, content)
+        try:
+            _db.upsert_node(gobp_root, node)
+        except Exception:
+            pass
+        paths.append(node_file)
+        history_items.append(
+            (
+                "node.created",
+                {"id": node_id, "type": node.get("type"), "file": str(node_file)},
+                actor,
+            )
+        )
+    try:
+        _cache_module.get_cache().invalidate_all()
+    except Exception:
+        pass
+    append_events_batch(gobp_root, history_items)
+    return {"nodes_written": len(nodes), "paths": paths}
+
+
 def update_node(
     gobp_root: Path,
     node: dict[str, Any],
@@ -490,6 +545,92 @@ def create_edge(
         "ok": True,
         "action": "created",
         "edge_id": edge_id,
+    }
+
+
+def append_edges_batch(
+    gobp_root: Path,
+    edges: list[dict[str, Any]],
+    schema: dict[str, Any],
+    edge_file_name: str = "relations.yaml",
+    actor: str = "unknown",
+) -> dict[str, Any]:
+    """Append many edges with a single read/write of the YAML file (Wave 16A11).
+
+    Validates each edge; skips duplicates already present in the file or in-batch.
+    """
+    if not edges:
+        return {"ok": True, "edges_written": 0, "edges_skipped": 0}
+
+    edges_dir = gobp_root / ".gobp" / "edges"
+    edges_dir.mkdir(parents=True, exist_ok=True)
+    edge_file = edges_dir / edge_file_name
+
+    existing: list[dict[str, Any]] = []
+    if edge_file.exists():
+        loaded = yaml.safe_load(edge_file.read_text(encoding="utf-8"))
+        if isinstance(loaded, list):
+            existing = list(loaded)
+
+    seen: set[tuple[str, str, str]] = {
+        (
+            str(e.get("from", "")),
+            str(e.get("to", "")),
+            str(e.get("type", "")),
+        )
+        for e in existing
+    }
+    appended: list[dict[str, Any]] = []
+    for edge in edges:
+        result = validate_edge(edge, schema)
+        if not result.ok:
+            raise ValueError(f"Edge validation failed: {result.errors}")
+        key = (
+            str(edge.get("from", "")),
+            str(edge.get("to", "")),
+            str(edge.get("type", "")),
+        )
+        if key in seen:
+            continue
+        seen.add(key)
+        existing.append(edge)
+        appended.append(edge)
+
+    new_content = yaml.safe_dump(
+        existing, default_flow_style=False, sort_keys=False, allow_unicode=True
+    )
+    _atomic_write(edge_file, new_content)
+
+    try:
+        _db.init_schema(gobp_root)
+        for edge in appended:
+            _db.upsert_edge(gobp_root, edge)
+        _cache_module.get_cache().invalidate_all()
+    except Exception:
+        pass
+
+    from gobp.core.history import append_events_batch
+
+    edge_history: list[tuple[str, dict[str, Any], str]] = [
+        (
+            "edge.created",
+            {
+                "from": edge.get("from"),
+                "to": edge.get("to"),
+                "type": edge.get("type"),
+                "file": str(edge_file),
+            },
+            actor,
+        )
+        for edge in appended
+    ]
+    append_events_batch(gobp_root, edge_history)
+
+    skipped = len(edges) - len(appended)
+    return {
+        "ok": True,
+        "edges_written": len(appended),
+        "edges_skipped": skipped,
     }
 
 

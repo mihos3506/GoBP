@@ -69,6 +69,31 @@ def append_event(
     return event
 
 
+def append_events_batch(
+    gobp_root: Path,
+    items: list[tuple[str, dict[str, Any], str]],
+) -> None:
+    """Append multiple history events in one file open (Wave 16A11 batch flush)."""
+    if not items:
+        return
+    timestamp = datetime.now(timezone.utc)
+    date_str = timestamp.strftime("%Y-%m-%d")
+    history_dir = gobp_root / ".gobp" / "history"
+    history_dir.mkdir(parents=True, exist_ok=True)
+    log_file = history_dir / f"{date_str}.jsonl"
+    lines: list[str] = []
+    for event_type, payload, actor in items:
+        event = {
+            "timestamp": timestamp.isoformat(),
+            "event_type": event_type,
+            "actor": actor,
+            "payload": payload,
+        }
+        lines.append(json.dumps(event, ensure_ascii=False) + "\n")
+    with open(log_file, "a", encoding="utf-8") as f:
+        f.writelines(lines)
+
+
 def read_events(
     gobp_root: Path,
     date_str: str | None = None,

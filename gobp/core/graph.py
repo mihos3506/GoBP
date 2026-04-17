@@ -403,33 +403,36 @@ class GraphIndex:
         return self.remove_node(node_id)
 
     def save_new_nodes_to_disk(self, gobp_root: Path) -> dict[str, Any]:
-        """Write only nodes in ``_new_nodes`` using :func:`gobp.core.mutator.create_node`."""
-        from gobp.core.mutator import create_node
+        """Write only nodes in ``_new_nodes`` via :func:`gobp.core.mutator.create_nodes_batch`."""
+        from gobp.core.mutator import create_nodes_batch
 
-        nodes_written = 0
-        for _node_id, node in list(self._new_nodes.items()):
-            create_node(gobp_root, dict(node), self._nodes_schema, actor="GraphIndex.save_new_nodes")
-            nodes_written += 1
+        pending = [dict(n) for n in self._new_nodes.values()]
         self._new_nodes.clear()
-        return {"nodes_written": nodes_written}
+        if not pending:
+            return {"nodes_written": 0}
+        out = create_nodes_batch(
+            gobp_root,
+            pending,
+            self._nodes_schema,
+            actor="GraphIndex.save_new_nodes",
+        )
+        return {"nodes_written": int(out.get("nodes_written", 0))}
 
     def save_new_edges_to_disk(self, gobp_root: Path) -> dict[str, Any]:
-        """Append edges in ``_new_edges`` via :func:`gobp.core.mutator.create_edge`."""
-        from gobp.core.mutator import create_edge
+        """Flush ``_new_edges`` via :func:`gobp.core.mutator.append_edges_batch` (one YAML write)."""
+        from gobp.core.mutator import append_edges_batch
 
-        edges_written = 0
         pending = list(self._new_edges)
         self._new_edges.clear()
-        for edge in pending:
-            out = create_edge(
-                gobp_root,
-                dict(edge),
-                self._edges_schema,
-                actor="GraphIndex.save_new_edges",
-            )
-            if out.get("action") == "created":
-                edges_written += 1
-        return {"edges_written": edges_written}
+        if not pending:
+            return {"edges_written": 0}
+        out = append_edges_batch(
+            gobp_root,
+            [dict(e) for e in pending],
+            self._edges_schema,
+            actor="GraphIndex.save_new_edges",
+        )
+        return {"edges_written": int(out.get("edges_written", 0))}
 
     def flush_pending_writes(self, gobp_root: Path) -> dict[str, Any]:
         """Persist ``_new_nodes`` then ``_new_edges`` (nodes first)."""
