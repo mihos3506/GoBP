@@ -174,10 +174,15 @@ def parse_query(query: str) -> tuple[str, str, dict[str, Any]]:
     if action == "find" and node_type == "" and tokens:
         first = tokens[0]
         first_value = first.strip("'\"")
-        normalized_first = _normalize_node_type(first_value)
-        if "=" not in first and ":" not in first and normalized_first in _TYPE_CANONICAL.values():
-            node_type = normalized_first
-            tokens = tokens[1:]
+        if first_value != "Session" and first_value.casefold() == "session":
+            # Keep lowercase "session" as keyword text, not a type filter.
+            # This preserves "find: session" search intent while "find:Session" stays explicit.
+            pass
+        else:
+            normalized_first = _normalize_node_type(first_value)
+            if "=" not in first and ":" not in first and normalized_first in _TYPE_CANONICAL.values():
+                node_type = normalized_first
+                tokens = tokens[1:]
 
     positional_key = _POSITIONAL_KEY.get(action, "query")
     positional_consumed = False
