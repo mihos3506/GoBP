@@ -1,0 +1,5 @@
+Wave 16A05 Task 4: add Task node type
+
+- core_nodes.yaml: Task with status/assignee/brief_path/wave fields
+- id_config.py: Task in meta group, prefix "task"
+- create:Task name='...' assignee='cursor' → task.meta.XXXXXXXX

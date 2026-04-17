@@ -1,0 +1,18 @@
+{
+  "samples": 40,
+  "p50_ms": 4.58,
+  "p95_ms": 6.27,
+  "max_ms": 18.15,
+  "per_query_avg_ms": {
+    "dang nhap": 7.31,
+    "đăng nhập": 5.06,
+    "mihot": 4.68,
+    "mi hốt": 4.58,
+    "trustgate": 4.84,
+    "engine": 0.18,
+    "flow": 0.18,
+    "auth": 5.11
+  },
+  "target_p95_ms": 120.0,
+  "ok": true
+}

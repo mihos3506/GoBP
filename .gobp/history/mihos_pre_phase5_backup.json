@@ -1,0 +1,10 @@
+{
+  "ok": true,
+  "source_root": "D:\\MIHOS-v1",
+  "backup_path": "D:\\MIHOS-backups\\mihos_gobp_20260417T112120Z",
+  "restore_root": "D:\\MIHOS-backups\\mihos_restore_20260417T112120Z",
+  "source_nodes": 318,
+  "source_edges": 613,
+  "restore_nodes": 318,
+  "restore_edges": 613
+}

@@ -1,0 +1,486 @@
+{
+  "ok": false,
+  "project_root": "D:\\GoBP",
+  "generated_at_utc": "2026-04-17T09:47:36.135991+00:00",
+  "node_count": 307,
+  "edge_count": 1076,
+  "session_ratio_pct": 11.73,
+  "nodes_by_type": {
+    "TestKind": 16,
+    "Decision": 17,
+    "APIEndpoint": 3,
+    "Feature": 77,
+    "TestCase": 80,
+    "Wave": 42,
+    "Invariant": 3,
+    "Lesson": 7,
+    "Node": 7,
+    "Document": 6,
+    "Entity": 3,
+    "Idea": 1,
+    "Repository": 1,
+    "Screen": 1,
+    "Engine": 3,
+    "Flow": 3,
+    "Session": 36,
+    "Concept": 1
+  },
+  "index_load_errors": [
+    "D:\\GoBP\\.gobp\\nodes\\advanced_meta_76939776.md: validation failed: [\"id: value 'advanced.meta.76939776' does not match pattern ^([a-z0-9_]{1,40}\\\\.meta\\\\.[a-f0-9]{6}|(?:meta)\\\\.doc:[A-Za-z0-9_.\\\\-]+|doc:.+)$\"]",
+    "D:\\GoBP\\.gobp\\nodes\\architecture_meta_86206208.md: validation failed: [\"id: value 'architecture.meta.86206208' does not match pattern ^([a-z0-9_]{1,40}\\\\.meta\\\\.[a-f0-9]{6}|(?:meta)\\\\.doc:[A-Za-z0-9_.\\\\-]+|doc:.+)$\"]",
+    "D:\\GoBP\\.gobp\\nodes\\cache_meta_60162560.md: validation failed: [\"id: value 'cache.meta.60162560' does not match pattern ^([a-z0-9_]{1,40}\\\\.meta\\\\.[a-f0-9]{6}|(?:meta)\\\\.doc:[A-Za-z0-9_.\\\\-]+|doc:.+)$\"]",
+    "D:\\GoBP\\.gobp\\nodes\\changelog_meta_95921408.md: validation failed: [\"id: value 'changelog.meta.95921408' does not match pattern ^([a-z0-9_]{1,40}\\\\.meta\\\\.[a-f0-9]{6}|(?:meta)\\\\.doc:[A-Za-z0-9_.\\\\-]+|doc:.+)$\"]",
+    "D:\\GoBP\\.gobp\\nodes\\charter_meta_62366976.md: validation failed: [\"id: value 'charter.meta.62366976' does not match pattern ^([a-z0-9_]{1,40}\\\\.meta\\\\.[a-f0-9]{6}|(?:meta)\\\\.doc:[A-Za-z0-9_.\\\\-]+|doc:.+)$\"]",
+    "D:\\GoBP\\.gobp\\nodes\\claude_cli_config_meta_07841024.md: validation failed: [\"id: value 'claude_cli_config.meta.07841024' does not match pattern ^([a-z0-9_]{1,40}\\\\.meta\\\\.[a-f0-9]{6}|(?:meta)\\\\.doc:[A-Za-z0-9_.\\\\-]+|doc:.+)$\"]",
+    "D:\\GoBP\\.gobp\\nodes\\claude_desktop_config_meta_25944832.md: validation failed: [\"id: value 'claude_desktop_config.meta.25944832' does not match pattern ^([a-z0-9_]{1,40}\\\\.meta\\\\.[a-f0-9]{6}|(?:meta)\\\\.doc:[A-Za-z0-9_.\\\\-]+|doc:.+)$\"]",
+    "D:\\GoBP\\.gobp\\nodes\\claude_meta_47794176.md: validation failed: [\"id: value 'claude.meta.47794176' does not match pattern ^([a-z0-9_]{1,40}\\\\.meta\\\\.[a-f0-9]{6}|(?:meta)\\\\.doc:[A-Za-z0-9_.\\\\-]+|doc:.+)$\"]",
+    "D:\\GoBP\\.gobp\\nodes\\commands_meta_81797376.md: validation failed: [\"id: value 'commands.meta.81797376' does not match pattern ^([a-z0-9_]{1,40}\\\\.meta\\\\.[a-f0-9]{6}|(?:meta)\\\\.doc:[A-Za-z0-9_.\\\\-]+|doc:.+)$\"]",
+    "D:\\GoBP\\.gobp\\nodes\\concept_meta_91512576.md: validation failed: [\"id: value 'concept.meta.91512576' does not match pattern ^([a-z0-9_]{1,40}\\\\.meta\\\\.[a-f0-9]{6}|(?:meta)\\\\.doc:[A-Za-z0-9_.\\\\-]+|doc:.+)$\"]",
+    "D:\\GoBP\\.gobp\\nodes\\conftest_meta_64142336.md: validation failed: [\"id: value 'conftest.meta.64142336' does not match pattern ^([a-z0-9_]{1,40}\\\\.meta\\\\.[a-f0-9]{6}|(?:meta)\\\\.doc:[A-Za-z0-9_.\\\\-]+|doc:.+)$\"]",
+    "D:\\GoBP\\.gobp\\nodes\\continue_config_meta_70092288.md: validation failed: [\"id: value 'continue_config.meta.70092288' does not match pattern ^([a-z0-9_]{1,40}\\\\.meta\\\\.[a-f0-9]{6}|(?:meta)\\\\.doc:[A-Za-z0-9_.\\\\-]+|doc:.+)$\"]",
+    "D:\\GoBP\\.gobp\\nodes\\contributing_meta_47365120.md: validation failed: [\"id: value 'contributing.meta.47365120' does not match pattern ^([a-z0-9_]{1,40}\\\\.meta\\\\.[a-f0-9]{6}|(?:meta)\\\\.doc:[A-Za-z0-9_.\\\\-]+|doc:.+)$\"]",
+    "D:\\GoBP\\.gobp\\nodes\\core_edges_meta_67224576.md: validation failed: [\"id: value 'core_edges.meta.67224576' does not match pattern ^([a-z0-9_]{1,40}\\\\.meta\\\\.[a-f0-9]{6}|(?:meta)\\\\.doc:[A-Za-z0-9_.\\\\-]+|doc:.+)$\"]",
+    "D:\\GoBP\\.gobp\\nodes\\core_nodes_meta_36986624.md: validation failed: [\"id: value 'core_nodes.meta.36986624' does not match pattern ^([a-z0-9_]{1,40}\\\\.meta\\\\.[a-f0-9]{6}|(?:meta)\\\\.doc:[A-Za-z0-9_.\\\\-]+|doc:.+)$\"]",
+    "D:\\GoBP\\.gobp\\nodes\\cursor_mcp_meta_76061952.md: validation failed: [\"id: value 'cursor_mcp.meta.76061952' does not match pattern ^([a-z0-9_]{1,40}\\\\.meta\\\\.[a-f0-9]{6}|(?:meta)\\\\.doc:[A-Za-z0-9_.\\\\-]+|doc:.+)$\"]",
+    "D:\\GoBP\\.gobp\\nodes\\db_config_meta_33670144.md: validation failed: [\"id: value 'db_config.meta.33670144' does not match pattern ^([a-z0-9_]{1,40}\\\\.meta\\\\.[a-f0-9]{6}|(?:meta)\\\\.doc:[A-Za-z0-9_.\\\\-]+|doc:.+)$\"]",
+    "D:\\GoBP\\.gobp\\nodes\\db_meta_02983424.md: validation failed: [\"id: value 'db.meta.02983424' does not match pattern ^([a-z0-9_]{1,40}\\\\.meta\\\\.[a-f0-9]{6}|(?:meta)\\\\.doc:[A-Za-z0-9_.\\\\-]+|doc:.+)$\"]",
+    "D:\\GoBP\\.gobp\\nodes\\decision_meta_03432192.md: validation failed: [\"id: value 'decision.meta.03432192' does not match pattern ^([a-z0-9_]{1,40}\\\\.meta\\\\.[a-f0-9]{6}|(?:meta)\\\\.doc:[A-Za-z0-9_.\\\\-]+|doc:.+)$\"]",
+    "D:\\GoBP\\.gobp\\nodes\\dispatcher_meta_29924608.md: validation failed: [\"id: value 'dispatcher.meta.29924608' does not match pattern ^([a-z0-9_]{1,40}\\\\.meta\\\\.[a-f0-9]{6}|(?:meta)\\\\.doc:[A-Za-z0-9_.\\\\-]+|doc:.+)$\"]",
+    "D:\\GoBP\\.gobp\\nodes\\document_meta_73623296.md: validation failed: [\"id: value 'document.meta.73623296' does not match pattern ^([a-z0-9_]{1,40}\\\\.meta\\\\.[a-f0-9]{6}|(?:meta)\\\\.doc:[A-Za-z0-9_.\\\\-]+|doc:.+)$\"]",
+    "D:\\GoBP\\.gobp\\nodes\\explorer_meta_31680256.md: validation failed: [\"id: value 'explorer.meta.31680256' does not match pattern ^([a-z0-9_]{1,40}\\\\.meta\\\\.[a-f0-9]{6}|(?:meta)\\\\.doc:[A-Za-z0-9_.\\\\-]+|doc:.+)$\"]",
+    "D:\\GoBP\\.gobp\\nodes\\gobp_architecture_meta_49784064.md: validation failed: [\"id: value 'gobp_architecture.meta.49784064' does not match pattern ^([a-z0-9_]{1,40}\\\\.meta\\\\.[a-f0-9]{6}|(?:meta)\\\\.doc:[A-Za-z0-9_.\\\\-]+|doc:.+)$\"]",
+    "D:\\GoBP\\.gobp\\nodes\\gobp_id_design_meta_49120768.md: validation failed: [\"id: value 'gobp_id_design.meta.49120768' does not match pattern ^([a-z0-9_]{1,40}\\\\.meta\\\\.[a-f0-9]{6}|(?:meta)\\\\.doc:[A-Za-z0-9_.\\\\-]+|doc:.+)$\"]",
+    "D:\\GoBP\\.gobp\\nodes\\gobp_schema_extensions_init_py_meta_23740417.md: validation failed: [\"id: value 'gobp_schema_extensions_init_py.meta.23740417' does not match pattern ^([a-z0-9_]{1,40}\\\\.meta\\\\.[a-f0-9]{6}|(?:meta)\\\\.doc:[A-Za-z0-9_.\\\\-]+|doc:.+)$\"]",
+    "D:\\GoBP\\.gobp\\nodes\\gobp_viewer_meta_04095489.md: validation failed: [\"id: value 'gobp_viewer.meta.04095489' does not match pattern ^([a-z0-9_]{1,40}\\\\.meta\\\\.[a-f0-9]{6}|(?:meta)\\\\.doc:[A-Za-z0-9_.\\\\-]+|doc:.+)$\"]",
+    "D:\\GoBP\\.gobp\\nodes\\graph_meta_39405568.md: validation failed: [\"id: value 'graph.meta.39405568' does not match pattern ^([a-z0-9_]{1,40}\\\\.meta\\\\.[a-f0-9]{6}|(?:meta)\\\\.doc:[A-Za-z0-9_.\\\\-]+|doc:.+)$\"]",
+    "D:\\GoBP\\.gobp\\nodes\\history_meta_86869504.md: validation failed: [\"id: value 'history.meta.86869504' does not match pattern ^([a-z0-9_]{1,40}\\\\.meta\\\\.[a-f0-9]{6}|(?:meta)\\\\.doc:[A-Za-z0-9_.\\\\-]+|doc:.+)$\"]",
+    "D:\\GoBP\\.gobp\\nodes\\idea_meta_21750528.md: validation failed: [\"id: value 'idea.meta.21750528' does not match pattern ^([a-z0-9_]{1,40}\\\\.meta\\\\.[a-f0-9]{6}|(?:meta)\\\\.doc:[A-Za-z0-9_.\\\\-]+|doc:.+)$\"]",
+    "D:\\GoBP\\.gobp\\nodes\\import_meta_77603072.md: validation failed: [\"id: value 'import.meta.77603072' does not match pattern ^([a-z0-9_]{1,40}\\\\.meta\\\\.[a-f0-9]{6}|(?:meta)\\\\.doc:[A-Za-z0-9_.\\\\-]+|doc:.+)$\"]",
+    "D:\\GoBP\\.gobp\\nodes\\import_model_meta_18882816.md: validation failed: [\"id: value 'import_model.meta.18882816' does not match pattern ^([a-z0-9_]{1,40}\\\\.meta\\\\.[a-f0-9]{6}|(?:meta)\\\\.doc:[A-Za-z0-9_.\\\\-]+|doc:.+)$\"]",
+    "D:\\GoBP\\.gobp\\nodes\\index_meta_34782208.md: validation failed: [\"id: value 'index.meta.34782208' does not match pattern ^([a-z0-9_]{1,40}\\\\.meta\\\\.[a-f0-9]{6}|(?:meta)\\\\.doc:[A-Za-z0-9_.\\\\-]+|doc:.+)$\"]",
+    "D:\\GoBP\\.gobp\\nodes\\init_meta_07177728.md: validation failed: [\"id: value 'init.meta.07177728' does not match pattern ^([a-z0-9_]{1,40}\\\\.meta\\\\.[a-f0-9]{6}|(?:meta)\\\\.doc:[A-Za-z0-9_.\\\\-]+|doc:.+)$\"]",
+    "D:\\GoBP\\.gobp\\nodes\\init_meta_28149248.md: validation failed: [\"id: value 'init.meta.28149248' does not match pattern ^([a-z0-9_]{1,40}\\\\.meta\\\\.[a-f0-9]{6}|(?:meta)\\\\.doc:[A-Za-z0-9_.\\\\-]+|doc:.+)$\"]",
+    "D:\\GoBP\\.gobp\\nodes\\input_model_meta_71867648.md: validation failed: [\"id: value 'input_model.meta.71867648' does not match pattern ^([a-z0-9_]{1,40}\\\\.meta\\\\.[a-f0-9]{6}|(?:meta)\\\\.doc:[A-Za-z0-9_.\\\\-]+|doc:.+)$\"]",
+    "D:\\GoBP\\.gobp\\nodes\\install_meta_72745472.md: validation failed: [\"id: value 'install.meta.72745472' does not match pattern ^([a-z0-9_]{1,40}\\\\.meta\\\\.[a-f0-9]{6}|(?:meta)\\\\.doc:[A-Za-z0-9_.\\\\-]+|doc:.+)$\"]",
+    "D:\\GoBP\\.gobp\\nodes\\launcher_meta_99237888.md: validation failed: [\"id: value 'launcher.meta.99237888' does not match pattern ^([a-z0-9_]{1,40}\\\\.meta\\\\.[a-f0-9]{6}|(?:meta)\\\\.doc:[A-Za-z0-9_.\\\\-]+|doc:.+)$\"]",
+    "D:\\GoBP\\.gobp\\nodes\\lessons_meta_48457472.md: validation failed: [\"id: value 'lessons.meta.48457472' does not match pattern ^([a-z0-9_]{1,40}\\\\.meta\\\\.[a-f0-9]{6}|(?:meta)\\\\.doc:[A-Za-z0-9_.\\\\-]+|doc:.+)$\"]",
+    "D:\\GoBP\\.gobp\\nodes\\lesson_meta_21536000.md: validation failed: [\"id: value 'lesson.meta.21536000' does not match pattern ^([a-z0-9_]{1,40}\\\\.meta\\\\.[a-f0-9]{6}|(?:meta)\\\\.doc:[A-Za-z0-9_.\\\\-]+|doc:.+)$\"]",
+    "D:\\GoBP\\.gobp\\nodes\\loader_meta_39191040.md: validation failed: [\"id: value 'loader.meta.39191040' does not match pattern ^([a-z0-9_]{1,40}\\\\.meta\\\\.[a-f0-9]{6}|(?:meta)\\\\.doc:[A-Za-z0-9_.\\\\-]+|doc:.+)$\"]",
+    "D:\\GoBP\\.gobp\\nodes\\maintain_meta_90849280.md: validation failed: [\"id: value 'maintain.meta.90849280' does not match pattern ^([a-z0-9_]{1,40}\\\\.meta\\\\.[a-f0-9]{6}|(?:meta)\\\\.doc:[A-Za-z0-9_.\\\\-]+|doc:.+)$\"]",
+    "D:\\GoBP\\.gobp\\nodes\\main_meta_37864448.md: validation failed: [\"id: value 'main.meta.37864448' does not match pattern ^([a-z0-9_]{1,40}\\\\.meta\\\\.[a-f0-9]{6}|(?:meta)\\\\.doc:[A-Za-z0-9_.\\\\-]+|doc:.+)$\"]",
+    "D:\\GoBP\\.gobp\\nodes\\mcp_tools_meta_01442304.md: validation failed: [\"id: value 'mcp_tools.meta.01442304' does not match pattern ^([a-z0-9_]{1,40}\\\\.meta\\\\.[a-f0-9]{6}|(?:meta)\\\\.doc:[A-Za-z0-9_.\\\\-]+|doc:.+)$\"]",
+    "D:\\GoBP\\.gobp\\nodes\\migrate_meta_12484096.md: validation failed: [\"id: value 'migrate.meta.12484096' does not match pattern ^([a-z0-9_]{1,40}\\\\.meta\\\\.[a-f0-9]{6}|(?:meta)\\\\.doc:[A-Za-z0-9_.\\\\-]+|doc:.+)$\"]",
+    "D:\\GoBP\\.gobp\\nodes\\mihos_fixture_meta_41395456.md: validation failed: [\"id: value 'mihos_fixture.meta.41395456' does not match pattern ^([a-z0-9_]{1,40}\\\\.meta\\\\.[a-f0-9]{6}|(?:meta)\\\\.doc:[A-Za-z0-9_.\\\\-]+|doc:.+)$\"]",
+    "D:\\GoBP\\.gobp\\nodes\\mihos_meta_85542912.md: validation failed: [\"id: value 'mihos.meta.85542912' does not match pattern ^([a-z0-9_]{1,40}\\\\.meta\\\\.[a-f0-9]{6}|(?:meta)\\\\.doc:[A-Za-z0-9_.\\\\-]+|doc:.+)$\"]",
+    "D:\\GoBP\\.gobp\\nodes\\mutator_meta_34333440.md: validation failed: [\"id: value 'mutator.meta.34333440' does not match pattern ^([a-z0-9_]{1,40}\\\\.meta\\\\.[a-f0-9]{6}|(?:meta)\\\\.doc:[A-Za-z0-9_.\\\\-]+|doc:.+)$\"]",
+    "D:\\GoBP\\.gobp\\nodes\\node_meta_04095488.md: validation failed: [\"id: value 'node.meta.04095488' does not match pattern ^([a-z0-9_]{1,40}\\\\.meta\\\\.[a-f0-9]{6}|(?:meta)\\\\.doc:[A-Za-z0-9_.\\\\-]+|doc:.+)$\"]",
+    "D:\\GoBP\\.gobp\\nodes\\projects_meta_35211264.md: validation failed: [\"id: value 'projects.meta.35211264' does not match pattern ^([a-z0-9_]{1,40}\\\\.meta\\\\.[a-f0-9]{6}|(?:meta)\\\\.doc:[A-Za-z0-9_.\\\\-]+|doc:.+)$\"]",
+    "D:\\GoBP\\.gobp\\nodes\\prune_meta_17556224.md: validation failed: [\"id: value 'prune.meta.17556224' does not match pattern ^([a-z0-9_]{1,40}\\\\.meta\\\\.[a-f0-9]{6}|(?:meta)\\\\.doc:[A-Za-z0-9_.\\\\-]+|doc:.+)$\"]"
+  ],
+  "validation": {
+    "ok": true,
+    "issues": [
+      {
+        "severity": "warning",
+        "type": "schema",
+        "node_id": "acceptance_test.test.06534144",
+        "message": "unknown field: legacy_id"
+      },
+      {
+        "severity": "warning",
+        "type": "schema",
+        "node_id": "accessibility_test.test.23311360",
+        "message": "unknown field: legacy_id"
+      },
+      {
+        "severity": "warning",
+        "type": "schema",
+        "node_id": "adopt_cursor_based_pagination_for_read_a.core.80685312",
+        "message": "unknown field: legacy_id"
+      },
+      {
+        "severity": "warning",
+        "type": "schema",
+        "node_id": "adopt_cursor_based_pagination_for_read_a.core.80685312",
+        "message": "unknown field: description"
+      },
+      {
+        "severity": "warning",
+        "type": "schema",
+        "node_id": "adopt_cursor_based_pagination_for_read_a.core.80685312",
+        "message": "unknown field: name"
+      },
+      {
+        "severity": "warning",
+        "type": "schema",
+        "node_id": "adopt_dedupe_key_upsert_action.core.38742272",
+        "message": "unknown field: legacy_id"
+      },
+      {
+        "severity": "warning",
+        "type": "schema",
+        "node_id": "adopt_dedupe_key_upsert_action.core.38742272",
+        "message": "unknown field: description"
+      },
+      {
+        "severity": "warning",
+        "type": "schema",
+        "node_id": "adopt_dedupe_key_upsert_action.core.38742272",
+        "message": "unknown field: name"
+      },
+      {
+        "severity": "warning",
+        "type": "schema",
+        "node_id": "api_graph_endpoint.ops.36772097",
+        "message": "unknown field: session_id"
+      },
+      {
+        "severity": "warning",
+        "type": "schema",
+        "node_id": "api_graph_endpoint.ops.36772097",
+        "message": "unknown field: legacy_id"
+      },
+      {
+        "severity": "warning",
+        "type": "schema",
+        "node_id": "api_projects_endpoint.ops.32577793",
+        "message": "unknown field: session_id"
+      },
+      {
+        "severity": "warning",
+        "type": "schema",
+        "node_id": "api_projects_endpoint.ops.32577793",
+        "message": "unknown field: legacy_id"
+      },
+      {
+        "severity": "warning",
+        "type": "schema",
+        "node_id": "api_security_test.test.98145536",
+        "message": "unknown field: legacy_id"
+      },
+      {
+        "severity": "warning",
+        "type": "schema",
+        "node_id": "atomic_file_write_operations.ops.38098689",
+        "message": "unknown field: session_id"
+      },
+      {
+        "severity": "warning",
+        "type": "schema",
+        "node_id": "atomic_file_write_operations.ops.38098689",
+        "message": "unknown field: legacy_id"
+      },
+      {
+        "severity": "warning",
+        "type": "schema",
+        "node_id": "atomic_writes.test.unit.30373376",
+        "message": "unknown field: session_id"
+      },
+      {
+        "severity": "warning",
+        "type": "schema",
+        "node_id": "atomic_writes.test.unit.30373376",
+        "message": "unknown field: legacy_id"
+      },
+      {
+        "severity": "warning",
+        "type": "schema",
+        "node_id": "atomic_writes.test.unit.30373376",
+        "message": "unknown field: description"
+      },
+      {
+        "severity": "warning",
+        "type": "schema",
+        "node_id": "auth_security_test.test.14922752",
+        "message": "unknown field: legacy_id"
+      },
+      {
+        "severity": "warning",
+        "type": "schema",
+        "node_id": "auto_generated_node_ids.ops.25515776",
+        "message": "unknown field: session_id"
+      },
+      {
+        "severity": "warning",
+        "type": "schema",
+        "node_id": "auto_generated_node_ids.ops.25515776",
+        "message": "unknown field: legacy_id"
+      },
+      {
+        "severity": "warning",
+        "type": "schema",
+        "node_id": "auto_generated_node_ids.test.unit.51344897",
+        "message": "unknown field: session_id"
+      },
+      {
+        "severity": "warning",
+        "type": "schema",
+        "node_id": "auto_generated_node_ids.test.unit.51344897",
+        "message": "unknown field: legacy_id"
+      },
+      {
+        "severity": "warning",
+        "type": "schema",
+        "node_id": "auto_generated_node_ids.test.unit.51344897",
+        "message": "unknown field: description"
+      },
+      {
+        "severity": "warning",
+        "type": "schema",
+        "node_id": "cache_ttl_and_lru.test.unit.68122112",
+        "message": "unknown field: session_id"
+      },
+      {
+        "severity": "warning",
+        "type": "schema",
+        "node_id": "cache_ttl_and_lru.test.unit.68122112",
+        "message": "unknown field: legacy_id"
+      },
+      {
+        "severity": "warning",
+        "type": "schema",
+        "node_id": "cache_ttl_and_lru.test.unit.68122112",
+        "message": "unknown field: description"
+      },
+      {
+        "severity": "warning",
+        "type": "schema",
+        "node_id": "cli_commands_init_status_validate.ops.12269569",
+        "message": "unknown field: session_id"
+      },
+      {
+        "severity": "warning",
+        "type": "schema",
+        "node_id": "cli_commands_init_status_validate.ops.12269569",
+        "message": "unknown field: legacy_id"
+      },
+      {
+        "severity": "warning",
+        "type": "schema",
+        "node_id": "cli_commands.test.unit.59070208",
+        "message": "unknown field: session_id"
+      },
+      {
+        "severity": "warning",
+        "type": "schema",
+        "node_id": "cli_commands.test.unit.59070208",
+        "message": "unknown field: legacy_id"
+      },
+      {
+        "severity": "warning",
+        "type": "schema",
+        "node_id": "cli_commands.test.unit.59070208",
+        "message": "unknown field: description"
+      },
+      {
+        "severity": "warning",
+        "type": "schema",
+        "node_id": "code_read_action.ops.08075265",
+        "message": "unknown field: session_id"
+      },
+      {
+        "severity": "warning",
+        "type": "schema",
+        "node_id": "code_read_action.ops.08075265",
+        "message": "unknown field: legacy_id"
+      },
+      {
+        "severity": "warning",
+        "type": "schema",
+        "node_id": "code_read_action.test.unit.93287937",
+        "message": "unknown field: session_id"
+      },
+      {
+        "severity": "warning",
+        "type": "schema",
+        "node_id": "code_read_action.test.unit.93287937",
+        "message": "unknown field: legacy_id"
+      },
+      {
+        "severity": "warning",
+        "type": "schema",
+        "node_id": "code_read_action.test.unit.93287937",
+        "message": "unknown field: description"
+      },
+      {
+        "severity": "warning",
+        "type": "schema",
+        "node_id": "code_refs_field_in_schema.ops.29710080",
+        "message": "unknown field: session_id"
+      },
+      {
+        "severity": "warning",
+        "type": "schema",
+        "node_id": "code_refs_field_in_schema.ops.29710080",
+        "message": "unknown field: legacy_id"
+      },
+      {
+        "severity": "warning",
+        "type": "schema",
+        "node_id": "code_refs_schema_field.test.unit.71653120",
+        "message": "unknown field: session_id"
+      },
+      {
+        "severity": "warning",
+        "type": "schema",
+        "node_id": "code_refs_schema_field.test.unit.71653120",
+        "message": "unknown field: legacy_id"
+      },
+      {
+        "severity": "warning",
+        "type": "schema",
+        "node_id": "code_refs_schema_field.test.unit.71653120",
+        "message": "unknown field: description"
+      },
+      {
+        "severity": "warning",
+        "type": "schema",
+        "node_id": "compatibility_test.test.40088576",
+        "message": "unknown field: legacy_id"
+      },
+      {
+        "severity": "warning",
+        "type": "schema",
+        "node_id": "context_read_tool.ops.20658176",
+        "message": "unknown field: session_id"
+      },
+      {
+        "severity": "warning",
+        "type": "schema",
+        "node_id": "context_read_tool.ops.20658176",
+        "message": "unknown field: legacy_id"
+      },
+      {
+        "severity": "warning",
+        "type": "schema",
+        "node_id": "context_tool.test.unit.59733504",
+        "message": "unknown field: session_id"
+      },
+      {
+        "severity": "warning",
+        "type": "schema",
+        "node_id": "context_tool.test.unit.59733504",
+        "message": "unknown field: legacy_id"
+      },
+      {
+        "severity": "warning",
+        "type": "schema",
+        "node_id": "context_tool.test.unit.59733504",
+        "message": "unknown field: description"
+      },
+      {
+        "severity": "warning",
+        "type": "schema",
+        "node_id": "contract_test.test.48477184",
+        "message": "unknown field: legacy_id"
+      },
+      {
+        "severity": "warning",
+        "type": "schema",
+        "node_id": "core_engine_graphindex_loader_validator.meta.40303104",
+        "message": "unknown field: session_id"
+      }
+    ],
+    "count": {
+      "total": 50,
+      "hard": 0,
+      "warning": 50
+    },
+    "truncated": true
+  },
+  "edge_duplicates": {
+    "total_edges": 1076,
+    "unique_edge_triples": 1076,
+    "duplicate_edge_triples": 0,
+    "duplicate_instances": 0,
+    "top_duplicates": []
+  },
+  "potential_node_duplicates": {
+    "duplicate_name_groups": 4,
+    "top_groups": [
+      {
+        "type": "Session",
+        "normalized_name_key": "importalltestcasenodesacrosswaves",
+        "count": 4,
+        "nodes": [
+          {
+            "id": "meta.session.2026-04-16.61154c821",
+            "name": "Import all TestCase nodes across waves",
+            "status": "COMPLETED"
+          },
+          {
+            "id": "meta.session.2026-04-16.61fec0318",
+            "name": "Import all TestCase nodes across waves",
+            "status": "COMPLETED"
+          },
+          {
+            "id": "meta.session.2026-04-16.63f52c05f",
+            "name": "Import all TestCase nodes across waves",
+            "status": "COMPLETED"
+          },
+          {
+            "id": "meta.session.2026-04-16.f44878d5c",
+            "name": "Import all TestCase nodes across waves",
+            "status": "COMPLETED"
+          }
+        ]
+      },
+      {
+        "type": "Session",
+        "normalized_name_key": "success-benchmark",
+        "count": 3,
+        "nodes": [
+          {
+            "id": "meta.session.2026-04-16.0bebca9d2",
+            "name": "success-benchmark",
+            "status": "IN_PROGRESS"
+          },
+          {
+            "id": "meta.session.2026-04-16.0bf5a241b",
+            "name": "success-benchmark",
+            "status": "IN_PROGRESS"
+          },
+          {
+            "id": "meta.session.2026-04-16.84ba50aa5",
+            "name": "success-benchmark",
+            "status": "IN_PROGRESS"
+          }
+        ]
+      },
+      {
+        "type": "Document",
+        "normalized_name_key": "doc-01soul",
+        "count": 2,
+        "nodes": [
+          {
+            "id": "doc:doc_01_soul_6c4ef6",
+            "name": "Doc-01 Soul",
+            "status": "ACTIVE"
+          },
+          {
+            "id": "doc:doc_01_soul_a403ef",
+            "name": "Doc-01 Soul",
+            "status": "ACTIVE"
+          }
+        ]
+      },
+      {
+        "type": "Session",
+        "normalized_name_key": "importallwavedocsasnodesandconnectedges",
+        "count": 2,
+        "nodes": [
+          {
+            "id": "meta.session.2026-04-16.5a74b2790",
+            "name": "import all wave docs as nodes and connect edges",
+            "status": "IN_PROGRESS"
+          },
+          {
+            "id": "meta.session.2026-04-16.b612adb28",
+            "name": "import all wave docs as nodes and connect edges",
+            "status": "IN_PROGRESS"
+          }
+        ]
+      }
+    ]
+  }
+}

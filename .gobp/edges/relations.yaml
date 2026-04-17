@@ -3001,3 +3001,21 @@
 - from: doc:wave_16a03_brief_560fe0
   to: session:2026-04-16_capture_wave_16a03_d
   type: discovered_in
+- from: doc:doc_01_soul_6c4ef6
+  to: meta.session.2026-04-16.32455a083
+  type: discovered_in
+- from: doc:doc_01_soul_a403ef
+  to: meta.session.2026-04-16.32455a083
+  type: discovered_in
+- from: doc:wave_16a06_brief_a76564
+  to: meta.session.2026-04-17.31d9c8562
+  type: discovered_in
+- from: doc:wave_16a07_brief_7cf5a0
+  to: meta.session.2026-04-17.baf3579ba
+  type: discovered_in
+- from: doc:wave_16a08_brief_65b376
+  to: meta.session.2026-04-17.fe6be993a
+  type: discovered_in
+- from: doc:wave_16a09_brief_a9452e
+  to: meta.session.2026-04-17.49314a8a2
+  type: discovered_in

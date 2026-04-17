@@ -1,0 +1,7 @@
+Wave 16A05 Task 6: set project identities + smoke test
+
+- GoBP: project_name="GoBP" in .gobp/config.yaml
+- MIHOS: project_name="MIHOS" in .gobp/config.yaml
+- overview: shows correct project.name
+- create:Task + tasks: working end-to-end
+- 439 tests passing

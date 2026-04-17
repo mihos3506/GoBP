@@ -1,0 +1,616 @@
+{
+  "project_root": "D:\\MIHOS-v1",
+  "mode": "apply",
+  "candidate_nodes": 82,
+  "actions_preview": [
+    {
+      "node_id": "authentication.ops.78900480",
+      "type": "Flow",
+      "changes": [
+        "steps->description"
+      ]
+    },
+    {
+      "node_id": "broadcast_flow_journey_story_publish.ops.21885952",
+      "type": "Flow",
+      "changes": [
+        "steps->description"
+      ]
+    },
+    {
+      "node_id": "campaign_participation_flow.ops.56114176",
+      "type": "Flow",
+      "changes": [
+        "steps->description"
+      ]
+    },
+    {
+      "node_id": "circular_economy.meta.42583552",
+      "type": "Node",
+      "changes": [
+        "definition->description"
+      ]
+    },
+    {
+      "node_id": "configengine.ops.54545920",
+      "type": "Engine",
+      "changes": [
+        "note->description"
+      ]
+    },
+    {
+      "node_id": "dec:d001",
+      "type": "Decision",
+      "changes": [
+        "name->what_append"
+      ]
+    },
+    {
+      "node_id": "dec:d002",
+      "type": "Decision",
+      "changes": [
+        "name->what_append"
+      ]
+    },
+    {
+      "node_id": "dec:d003",
+      "type": "Decision",
+      "changes": [
+        "name->what_append"
+      ]
+    },
+    {
+      "node_id": "dec:d004",
+      "type": "Decision",
+      "changes": [
+        "name->what_append"
+      ]
+    },
+    {
+      "node_id": "dec:d005",
+      "type": "Decision",
+      "changes": [
+        "name->what_append"
+      ]
+    },
+    {
+      "node_id": "dec:d006",
+      "type": "Decision",
+      "changes": [
+        "name->what_append"
+      ]
+    },
+    {
+      "node_id": "dec:d007",
+      "type": "Decision",
+      "changes": [
+        "name->what_append"
+      ]
+    },
+    {
+      "node_id": "dec:d008",
+      "type": "Decision",
+      "changes": [
+        "name->what_append"
+      ]
+    },
+    {
+      "node_id": "dec:d009",
+      "type": "Decision",
+      "changes": [
+        "name->what_append"
+      ]
+    },
+    {
+      "node_id": "dec:d010",
+      "type": "Decision",
+      "changes": [
+        "name->what_append"
+      ]
+    },
+    {
+      "node_id": "dec:d011",
+      "type": "Decision",
+      "changes": [
+        "name->what_append"
+      ]
+    },
+    {
+      "node_id": "dissolving_ui.meta.36769280",
+      "type": "Node",
+      "changes": [
+        "definition->description"
+      ]
+    },
+    {
+      "node_id": "first_namer_flow.ops.05291008",
+      "type": "Flow",
+      "changes": [
+        "steps->description"
+      ]
+    },
+    {
+      "node_id": "hibernate_flow_reactivation.ops.03568896",
+      "type": "Flow",
+      "changes": [
+        "steps->description"
+      ]
+    },
+    {
+      "node_id": "hibernate.meta.21012480",
+      "type": "Node",
+      "changes": [
+        "phase->tags"
+      ]
+    },
+    {
+      "node_id": "homecoming_flow.ops.70456320",
+      "type": "Flow",
+      "changes": [
+        "steps->description"
+      ]
+    },
+    {
+      "node_id": "journey.meta.76083456",
+      "type": "Node",
+      "changes": [
+        "phase->tags"
+      ]
+    },
+    {
+      "node_id": "live_signal.meta.78677504",
+      "type": "Node",
+      "changes": [
+        "phase->tags"
+      ]
+    },
+    {
+      "node_id": "meta.session.2026-04-16.0fbc4e924",
+      "type": "Session",
+      "changes": [
+        "name->handoff_notes",
+        "priority->handoff_notes"
+      ]
+    },
+    {
+      "node_id": "meta.session.2026-04-16.1193c7397",
+      "type": "Session",
+      "changes": [
+        "name->handoff_notes",
+        "priority->handoff_notes"
+      ]
+    },
+    {
+      "node_id": "meta.session.2026-04-16.1cab7d9f7",
+      "type": "Session",
+      "changes": [
+        "name->handoff_notes",
+        "priority->handoff_notes"
+      ]
+    },
+    {
+      "node_id": "meta.session.2026-04-16.1e071bf38",
+      "type": "Session",
+      "changes": [
+        "name->handoff_notes",
+        "priority->handoff_notes"
+      ]
+    },
+    {
+      "node_id": "meta.session.2026-04-16.42bf0f386",
+      "type": "Session",
+      "changes": [
+        "name->handoff_notes",
+        "priority->handoff_notes"
+      ]
+    },
+    {
+      "node_id": "meta.session.2026-04-16.432d676f0",
+      "type": "Session",
+      "changes": [
+        "name->handoff_notes",
+        "priority->handoff_notes"
+      ]
+    },
+    {
+      "node_id": "meta.session.2026-04-16.4ead474bd",
+      "type": "Session",
+      "changes": [
+        "name->handoff_notes",
+        "priority->handoff_notes"
+      ]
+    },
+    {
+      "node_id": "meta.session.2026-04-16.4f523d3a4",
+      "type": "Session",
+      "changes": [
+        "name->handoff_notes",
+        "priority->handoff_notes"
+      ]
+    },
+    {
+      "node_id": "meta.session.2026-04-16.5afd87d77",
+      "type": "Session",
+      "changes": [
+        "name->handoff_notes",
+        "priority->handoff_notes"
+      ]
+    },
+    {
+      "node_id": "meta.session.2026-04-16.632e2c8a7",
+      "type": "Session",
+      "changes": [
+        "name->handoff_notes",
+        "priority->handoff_notes"
+      ]
+    },
+    {
+      "node_id": "meta.session.2026-04-16.7554d9308",
+      "type": "Session",
+      "changes": [
+        "name->handoff_notes",
+        "priority->handoff_notes"
+      ]
+    },
+    {
+      "node_id": "meta.session.2026-04-16.7a86a2e09",
+      "type": "Session",
+      "changes": [
+        "name->handoff_notes",
+        "priority->handoff_notes"
+      ]
+    },
+    {
+      "node_id": "meta.session.2026-04-16.8730c7f22",
+      "type": "Session",
+      "changes": [
+        "name->handoff_notes",
+        "priority->handoff_notes"
+      ]
+    },
+    {
+      "node_id": "meta.session.2026-04-16.929670f36",
+      "type": "Session",
+      "changes": [
+        "name->handoff_notes",
+        "priority->handoff_notes"
+      ]
+    },
+    {
+      "node_id": "meta.session.2026-04-16.9a00311c6",
+      "type": "Session",
+      "changes": [
+        "name->handoff_notes",
+        "priority->handoff_notes"
+      ]
+    },
+    {
+      "node_id": "meta.session.2026-04-16.9be250e1a",
+      "type": "Session",
+      "changes": [
+        "name->handoff_notes",
+        "priority->handoff_notes"
+      ]
+    },
+    {
+      "node_id": "meta.session.2026-04-16.a24357b68",
+      "type": "Session",
+      "changes": [
+        "name->handoff_notes",
+        "priority->handoff_notes"
+      ]
+    },
+    {
+      "node_id": "meta.session.2026-04-16.ad1a31200",
+      "type": "Session",
+      "changes": [
+        "name->handoff_notes",
+        "priority->handoff_notes"
+      ]
+    },
+    {
+      "node_id": "meta.session.2026-04-16.b1769a500",
+      "type": "Session",
+      "changes": [
+        "name->handoff_notes",
+        "priority->handoff_notes"
+      ]
+    },
+    {
+      "node_id": "meta.session.2026-04-16.b595c1511",
+      "type": "Session",
+      "changes": [
+        "name->handoff_notes",
+        "priority->handoff_notes"
+      ]
+    },
+    {
+      "node_id": "meta.session.2026-04-16.bad3d0e79",
+      "type": "Session",
+      "changes": [
+        "name->handoff_notes",
+        "priority->handoff_notes"
+      ]
+    },
+    {
+      "node_id": "meta.session.2026-04-16.cfa746608",
+      "type": "Session",
+      "changes": [
+        "name->handoff_notes",
+        "priority->handoff_notes"
+      ]
+    },
+    {
+      "node_id": "meta.session.2026-04-16.d181022ab",
+      "type": "Session",
+      "changes": [
+        "name->handoff_notes",
+        "priority->handoff_notes"
+      ]
+    },
+    {
+      "node_id": "meta.session.2026-04-16.d948d53d5",
+      "type": "Session",
+      "changes": [
+        "name->handoff_notes",
+        "priority->handoff_notes"
+      ]
+    },
+    {
+      "node_id": "meta.session.2026-04-16.da7bc8f8b",
+      "type": "Session",
+      "changes": [
+        "name->handoff_notes",
+        "priority->handoff_notes"
+      ]
+    },
+    {
+      "node_id": "meta.session.2026-04-16.dd28f20a6",
+      "type": "Session",
+      "changes": [
+        "name->handoff_notes",
+        "priority->handoff_notes"
+      ]
+    },
+    {
+      "node_id": "meta.session.2026-04-16.dfbd41ff0",
+      "type": "Session",
+      "changes": [
+        "name->handoff_notes",
+        "priority->handoff_notes"
+      ]
+    },
+    {
+      "node_id": "meta.session.2026-04-16.e1040aa37",
+      "type": "Session",
+      "changes": [
+        "name->handoff_notes",
+        "priority->handoff_notes"
+      ]
+    },
+    {
+      "node_id": "meta.session.2026-04-16.ecb9c516c",
+      "type": "Session",
+      "changes": [
+        "name->handoff_notes",
+        "priority->handoff_notes"
+      ]
+    },
+    {
+      "node_id": "meta.session.2026-04-17.01d1ba688",
+      "type": "Session",
+      "changes": [
+        "name->handoff_notes"
+      ]
+    },
+    {
+      "node_id": "meta.session.2026-04-17.184c4846d",
+      "type": "Session",
+      "changes": [
+        "name->handoff_notes"
+      ]
+    },
+    {
+      "node_id": "meta.session.2026-04-17.26b4d871f",
+      "type": "Session",
+      "changes": [
+        "name->handoff_notes"
+      ]
+    },
+    {
+      "node_id": "meta.session.2026-04-17.39a5b0118",
+      "type": "Session",
+      "changes": [
+        "name->handoff_notes"
+      ]
+    },
+    {
+      "node_id": "meta.session.2026-04-17.60f8f4571",
+      "type": "Session",
+      "changes": [
+        "name->handoff_notes"
+      ]
+    },
+    {
+      "node_id": "meta.session.2026-04-17.67e0c78d5",
+      "type": "Session",
+      "changes": [
+        "name->handoff_notes"
+      ]
+    },
+    {
+      "node_id": "meta.session.2026-04-17.73610c0b2",
+      "type": "Session",
+      "changes": [
+        "name->handoff_notes"
+      ]
+    },
+    {
+      "node_id": "meta.session.2026-04-17.7de7bf13e",
+      "type": "Session",
+      "changes": [
+        "name->handoff_notes"
+      ]
+    },
+    {
+      "node_id": "meta.session.2026-04-17.9a83e0571",
+      "type": "Session",
+      "changes": [
+        "name->handoff_notes"
+      ]
+    },
+    {
+      "node_id": "meta.session.2026-04-17.c61647c3f",
+      "type": "Session",
+      "changes": [
+        "name->handoff_notes"
+      ]
+    },
+    {
+      "node_id": "meta.session.2026-04-17.f32456dcd",
+      "type": "Session",
+      "changes": [
+        "name->handoff_notes"
+      ]
+    },
+    {
+      "node_id": "mi_h_t_delayed.ops.55307264",
+      "type": "Flow",
+      "changes": [
+        "steps->description"
+      ]
+    },
+    {
+      "node_id": "mi_h_t_gps_jitter.ops.66736384",
+      "type": "Flow",
+      "changes": [
+        "steps->description"
+      ]
+    },
+    {
+      "node_id": "mi_h_t.meta.93112320",
+      "type": "Node",
+      "changes": [
+        "phase->tags"
+      ]
+    },
+    {
+      "node_id": "mi_h_t_standard_online.ops.68001536",
+      "type": "Flow",
+      "changes": [
+        "steps->description"
+      ]
+    },
+    {
+      "node_id": "moment_story_flow.ops.18742272",
+      "type": "Flow",
+      "changes": [
+        "steps->description"
+      ]
+    },
+    {
+      "node_id": "place_name_report_flow.ops.03266304",
+      "type": "Flow",
+      "changes": [
+        "steps->description"
+      ]
+    },
+    {
+      "node_id": "place_owner_flow_free_tier_claim.ops.47357952",
+      "type": "Flow",
+      "changes": [
+        "steps->description"
+      ]
+    },
+    {
+      "node_id": "plan_flow_draft_journey_check_in.ops.26429440",
+      "type": "Flow",
+      "changes": [
+        "steps->description"
+      ]
+    },
+    {
+      "node_id": "plan.meta.34862848",
+      "type": "Node",
+      "changes": [
+        "phase->tags"
+      ]
+    },
+    {
+      "node_id": "proof_of_presence_pop.meta.45547520",
+      "type": "Node",
+      "changes": [
+        "definition->description"
+      ]
+    },
+    {
+      "node_id": "registration_guest_traveller.ops.23243008",
+      "type": "Flow",
+      "changes": [
+        "steps->description"
+      ]
+    },
+    {
+      "node_id": "registration.meta.85697792",
+      "type": "Node",
+      "changes": [
+        "phase->tags"
+      ]
+    },
+    {
+      "node_id": "sponsor_visibility_flow.ops.07925504",
+      "type": "Flow",
+      "changes": [
+        "steps->description"
+      ]
+    },
+    {
+      "node_id": "story_publishing.meta.24755712",
+      "type": "Node",
+      "changes": [
+        "phase->tags"
+      ]
+    },
+    {
+      "node_id": "test_taxonomy.core.20452864",
+      "type": "Concept",
+      "changes": [
+        "status->tags"
+      ]
+    },
+    {
+      "node_id": "trustgate_integration.ops.45807616",
+      "type": "Flow",
+      "changes": [
+        "steps->description"
+      ]
+    },
+    {
+      "node_id": "trustgate.ops.08423680",
+      "type": "Engine",
+      "changes": [
+        "note->description",
+        "query->spec_source"
+      ]
+    },
+    {
+      "node_id": "verify_gate.meta.74949376",
+      "type": "Node",
+      "changes": [
+        "phase->tags"
+      ]
+    },
+    {
+      "node_id": "verify_gate.ops.61716480",
+      "type": "Flow",
+      "changes": [
+        "steps->description"
+      ]
+    }
+  ],
+  "apply_result": {
+    "applied_count": 82,
+    "error_count": 0,
+    "errors": []
+  }
+}

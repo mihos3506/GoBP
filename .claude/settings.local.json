@@ -46,7 +46,15 @@
       "Bash(PYTHONUTF8=1 GOBP_DB_URL=\"postgresql://postgres:Hieu%408283%40@localhost/gobp\" D:/GoBP/venv/Scripts/python.exe -m pytest tests/test_wave16a02.py -v --tb=short)",
       "Bash(PYTHONUTF8=1 GOBP_DB_URL=\"postgresql://postgres:Hieu%408283%40@localhost/gobp\" D:/GoBP/venv/Scripts/python.exe -m pytest tests/ -q --tb=no)",
       "Bash(PYTHONUTF8=1 GOBP_DB_URL=\"postgresql://postgres:Hieu%408283%40@localhost/gobp\" D:/GoBP/venv/Scripts/python.exe -m pytest tests/test_wave16a02.py::test_migrated_ids_have_group_namespace -v)",
-      "Bash(PYTHONUTF8=1 GOBP_DB_URL=\"postgresql://postgres:Hieu%408283%40@localhost/gobp\" D:/GoBP/venv/Scripts/python.exe -m pytest tests/test_wave16a03.py -v --tb=short)"
+      "Bash(PYTHONUTF8=1 GOBP_DB_URL=\"postgresql://postgres:Hieu%408283%40@localhost/gobp\" D:/GoBP/venv/Scripts/python.exe -m pytest tests/test_wave16a03.py -v --tb=short)",
+      "Bash(GOBP_DB_URL=\"postgresql://postgres:Hieu%408283%40@localhost/gobp\" D:/GoBP/venv/Scripts/python.exe -m pytest tests/test_wave16a04.py -v --tb=short)",
+      "Bash(GOBP_DB_URL=\"postgresql://postgres:Hieu%408283%40@localhost/gobp\" D:/GoBP/venv/Scripts/python.exe -m pytest tests/ -q --tb=no)",
+      "Bash(python3 *)",
+      "Bash(\"D:/GoBP/venv/Scripts/python.exe\" -m pytest tests/ -v --tb=short)",
+      "Bash(\"D:/GoBP/venv/Scripts/python.exe\" -m py_compile tests/test_wave16a05.py)",
+      "Bash(PYTHONUTF8=1 D:/GoBP/venv/Scripts/python.exe -m pytest tests/test_wave16a07.py -v --tb=no)",
+      "Bash(PYTHONUTF8=1 D:/GoBP/venv/Scripts/python.exe -m pytest tests/ -q --tb=no)",
+      "Bash(PYTHONUTF8=1 D:/GoBP/venv/Scripts/python.exe -m pytest tests/test_wave16a08.py -v --tb=no)"
     ]
   }
 }

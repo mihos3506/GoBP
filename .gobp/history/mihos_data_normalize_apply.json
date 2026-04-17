@@ -1,0 +1,316 @@
+{
+  "project_root": "D:\\MIHOS-v1",
+  "group_count": 10,
+  "planned_actions": 9,
+  "groups_preview": [
+    {
+      "type": "Document",
+      "normalized_name_key": "doc-01soul",
+      "count": 2,
+      "nodes": [
+        {
+          "id": "doc:doc_01_soul_7b6048",
+          "name": "Doc-01 Soul",
+          "status": "ACTIVE"
+        },
+        {
+          "id": "doc:doc_01_soul_c3f362",
+          "name": "Doc-01 Soul",
+          "status": "ACTIVE"
+        }
+      ]
+    },
+    {
+      "type": "Engine",
+      "normalized_name_key": "emberengine",
+      "count": 2,
+      "nodes": [
+        {
+          "id": "emberengine.ops.02767360",
+          "name": "EmberEngine",
+          "status": "ACTIVE"
+        },
+        {
+          "id": "ember_engine.ops.54133504",
+          "name": "Ember Engine",
+          "status": "ACTIVE"
+        }
+      ]
+    },
+    {
+      "type": "Entity",
+      "normalized_name_key": "ledgercheckpoint",
+      "count": 2,
+      "nodes": [
+        {
+          "id": "ledgercheckpoint.domain.67320320",
+          "name": "LedgerCheckpoint",
+          "status": "ACTIVE"
+        },
+        {
+          "id": "ledgercheckpoint.domain.95420672",
+          "name": "LedgerCheckpoint",
+          "status": "ACTIVE"
+        }
+      ]
+    },
+    {
+      "type": "Engine",
+      "normalized_name_key": "levelengine",
+      "count": 2,
+      "nodes": [
+        {
+          "id": "levelengine.ops.71784960",
+          "name": "LevelEngine",
+          "status": "ACTIVE"
+        },
+        {
+          "id": "level_engine.ops.20480512",
+          "name": "Level Engine",
+          "status": "ACTIVE"
+        }
+      ]
+    },
+    {
+      "type": "Entity",
+      "normalized_name_key": "moment",
+      "count": 2,
+      "nodes": [
+        {
+          "id": "moment.domain.81000448",
+          "name": "Moment",
+          "status": "ACTIVE"
+        },
+        {
+          "id": "moment.domain.89370368",
+          "name": "Moment",
+          "status": "ACTIVE"
+        }
+      ]
+    },
+    {
+      "type": "Entity",
+      "normalized_name_key": "placenames",
+      "count": 2,
+      "nodes": [
+        {
+          "id": "placenames.domain.35869440",
+          "name": "PlaceNames",
+          "status": "ACTIVE"
+        },
+        {
+          "id": "placenames.domain.81043200",
+          "name": "PlaceNames",
+          "status": "ACTIVE"
+        }
+      ]
+    },
+    {
+      "type": "Entity",
+      "normalized_name_key": "placeownership",
+      "count": 2,
+      "nodes": [
+        {
+          "id": "placeownership.domain.11938560",
+          "name": "PlaceOwnership",
+          "status": "ACTIVE"
+        },
+        {
+          "id": "placeownership.domain.83100160",
+          "name": "PlaceOwnership",
+          "status": "ACTIVE"
+        }
+      ]
+    },
+    {
+      "type": "Entity",
+      "normalized_name_key": "place",
+      "count": 2,
+      "nodes": [
+        {
+          "id": "place.domain.35896320",
+          "name": "Place",
+          "status": "ACTIVE"
+        },
+        {
+          "id": "place.domain.81319168",
+          "name": "Place",
+          "status": "ACTIVE"
+        }
+      ]
+    },
+    {
+      "type": "Engine",
+      "normalized_name_key": "trustgate",
+      "count": 2,
+      "nodes": [
+        {
+          "id": "trustgate.ops.08423680",
+          "name": "TrustGate",
+          "status": "DEPRECATED"
+        },
+        {
+          "id": "trustgate.ops.84166144",
+          "name": "TrustGate",
+          "status": "ACTIVE"
+        }
+      ]
+    },
+    {
+      "type": "Flow",
+      "normalized_name_key": "verifygate",
+      "count": 2,
+      "nodes": [
+        {
+          "id": "verify_gate.ops.61716480",
+          "name": "Verify Gate",
+          "status": "ACTIVE"
+        },
+        {
+          "id": "verify_gate.ops.80343040",
+          "name": "Verify Gate",
+          "status": "ACTIVE"
+        }
+      ]
+    }
+  ],
+  "actions": [
+    {
+      "type": "deprecate_duplicate",
+      "canonical_id": "doc:doc_01_soul_7b6048",
+      "duplicate_id": "doc:doc_01_soul_c3f362",
+      "node_type": "Document",
+      "normalized_name_key": "doc-01soul"
+    },
+    {
+      "type": "deprecate_duplicate",
+      "canonical_id": "ember_engine.ops.54133504",
+      "duplicate_id": "emberengine.ops.02767360",
+      "node_type": "Engine",
+      "normalized_name_key": "emberengine"
+    },
+    {
+      "type": "deprecate_duplicate",
+      "canonical_id": "ledgercheckpoint.domain.67320320",
+      "duplicate_id": "ledgercheckpoint.domain.95420672",
+      "node_type": "Entity",
+      "normalized_name_key": "ledgercheckpoint"
+    },
+    {
+      "type": "deprecate_duplicate",
+      "canonical_id": "level_engine.ops.20480512",
+      "duplicate_id": "levelengine.ops.71784960",
+      "node_type": "Engine",
+      "normalized_name_key": "levelengine"
+    },
+    {
+      "type": "deprecate_duplicate",
+      "canonical_id": "moment.domain.81000448",
+      "duplicate_id": "moment.domain.89370368",
+      "node_type": "Entity",
+      "normalized_name_key": "moment"
+    },
+    {
+      "type": "deprecate_duplicate",
+      "canonical_id": "placenames.domain.35869440",
+      "duplicate_id": "placenames.domain.81043200",
+      "node_type": "Entity",
+      "normalized_name_key": "placenames"
+    },
+    {
+      "type": "deprecate_duplicate",
+      "canonical_id": "placeownership.domain.11938560",
+      "duplicate_id": "placeownership.domain.83100160",
+      "node_type": "Entity",
+      "normalized_name_key": "placeownership"
+    },
+    {
+      "type": "deprecate_duplicate",
+      "canonical_id": "place.domain.35896320",
+      "duplicate_id": "place.domain.81319168",
+      "node_type": "Entity",
+      "normalized_name_key": "place"
+    },
+    {
+      "type": "deprecate_duplicate",
+      "canonical_id": "verify_gate.ops.61716480",
+      "duplicate_id": "verify_gate.ops.80343040",
+      "node_type": "Flow",
+      "normalized_name_key": "verifygate"
+    }
+  ],
+  "mode": "apply",
+  "apply_result": {
+    "applied_count": 8,
+    "errors": [
+      {
+        "action": {
+          "type": "deprecate_duplicate",
+          "canonical_id": "ember_engine.ops.54133504",
+          "duplicate_id": "emberengine.ops.02767360",
+          "node_type": "Engine",
+          "normalized_name_key": "emberengine"
+        },
+        "error": "[WinError 5] Access is denied: 'D:\\\\MIHOS-v1\\\\.gobp\\\\edges\\\\.relations.yaml.xmg6u6hj.tmp' -> 'D:\\\\MIHOS-v1\\\\.gobp\\\\edges\\\\relations.yaml'"
+      }
+    ],
+    "applied": [
+      {
+        "type": "deprecate_duplicate",
+        "canonical_id": "doc:doc_01_soul_7b6048",
+        "duplicate_id": "doc:doc_01_soul_c3f362",
+        "node_type": "Document",
+        "normalized_name_key": "doc-01soul"
+      },
+      {
+        "type": "deprecate_duplicate",
+        "canonical_id": "ledgercheckpoint.domain.67320320",
+        "duplicate_id": "ledgercheckpoint.domain.95420672",
+        "node_type": "Entity",
+        "normalized_name_key": "ledgercheckpoint"
+      },
+      {
+        "type": "deprecate_duplicate",
+        "canonical_id": "level_engine.ops.20480512",
+        "duplicate_id": "levelengine.ops.71784960",
+        "node_type": "Engine",
+        "normalized_name_key": "levelengine"
+      },
+      {
+        "type": "deprecate_duplicate",
+        "canonical_id": "moment.domain.81000448",
+        "duplicate_id": "moment.domain.89370368",
+        "node_type": "Entity",
+        "normalized_name_key": "moment"
+      },
+      {
+        "type": "deprecate_duplicate",
+        "canonical_id": "placenames.domain.35869440",
+        "duplicate_id": "placenames.domain.81043200",
+        "node_type": "Entity",
+        "normalized_name_key": "placenames"
+      },
+      {
+        "type": "deprecate_duplicate",
+        "canonical_id": "placeownership.domain.11938560",
+        "duplicate_id": "placeownership.domain.83100160",
+        "node_type": "Entity",
+        "normalized_name_key": "placeownership"
+      },
+      {
+        "type": "deprecate_duplicate",
+        "canonical_id": "place.domain.35896320",
+        "duplicate_id": "place.domain.81319168",
+        "node_type": "Entity",
+        "normalized_name_key": "place"
+      },
+      {
+        "type": "deprecate_duplicate",
+        "canonical_id": "verify_gate.ops.61716480",
+        "duplicate_id": "verify_gate.ops.80343040",
+        "node_type": "Flow",
+        "normalized_name_key": "verifygate"
+      }
+    ]
+  }
+}
