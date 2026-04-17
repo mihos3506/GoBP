@@ -149,22 +149,39 @@ verbose=true: full details
 
 ---
 
-## Node types
+## Core node types (21)
 
-| Type | Group | Tier | Dùng để |
-|------|-------|------|---------|
-| Decision | core | 20 | Quyết định kiến trúc đã lock |
-| Invariant | core | 20 | Ràng buộc không thay đổi |
-| Entity | domain | 10 | Domain objects |
-| Flow | ops | 8 | User flows |
-| Engine | ops | 8 | Business logic engines |
-| Feature | ops | 8 | Product features |
-| Screen | ops | 8 | UI screens |
-| APIEndpoint | ops | 8 | API endpoints |
-| TestCase | test | 2 | Test cases |
-| Task | meta | 5 | Work items cho AI queue |
-| Document | meta | 0 | Spec docs |
-| Session | meta | 0 | Working sessions |
+Nguồn: `gobp/schema/core_nodes.yaml` (định nghĩa field đầy đủ: `docs/SCHEMA.md`).
+
+| Type | Mô tả ngắn |
+|------|------------|
+| **Node** | Container generic (entity/feature/tool trong graph) |
+| **Idea** | Ý tưởng thô từ hội thoại (quote + độ chín) |
+| **Decision** | Quyết định đã lock (kiến trúc / sản phẩm) |
+| **Session** | Phiên làm việc (goal, actor, trạng thái) |
+| **Document** | Tài liệu / spec đã import hoặc soạn |
+| **Lesson** | Bài học rút ra sau sự kiện |
+| **Concept** | Khái niệm / thuật ngữ (glossary) |
+| **TestKind** | Tầng **loại** kiểm thử (cha / category): mỗi **node** TestKind là một kind như **unit, e2e, integration** (thể hiện bằng `id` / `name`, kèm `template`, `group`, `scope` trong schema) — đây là chỗ “đặt” khái niệm unit/e2e/… |
+| **TestCase** | Node **con** so với TestKind: **một ca kiểm thử cụ thể** dùng để **chạy test** đối tượng được bảo vệ (Flow/Engine/Feature…); field `kind_id` trỏ về **node TestKind** tương ứng (Given–When–Then, PASS/FAIL, `code_ref`, cạnh `covers` / `tested_by`) |
+| **Engine** | Engine nghiệp vụ (TrustEngine, …) |
+| **Flow** | Luồng người dùng / quy trình |
+| **Entity** | Thực thể domain |
+| **Feature** | Tính năng sản phẩm (user-facing) |
+| **Invariant** | Ràng buộc cứng phải luôn đúng |
+| **Screen** | Màn hình / trang UI |
+| **APIEndpoint** | Endpoint HTTP/RPC |
+| **Repository** | Repo mã nguồn (metadata) |
+| **Wave** | Đợt / sóng triển khai |
+| **Task** | Việc trong hàng đợi AI |
+| **CtoDevHandoff** | Bàn giao lane CTO → dev |
+| **QaCodeDevHandoff** | Bàn giao lane QA-code → dev |
+
+**Quan hệ đúng:** **unit / e2e / integration / …** là các **kind** được biểu diễn bởi **node TestKind** (tầng loại). **TestCase** là **node dùng để test** (ca chạy), là “con” theo nghĩa nghiệp vụ: nhiều TestCase thuộc cùng TestKind qua `kind_id` — không đảo: TestKind ≠ TestCase, và không gọi unit/e2e là “tên thay type TestKind”.
+
+**Field `group` trên node TestKind** (`process` \| `functional` \| `non_functional` \| `security`): phân loại *ý nghĩa hàng loại* (phương pháp kiểm thử vs chủ đề chức năng / phi chức năng / bảo mật) — **khác** với slug unit/e2e trong `id`. Bảng định nghĩa: **SCHEMA.md mục 2.8 TestKind**.
+
+**Nhóm id (`id_groups` trong `.gobp/config.yaml`):** `core` / `domain` / `ops` / `test` / `meta` là **namespace sinh id** (slug + group + số), **không** phải “chỉ riêng test mới là một nhóm type”. Ví dụ TestCase/TestKind dùng pattern id khác (xem mục ID format).
 
 ---
 
@@ -177,6 +194,7 @@ verbose=true: full details
 | `enforces` | Node enforce Invariant/Decision |
 | `tested_by` | Node được test bởi TestCase |
 | `covers` | TestCase covers Flow/Engine |
+| `of_kind` | TestCase thuộc node TestKind (bổ sung cho field `kind_id`) |
 | `references` | Tham chiếu Document |
 | `triggers` | Node trigger node kia |
 | `validates` | Node validate node kia |
@@ -192,11 +210,11 @@ verbose=true: full details
 ```
 {slug}.{group}.{8digits}
 
-trustgate_engine.ops.00000002        ← Engine (ops group)
-traveller_identity.domain.00000001   ← Entity (domain group)
-use_otp_for_auth.core.00000001       ← Decision (core group)
-auth_otp_valid.test.unit.00000001    ← TestCase (test group + kind)
-meta.session.2026-04-17.a3f7c2abc    ← Session
+trustgate_engine.ops.00000002        ← Engine (nhóm ops — ví dụ id thường)
+traveller_identity.domain.00000001   ← Entity (nhóm domain)
+use_otp_for_auth.core.00000001       ← Decision (nhóm core)
+auth_otp_valid.test.unit.00000001    ← TestCase: {slug}.test.{kind}.{8digits} (nhóm test + loại kind)
+meta.session.2026-04-17.a3f7c2abc    ← Session (định dạng đặc biệt)
 ```
 
 ---
@@ -261,21 +279,8 @@ meta.session.2026-04-17.a3f7c2abc    ← Session
 
 ---
 
-## Phụ lục — Bổ sung kỹ thuật (không thay thế nội dung CTO phía trên)
+## Phụ lục (tối thiểu)
 
-Các mục sau làm rõ **triển khai** trong repo; giữ nguyên tinh thần và thứ tự mục của CTO.
-
-- **Tài liệu tham chiếu:** `docs/MCP_TOOLS.md` (hợp đồng tool), `docs/SCHEMA.md` (field/enum), `docs/ARCHITECTURE.md` (khái niệm).
-- **Response:** JSON thường có `_dispatch` (action đã route nội bộ) để audit.
-- **Read-only:** `GOBP_READ_ONLY=true` → mọi write bị từ chối.
-- **`session:end`:** Server yêu cầu `session_id` và `outcome` (đúng như ví dụ lifecycle). Có thể thêm tham số như `handoff='...'` theo `PROTOCOL_GUIDE` trong `gobp/mcp/parser.py`.
-- **Query Rules dòng 2 (`template`):** Chuỗi điều khiển đầy đủ nằm trong `gobp/mcp/parser.py` (`QUERY_RULES`). Ý vận hành: có khung `template: <Type>` trước khi tạo từng type; có thể gọi lại khi cần xem lại field (không đổi mục đích rule CTO).
-- **Batch — đếm operation:** Mỗi **dòng** trong `ops` là một operation. Một batch có thể gồm **một** `create:` và **nhiều** `edge+:` cho cùng node mới — hợp lệ; giới hạn 50 là **tổng số dòng** mỗi lần gọi `batch`.
-- **`find` phân trang:** Thêm `page_size`, `cursor`; gợi ý nằm trong `pagination_hint` của `overview:`.
-- **`get_batch`:** `gobp(query="get_batch: ids='id1,id2' mode=brief")` — đọc nhiều node theo id trong một call.
-- **Import nhiều file:** Mỗi file một `import: <đường_dẫn> session_id='<id>'` (cùng `session_id`).
-- **Node types còn lại:** Bảng CTO liệt kê tầng hay dùng; đủ **21** type trong `gobp/schema/core_nodes.yaml` (ví dụ Node, Idea, Lesson, Concept, TestKind, Repository, Wave, CtoDevHandoff, QaCodeDevHandoff, …).
-- **Edge types trong schema:** Ngoài bảng trên, `gobp/schema/core_edges.yaml` còn định nghĩa `of_kind` (TestCase → TestKind). Trên node `TestCase` có field `kind_id` trỏ tới node `TestKind`.
-- **Khi graph/schema lỗi hoặc MCP cũ:** `python -m gobp.cli validate --scope all`; repair seed: `python -m gobp.cli seed-universal`; sau khi nâng package hoặc sửa schema, **Reload Window** hoặc restart Cursor để process MCP tải lại.
+Response có `_dispatch` (audit). Read-only: `GOBP_READ_ONLY=true`. Field / cạnh đầy đủ: `docs/SCHEMA.md`, `gobp/schema/core_nodes.yaml`, `gobp/schema/core_edges.yaml`. Lỗi graph hoặc MCP cũ: `python -m gobp.cli validate --scope all`, `seed-universal` nếu cần, Reload Window / restart Cursor.
 
 ◈
