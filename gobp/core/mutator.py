@@ -624,3 +624,74 @@ def delete_edge(
         )
 
     return deleted_count
+
+
+def remove_edge_from_disk(
+    gobp_root: Path,
+    from_id: str,
+    to_id: str,
+    edge_type: str,
+    actor: str = "unknown",
+) -> int:
+    """Remove edges matching ``(from_id, to_id, edge_type)`` from any YAML under ``.gobp/edges``.
+
+    Unlike :func:`delete_edge`, which only checks a single file, this scans
+    all ``*.yaml`` edge bundles so callers do not need to know which file
+    stores a particular triple.
+
+    Returns:
+        Total number of matching edge rows removed across all files.
+    """
+    edges_dir = gobp_root / ".gobp" / "edges"
+    if not edges_dir.exists():
+        return 0
+
+    total_deleted = 0
+    for edge_file in edges_dir.rglob("*.yaml"):
+        try:
+            if not edge_file.is_file():
+                continue
+            loaded = yaml.safe_load(edge_file.read_text(encoding="utf-8"))
+            if not isinstance(loaded, list):
+                continue
+            before = len(loaded)
+            remaining = [
+                e
+                for e in loaded
+                if not (
+                    e.get("from") == from_id
+                    and e.get("to") == to_id
+                    and e.get("type") == edge_type
+                )
+            ]
+            removed = before - len(remaining)
+            if removed:
+                total_deleted += removed
+                new_content = yaml.safe_dump(
+                    remaining,
+                    default_flow_style=False,
+                    sort_keys=False,
+                    allow_unicode=True,
+                )
+                _atomic_write(edge_file, new_content)
+                append_event(
+                    gobp_root=gobp_root,
+                    event_type="edge.deleted",
+                    payload={
+                        "from": from_id,
+                        "to": to_id,
+                        "type": edge_type,
+                        "count": removed,
+                        "file": str(edge_file),
+                    },
+                    actor=actor,
+                )
+        except Exception:
+            continue
+
+    try:
+        _cache_module.get_cache().invalidate_all()
+    except Exception:
+        pass
+
+    return total_deleted

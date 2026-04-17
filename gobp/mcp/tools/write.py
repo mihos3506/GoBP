@@ -6,15 +6,22 @@ All write tools require an active session_id.
 
 from __future__ import annotations
 
+from collections import defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 from gobp.core.graph import GraphIndex
 from gobp.core.id_config import generate_external_id
-from gobp.core.search import find_similar_nodes
+from gobp.core.search import find_similar_nodes, normalize_text
 from gobp.core.loader import load_schema, package_schema_dir
-from gobp.core.mutator import create_edge, create_node, remove_node_from_disk, update_node
+from gobp.core.mutator import (
+    create_edge,
+    create_node,
+    remove_edge_from_disk,
+    remove_node_from_disk,
+    update_node,
+)
 from gobp.core.validator import validate_node
 
 
@@ -580,4 +587,346 @@ def session_log(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> 
         "changed_fields": changed_fields,
         "conflicts": [],
         "revision": _get_revision(session_id, project_root),
+    }
+
+
+MAX_BATCH_OPS = 50
+
+
+def _batch_require_open_session(index: GraphIndex, session_id: str) -> dict[str, Any] | None:
+    if not session_id.strip():
+        return {"ok": False, "error": "session_id required"}
+    session = index.get_node(session_id.strip())
+    if not session:
+        return {"ok": False, "error": f"Session not found: {session_id}"}
+    if session.get("status") == "COMPLETED":
+        return {"ok": False, "error": "Session already ended, start new one"}
+    return None
+
+
+def _resolve_node_ref(index: GraphIndex, ref: str) -> str | None:
+    ref = ref.strip()
+    if not ref:
+        return None
+    if index.get_node(ref):
+        return ref
+    key = normalize_text(ref).replace(" ", "")
+    if not key:
+        return None
+    matches: list[dict[str, Any]] = []
+    for n in index.all_nodes():
+        nk = normalize_text(str(n.get("name", ""))).replace(" ", "")
+        if nk == key:
+            matches.append(n)
+    if not matches:
+        return None
+    actives = [n for n in matches if n.get("status") == "ACTIVE"]
+    pick = actives[0] if actives else matches[0]
+    return str(pick.get("id"))
+
+
+def merge_nodes_action(
+    index: GraphIndex,
+    project_root: Path,
+    keep_id: str,
+    absorb_id: str,
+    session_id: str,
+) -> dict[str, Any]:
+    """Rewire edges from ``absorb_id`` onto ``keep_id``, then delete absorbed node."""
+    gate = _batch_require_open_session(index, session_id)
+    if gate:
+        return gate
+    if keep_id == absorb_id:
+        return {"ok": False, "error": "keep and absorb must differ"}
+
+    keep_n = index.get_node(keep_id)
+    absorb_n = index.get_node(absorb_id)
+    if not keep_n or not absorb_n:
+        return {"ok": False, "error": "keep or absorb node not found"}
+
+    warnings: list[dict[str, Any]] = []
+    if keep_n.get("type") != absorb_n.get("type"):
+        warnings.append(
+            {
+                "op": "merge",
+                "note": f"types differ: {keep_n.get('type')} vs {absorb_n.get('type')}",
+            }
+        )
+
+    edges_schema = load_schema(package_schema_dir() / "core_edges.yaml")
+
+    migrated = 0
+    for edge in list(index.all_edges()):
+        f = str(edge.get("from", ""))
+        t = str(edge.get("to", ""))
+        typ = str(edge.get("type", "relates_to"))
+        if absorb_id not in (f, t):
+            continue
+        nf = keep_id if f == absorb_id else f
+        nt = keep_id if t == absorb_id else t
+        remove_edge_from_disk(project_root, f, t, typ, actor="merge_nodes_action")
+        if nf == nt:
+            continue
+        new_edge: dict[str, Any] = {"from": nf, "to": nt, "type": typ}
+        for extra in ("reason", "section", "lines", "legacy_from", "legacy_to"):
+            if extra in edge:
+                new_edge[extra] = edge[extra]
+        try:
+            out = create_edge(project_root, new_edge, edges_schema, actor="merge_nodes_action")
+            if out.get("ok") and out.get("action") in ("created", "skipped"):
+                migrated += 1
+        except Exception:
+            pass
+
+    del_res = remove_node_from_disk(
+        project_root,
+        absorb_id,
+        session_id=session_id,
+        actor="merge_nodes_action",
+    )
+    if not del_res.get("ok"):
+        return del_res
+
+    return {
+        "ok": True,
+        "merged": True,
+        "keep": keep_id,
+        "absorbed": absorb_id,
+        "edges_rewired": migrated,
+        "warnings": warnings,
+    }
+
+
+def batch_action(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> dict[str, Any]:
+    """Execute up to ``MAX_BATCH_OPS`` structured mutations from one ``ops`` block."""
+    from gobp.mcp.batch_parser import parse_batch_ops
+
+    session_id = str(args.get("session_id", "")).strip()
+    ops_text = str(args.get("ops", args.get("query", "")))
+    gate = _batch_require_open_session(index, session_id)
+    if gate:
+        return gate
+
+    ops, parse_errors = parse_batch_ops(ops_text)
+    if parse_errors:
+        return {
+            "ok": False,
+            "summary": "",
+            "total_ops": 0,
+            "succeeded": 0,
+            "skipped": [],
+            "errors": parse_errors,
+            "warnings": [],
+        }
+    if len(ops) > MAX_BATCH_OPS:
+        return {
+            "ok": False,
+            "error": f"Maximum {MAX_BATCH_OPS} ops per batch",
+            "summary": "",
+            "total_ops": len(ops),
+            "succeeded": 0,
+            "skipped": [],
+            "errors": [],
+            "warnings": [],
+        }
+
+    tally: dict[str, list[int]] = defaultdict(lambda: [0, 0])
+    skipped: list[dict[str, Any]] = []
+    errors: list[str] = []
+    warnings: list[dict[str, Any]] = []
+
+    nodes_schema = load_schema(package_schema_dir() / "core_nodes.yaml")
+    edges_schema = load_schema(package_schema_dir() / "core_edges.yaml")
+
+    for op in ops:
+        kind = str(op.get("kind", ""))
+        tally[kind][1] += 1
+        idx = GraphIndex.load_from_disk(project_root)
+        try:
+            if kind == "create":
+                nt = str(op.get("node_type", ""))
+                name = str(op.get("name", ""))
+                desc = str(op.get("description", ""))
+                sim = find_similar_nodes(idx, name, nt, threshold=80)
+                if sim:
+                    skipped.append(
+                        {
+                            "op": "create",
+                            "reason": f"duplicate of {sim[0].get('id')}",
+                            "name": name,
+                        }
+                    )
+                    continue
+                fields: dict[str, Any] = {}
+                if desc:
+                    fields["description"] = desc
+                res = node_upsert(
+                    idx,
+                    project_root,
+                    {
+                        "type": nt,
+                        "name": name,
+                        "fields": fields,
+                        "session_id": session_id,
+                    },
+                )
+                if not res.get("ok"):
+                    errors.append(f"create {name!r}: {res.get('error', res)}")
+                    continue
+                tally[kind][0] += 1
+
+            elif kind in ("update", "replace"):
+                nid = str(op.get("node_id", ""))
+                existing = idx.get_node(nid)
+                if not existing:
+                    errors.append(f"{kind} missing node {nid}")
+                    continue
+                node = dict(existing)
+                for fk, fv in (op.get("fields") or {}).items():
+                    node[str(fk)] = fv
+                node["updated"] = datetime.now(timezone.utc).isoformat()
+                update_node(project_root, node, nodes_schema, actor="batch_action")
+                tally[kind][0] += 1
+                if kind == "replace":
+                    warnings.append(
+                        {
+                            "op": "replace",
+                            "note": "replace: uses same partial merge path as update in this build",
+                            "node_id": nid,
+                        }
+                    )
+
+            elif kind == "delete":
+                nid = str(op.get("node_id", ""))
+                res = delete_node_action(
+                    idx, project_root, {"id": nid, "query": nid, "session_id": session_id}
+                )
+                if not res.get("ok"):
+                    errors.append(f"delete {nid!r}: {res.get('error', res)}")
+                    continue
+                tally[kind][0] += 1
+
+            elif kind == "retype":
+                res = retype_node_action(
+                    idx,
+                    project_root,
+                    {
+                        "id": op.get("node_id"),
+                        "new_type": op.get("new_type"),
+                        "session_id": session_id,
+                    },
+                )
+                if not res.get("ok"):
+                    errors.append(f"retype: {res.get('error', res)}")
+                    continue
+                tally[kind][0] += 1
+
+            elif kind == "merge":
+                res = merge_nodes_action(
+                    idx,
+                    project_root,
+                    str(op.get("keep", "")),
+                    str(op.get("absorb", "")),
+                    session_id,
+                )
+                if not res.get("ok"):
+                    errors.append(f"merge: {res.get('error', res)}")
+                    continue
+                tally[kind][0] += 1
+                for w in res.get("warnings", []) or []:
+                    warnings.append(w)
+
+            elif kind == "edge_add":
+                fid = _resolve_node_ref(idx, str(op.get("from_name", "")))
+                tid = _resolve_node_ref(idx, str(op.get("targets", [""])[0]))
+                et = str(op.get("edge_type", "relates_to"))
+                if not fid or not tid:
+                    errors.append(f"edge+: unresolved endpoint(s) in {op.get('raw')!r}")
+                    continue
+                edge = {"from": fid, "to": tid, "type": et}
+                out = create_edge(project_root, edge, edges_schema, actor="batch_action")
+                if out.get("action") == "skipped":
+                    skipped.append({"op": "edge+", "reason": out.get("reason", "skipped")})
+                elif out.get("ok"):
+                    tally[kind][0] += 1
+                else:
+                    errors.append(f"edge+: {out}")
+
+            elif kind == "edge_remove":
+                fid = _resolve_node_ref(idx, str(op.get("from_name", "")))
+                tid = _resolve_node_ref(idx, str(op.get("targets", [""])[0]))
+                et = str(op.get("edge_type", "relates_to"))
+                if not fid or not tid:
+                    errors.append(f"edge-: unresolved endpoint(s) in {op.get('raw')!r}")
+                    continue
+                removed = remove_edge_from_disk(project_root, fid, tid, et, actor="batch_action")
+                if removed == 0:
+                    warnings.append(
+                        {"op": "edge-", "note": "edge not found", "from": fid, "to": tid, "type": et}
+                    )
+                tally[kind][0] += 1
+
+            elif kind == "edge_ret_type":
+                fid = _resolve_node_ref(idx, str(op.get("from_name", "")))
+                tid = _resolve_node_ref(idx, str(op.get("targets", [""])[0]))
+                old_t = str(op.get("edge_type", "relates_to"))
+                new_t = str(op.get("new_edge_type") or "").strip()
+                if not fid or not tid or not new_t:
+                    errors.append(f"edge~: missing data in {op.get('raw')!r}")
+                    continue
+                remove_edge_from_disk(project_root, fid, tid, old_t, actor="batch_action")
+                create_edge(
+                    project_root,
+                    {"from": fid, "to": tid, "type": new_t},
+                    edges_schema,
+                    actor="batch_action",
+                )
+                tally[kind][0] += 1
+
+            elif kind == "edge_replace_all":
+                fid = _resolve_node_ref(idx, str(op.get("from_name", "")))
+                et = str(op.get("edge_type", "relates_to"))
+                if not fid:
+                    errors.append(f"edge*: unresolved from in {op.get('raw')!r}")
+                    continue
+                for e in list(idx.get_edges_from(fid)):
+                    if str(e.get("type", "")) == et:
+                        remove_edge_from_disk(
+                            project_root,
+                            fid,
+                            str(e.get("to", "")),
+                            et,
+                            actor="batch_action",
+                        )
+                for tgt in op.get("targets") or []:
+                    tid = _resolve_node_ref(idx, str(tgt))
+                    if not tid:
+                        errors.append(f"edge*: unresolved target {tgt!r}")
+                        continue
+                    create_edge(
+                        project_root,
+                        {"from": fid, "to": tid, "type": et},
+                        edges_schema,
+                        actor="batch_action",
+                    )
+                tally[kind][0] += 1
+
+            else:
+                errors.append(f"unsupported op kind {kind!r}")
+        except Exception as exc:
+            errors.append(f"{kind}: {exc}")
+
+    succeeded = sum(v[0] for v in tally.values())
+    total = sum(v[1] for v in tally.values())
+    parts = [f"{k}:{tally[k][0]}/{tally[k][1]}" for k in sorted(tally.keys()) if tally[k][1]]
+    summary = " ".join(parts) if parts else f"ops:{total}"
+
+    return {
+        "ok": len(errors) == 0,
+        "summary": summary,
+        "total_ops": total,
+        "succeeded": succeeded,
+        "skipped": skipped,
+        "errors": errors,
+        "warnings": warnings,
     }

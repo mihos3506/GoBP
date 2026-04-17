@@ -53,6 +53,7 @@ def _normalize_node_type(node_type: str) -> str:
 # -- Query parser --------------------------------------------------------------
 
 _POSITIONAL_KEY: dict[str, str] = {
+    "batch": "query",
     "find": "query",
     "get": "node_id",
     "context": "node_id",
@@ -142,6 +143,32 @@ def parse_query(query: str) -> tuple[str, str, dict[str, Any]]:
     query = query.strip()
     if not query:
         return "overview", "", {}
+
+    # ``batch`` payloads embed colons (e.g. ``create: Engine:`` inside ``ops='...'``),
+    # so we must not split on the first colon of the whole string.
+    if query.lower().startswith("batch"):
+        rest = query[5:].strip()
+        if rest.startswith(":"):
+            rest = rest[1:].strip()
+        if not rest:
+            return "batch", "", {}
+        params: dict[str, Any] = {}
+        tokens = _tokenize_rest(rest)
+        positional_key = _POSITIONAL_KEY.get("batch", "query")
+        positional_consumed = False
+        for token in tokens:
+            if "=" in token:
+                eq_idx = token.index("=")
+                k = token[:eq_idx].strip()
+                v = token[eq_idx + 1:].strip().strip("'\"")
+                params[k] = _coerce_value(v)
+            elif not positional_consumed:
+                value = token.strip("'\"")
+                params[positional_key] = value
+                if positional_key != "query":
+                    params["query"] = value
+                positional_consumed = True
+        return "batch", "", params
 
     colon_idx = query.find(":")
     if colon_idx == -1:
@@ -265,6 +292,9 @@ PROTOCOL_GUIDE = {
         "explore: Mi Hốt": "Vietnamese-aware search + neighborhood context in one call",
         "suggest: Payment Flow": "Keyword overlap — surfaces existing engines/entities to reuse",
         "suggest: auth login": "Finds related nodes from short context text",
+        "batch session_id='x' ops='create: Engine: A | desc\\nedge+: A --implements--> B'": (
+            "Unified batch: create/update/delete/retype/merge/edge ops (max 50 lines)"
+        ),
         "template: Engine": "Input frame for Engine type (required/optional fields from schema)",
         "template: Flow": "Input frame for Flow type (required/optional fields from schema)",
         "template: Entity": "Input frame for Entity type",
