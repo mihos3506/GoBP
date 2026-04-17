@@ -5,6 +5,27 @@ Format: [Wave N — Title] with date, what was added/changed/fixed.
 
 ---
 
+## [Wave 16A08] — Proper Text Normalization — 2026-04-17
+
+### Changed
+- **normalize_text()** upgraded from unicodedata to unidecode
+  - 'đăng nhập' → 'dang nhap' (consistent romanization)
+  - 'dang nhap' == 'đăng nhập' in search ✓
+  - Handles all Vietnamese diacritics correctly
+  - Graceful fallback if unidecode not installed
+
+- **Session strict exclusion** in find()
+  - find: session → no Session nodes (keyword ≠ type)
+  - find:Session → Session nodes only (explicit type filter)
+  - include_sessions=true to opt-in
+
+### Added
+- unidecode to requirements
+
+### Total: 520+ tests
+
+---
+
 ## [Wave 16A07] — Search Quality + Edge Types + Duplicate Detection — 2026-04-17
 
 ### Added

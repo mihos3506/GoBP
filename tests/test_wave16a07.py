@@ -14,8 +14,10 @@ from gobp.mcp.dispatcher import dispatch
 
 
 def test_normalize_removes_vietnamese_diacritics():
+    # unidecode: full romanization
     assert normalize_text("Mi Hốt") == "mi hot"
     assert normalize_text("Hà Nội") == "ha noi"
+    assert normalize_text("đăng nhập") == "dang nhap"
     assert normalize_text("Bàn Cờ") == "ban co"
 
 
@@ -32,7 +34,8 @@ def test_normalize_ascii_unchanged():
 def test_normalize_equivalence():
     """Vietnamese and ASCII versions normalize to same string."""
     assert normalize_text("Mi Hốt") == normalize_text("mi hot")
-    assert normalize_text("Hốt") == normalize_text("hot")
+    assert normalize_text("đăng nhập") == normalize_text("dang nhap")
+    assert normalize_text("Hà Nội") == normalize_text("ha noi")
 
 
 # ── search_score tests ────────────────────────────────────────────────────────
