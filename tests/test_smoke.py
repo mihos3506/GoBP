@@ -129,6 +129,8 @@ def test_core_edges_yaml_valid():
         "discovered_in",
         "references",
         "covers",
+        "depends_on",
+        "tested_by",
         "of_kind",
         "enforces",
         "triggers",

@@ -110,10 +110,17 @@ edge_types:
         type: "list[int]"
 
   covers:
-    description: "TestCase covers/validates a Feature or Node"
+    description: "TestCase A covers functionality of Node B (validation / test coverage)"
     directional: true
-    cardinality: "many_to_one"
-    allowed_node_types: ["TestCase->Node", "TestCase->Idea", "TestCase->Decision"]
+    cardinality: "many_to_many"
+    notes: "Inverse of tested_by. TestCase covers Flow/Engine/Feature"
+    allowed_node_types:
+      - "TestCase->Node"
+      - "TestCase->Idea"
+      - "TestCase->Decision"
+      - "TestCase->Flow"
+      - "TestCase->Engine"
+      - "TestCase->Feature"
 
     required:
       from:
@@ -128,6 +135,57 @@ edge_types:
       coverage_type:
         type: "str"
         description: "happy_path | error_path | boundary | security"
+
+  depends_on:
+    description: "Node A requires Node B to function correctly"
+    directional: true
+    cardinality: "many_to_many"
+    notes: "Use for: Engine depends_on Engine, Flow depends_on Entity"
+    allowed_node_types:
+      - "Engine->Engine"
+      - "Flow->Flow"
+      - "Flow->Engine"
+      - "Flow->Entity"
+      - "Engine->Flow"
+      - "Feature->Feature"
+      - "Node->Node"
+
+    required:
+      from:
+        type: "node_ref"
+      to:
+        type: "node_ref"
+      type:
+        type: "str"
+        enum_values: ["depends_on"]
+
+    optional:
+      notes:
+        type: "str"
+
+  tested_by:
+    description: "Node A is validated by TestCase B"
+    directional: true
+    cardinality: "many_to_many"
+    notes: "Use for: Flow tested_by TestCase, Engine tested_by TestCase"
+    allowed_node_types:
+      - "Flow->TestCase"
+      - "Engine->TestCase"
+      - "Feature->TestCase"
+      - "Node->TestCase"
+
+    required:
+      from:
+        type: "node_ref"
+      to:
+        type: "node_ref"
+      type:
+        type: "str"
+        enum_values: ["tested_by"]
+
+    optional:
+      notes:
+        type: "str"
 
   of_kind:
     description: "TestCase belongs to a TestKind"
