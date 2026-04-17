@@ -6,6 +6,7 @@ Implementations in Tasks 2-8 of Wave 3.
 from __future__ import annotations
 
 import re
+from collections import defaultdict
 from pathlib import Path
 from typing import Any
 
@@ -1176,6 +1177,107 @@ def get_batch(
     }
 
 
+def _schema_token_matches_node(actual_type: str, token: str) -> bool:
+    """Return whether ``actual_type`` satisfies an ``allowed_node_types`` token."""
+    tok = token.strip()
+    if tok == "all":
+        return True
+    if tok == "Node":
+        return actual_type not in ("Session", "Document")
+    return actual_type == tok
+
+
+def _allowed_pairs_from_edge_def(edge_def: dict[str, Any]) -> list[tuple[str, str]]:
+    """Expand ``allowed_node_types`` into (from_token, to_token) pairs."""
+    raw = edge_def.get("allowed_node_types")
+    if raw is None:
+        return []
+    items = [raw.strip()] if isinstance(raw, str) else [str(x).strip() for x in raw if str(x).strip()]
+    if not items:
+        return []
+    pairs: list[tuple[str, str]] = []
+    plain = [x for x in items if "->" not in x]
+    for x in items:
+        if "->" in x:
+            a, b = x.split("->", 1)
+            pairs.append((a.strip(), b.strip()))
+    if plain:
+        for f in plain:
+            for t in plain:
+                pairs.append((f, t))
+    return pairs
+
+
+def _normalize_target_types(tokens: set[str]) -> list[str]:
+    """Turn internal type tokens into a stable list for API output."""
+    if not tokens:
+        return ["any"]
+    mapped = [("any" if t == "all" else t) for t in tokens]
+    return sorted(set(mapped), key=lambda x: (x == "any", x.casefold()))
+
+
+def suggested_edges_from_schema(node_type: str, edges_schema: dict[str, Any]) -> list[dict[str, Any]]:
+    """Build edge suggestions from ``core_edges.yaml`` for ``template:`` / ``template_batch:``."""
+    edge_types = edges_schema.get("edge_types", {}) if isinstance(edges_schema, dict) else {}
+    aggregated_out: dict[str, set[str]] = defaultdict(set)
+    aggregated_in: dict[str, set[str]] = defaultdict(set)
+    notes: dict[str, str] = {}
+
+    for edge_name, edge_def in edge_types.items():
+        if not isinstance(edge_def, dict):
+            continue
+        if edge_name == "discovered_in":
+            continue
+        notes[edge_name] = str(edge_def.get("description", "") or "")
+        directional = bool(edge_def.get("directional", True))
+        pairs = _allowed_pairs_from_edge_def(edge_def)
+        if not pairs:
+            continue
+        for from_tok, to_tok in pairs:
+            if _schema_token_matches_node(node_type, from_tok):
+                aggregated_out[edge_name].add(to_tok)
+            if directional and _schema_token_matches_node(node_type, to_tok):
+                aggregated_in[edge_name].add(from_tok)
+
+    out: list[dict[str, Any]] = []
+    seen: set[tuple[str, str, tuple[str, ...]]] = set()
+
+    for ename in sorted(aggregated_out.keys()):
+        tlist = _normalize_target_types(aggregated_out[ename])
+        key = (ename, "outgoing", tuple(tlist))
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(
+            {
+                "type": ename,
+                "direction": "outgoing",
+                "target_types": tlist,
+                "note": notes.get(ename, ""),
+            }
+        )
+
+    for ename in sorted(aggregated_in.keys()):
+        edge_def = edge_types.get(ename, {})
+        if not bool(edge_def.get("directional", True)):
+            continue
+        slist = _normalize_target_types(aggregated_in[ename])
+        key = (ename, "incoming", tuple(slist))
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(
+            {
+                "type": ename,
+                "direction": "incoming",
+                "from_types": slist,
+                "note": notes.get(ename, ""),
+            }
+        )
+
+    return out
+
+
 _TEMPLATE_SKIP_FIELDS = frozenset(
     {"id", "type", "created", "updated"},
 )
@@ -1244,8 +1346,21 @@ def template_action(index: GraphIndex, project_root: Path, args: dict[str, Any])
     groups = load_groups(project_root)
     group = get_group_for_type(node_type, groups)
 
+    edges_schema = getattr(index, "_edges_schema", None) or {}
+    suggested_edges = suggested_edges_from_schema(node_type, edges_schema if isinstance(edges_schema, dict) else {})
+
     batch_format = f"create: {node_type}: {{name}} | {{description}}"
     batch_example = f"create: {node_type}: ExampleName | Short description of what this does"
+    edge_lines_out: list[str] = []
+    for sug in suggested_edges:
+        if sug.get("direction") != "outgoing":
+            continue
+        et = str(sug.get("type", "relates_to"))
+        edge_lines_out.append(f"edge+: ExampleName --{et}--> TargetName")
+        if len(edge_lines_out) >= 3:
+            break
+    if edge_lines_out:
+        batch_example = batch_example + "\n" + "\n".join(edge_lines_out)
 
     return {
         "ok": True,
@@ -1254,6 +1369,7 @@ def template_action(index: GraphIndex, project_root: Path, args: dict[str, Any])
         "frame": {"required": required, "optional": optional},
         "batch_format": batch_format,
         "batch_example": batch_example,
+        "suggested_edges": suggested_edges,
         "hint": (
             "Use batch session_id='…' ops='…' for many creates/updates in one call. "
             "Use explore: before creating to avoid duplicates."
