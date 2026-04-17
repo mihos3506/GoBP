@@ -223,7 +223,8 @@ const STATUS_COLORS = {
 };
 const CORE_TYPES = new Set(['Engine','Flow','Entity','Feature','Decision',
   'SoulPrinciple','Invariant','Document','Node','Idea']);
-const PRIORITY_SIZE = {critical:8, high:5, medium:3, low:2};
+const PRIORITY_SIZE = { critical: 12, high: 8, medium: 5, low: 3 };
+const NODE_VAL_DEFAULT = 5;
 /** Layer index for edge “signal” direction (lower = visually higher tier). */
 const NODE_TIERS = {
   SoulPrinciple: 1, Decision: 1, Invariant: 1, Concept: 1,
@@ -528,7 +529,8 @@ function initGraph() {
     .nodeLabel(n => n.name)
     .nodeColor(n => n.__hit ? '#ffffff' : (TYPE_COLORS[n.type]||'#888'))
     .nodeOpacity(0.92)
-    .nodeVal(n => PRIORITY_SIZE[n.priority]||3)
+    .nodeVal((n) => PRIORITY_SIZE[n.priority] || NODE_VAL_DEFAULT)
+    .nodeRelSize(6)
     .nodeThreeObject(n => {
       if(!SHOW_LABELS) return null;
       return makeSprite(n.name, TYPE_COLORS[n.type]||'#aaa');
@@ -571,7 +573,10 @@ function initGraph() {
   if (typeof d3.forceZ === 'function') {
     FG.d3Force('z', d3.forceZ((n) => tierTargetZ(n)).strength(0.08));
   }
-  FG.d3Force('collide', d3.forceCollide((n) => (PRIORITY_SIZE[n.priority] || 3) * 8 + 32).strength(0.92));
+  FG.d3Force(
+    'collide',
+    d3.forceCollide((n) => (PRIORITY_SIZE[n.priority] || NODE_VAL_DEFAULT) * 10 + 42).strength(0.92),
+  );
   FG.d3VelocityDecay(0.28);
   if (typeof FG.cooldownTicks === 'function') {
     FG.cooldownTicks(450);
