@@ -162,8 +162,22 @@ Do **not** hand-craft snowflake digits; use auto `create:` / `batch` or follow s
 
 ## 10. Human repair hooks (not MCP-gated)
 
-- **`python -m gobp.cli seed-universal`** — restore canonical **TestKind + Concept** files and merge missing **`id_groups`** types (additive).  
+- **`python -m gobp.cli seed-universal`** — restore canonical **TestKind + Concept** files, merge missing **`id_groups`** types (additive), and bump **`.gobp/config.yaml` `schema_version`** up to the packaged baseline when it was lower or broken.  
+- Flags: **`--skip-id-groups`**, **`--skip-schema-version`** if you must avoid touching those files.  
 - **`--rewrite --confirm CEO`** — overwrite all built-in seed files (destructive; human gate).
+
+### 10.1 MCP blocked after schema edit (e.g. `session:end` fails)
+
+**Symptom:** YAML parse error in `gobp/schema/core_nodes.yaml` (historically: **flow map** like `{type: list[str], default: []}` — `default: []` breaks the inline `{…}` parser around **line ~664** in older copies). Any `validate` / graph load then fails; writes such as **`session:end`** appear “stuck”.
+
+**Fix (order matters):**
+
+1. Replace project copy of **`gobp/schema/core_nodes.yaml`** with a **valid** file from the GoBP package (or `git pull` the fix).  
+2. **Restart the MCP server** (Cursor / IDE) so it reloads schema from disk — hot edits are not always picked up.  
+3. Run: **`python -m gobp.cli seed-universal`** (with `GOBP_PROJECT_ROOT` or `cd` to project root) — re-seeds canonical **TestKind** nodes (correct `group` / `scope` fields) and repairs **`schema_version`**.  
+4. Re-run **`session:end`** (or the failing action).
+
+Data already written to `.gobp/nodes/` is usually **safe**; repair targets schema files + config + missing seeds.
 
 ---
 

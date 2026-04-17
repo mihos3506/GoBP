@@ -22,6 +22,47 @@ from gobp.core.id_config import DEFAULT_GROUPS
 INIT_SCHEMA_VERSION = 2  # Wave 4 introduces schema v2
 
 
+def sync_config_schema_version(project_root: Path) -> dict[str, Any]:
+    """Raise ``.gobp/config.yaml`` ``schema_version`` to ``INIT_SCHEMA_VERSION`` if lower or missing.
+
+    Use after pulling new core schema or running ``seed-universal`` repair so tooling
+    agrees with packaged init baseline.
+
+    Args:
+        project_root: GoBP project root.
+
+    Returns:
+        ``ok``, ``changed``, and version details.
+    """
+    config_path = project_root / ".gobp" / "config.yaml"
+    if not config_path.exists():
+        return {"ok": False, "error": f"Missing {config_path}", "changed": False}
+    raw: dict[str, Any] = yaml.safe_load(config_path.read_text(encoding="utf-8")) or {}
+    raw_version = raw.get("schema_version", 0)
+    try:
+        current = int(raw_version)
+    except (TypeError, ValueError):
+        current = 0
+    if current < INIT_SCHEMA_VERSION:
+        previous = raw.get("schema_version")
+        raw["schema_version"] = INIT_SCHEMA_VERSION
+        with open(config_path, "w", encoding="utf-8") as fh:
+            yaml.safe_dump(
+                raw,
+                fh,
+                allow_unicode=True,
+                default_flow_style=False,
+                sort_keys=False,
+            )
+        return {
+            "ok": True,
+            "changed": True,
+            "previous": previous,
+            "set_to": INIT_SCHEMA_VERSION,
+        }
+    return {"ok": True, "changed": False, "schema_version": raw.get("schema_version")}
+
+
 def init_project(
     project_root: Path,
     project_name: str | None = None,

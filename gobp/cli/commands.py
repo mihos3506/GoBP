@@ -171,7 +171,7 @@ def cmd_status(args: argparse.Namespace) -> int:
 def cmd_seed_universal(args: argparse.Namespace) -> int:
     """Restore canonical TestKind + Concept node files (and optionally id_groups)."""
     from gobp.core.id_config import merge_id_groups_with_defaults
-    from gobp.core.init import seed_universal_nodes
+    from gobp.core.init import seed_universal_nodes, sync_config_schema_version
 
     root = _get_project_root()
     if not (root / ".gobp").exists():
@@ -208,6 +208,16 @@ def cmd_seed_universal(args: argparse.Namespace) -> int:
         preview += ", ..."
     print(f"seed-universal: wrote {len(created)} file(s){(' — ' + preview) if created else ''}")
     print(f"seed-universal: skipped {len(skipped)} existing file(s)")
+
+    if not getattr(args, "skip_schema_version", False):
+        sv = sync_config_schema_version(root)
+        if not sv.get("ok"):
+            print(sv.get("error", "schema_version sync failed"), file=sys.stderr)
+            return 1
+        print(
+            f"config schema_version: changed={sv.get('changed')}"
+            + (f" ({sv.get('previous')} → {sv.get('set_to')})" if sv.get("changed") else "")
+        )
     return 0
 
 
@@ -257,6 +267,11 @@ def main() -> int:
         "--skip-id-groups",
         action="store_true",
         help="Skip merging default id_groups into .gobp/config.yaml",
+    )
+    p_seed.add_argument(
+        "--skip-schema-version",
+        action="store_true",
+        help="Do not bump .gobp/config.yaml schema_version to packaged baseline",
     )
     p_seed.set_defaults(func=cmd_seed_universal)
 

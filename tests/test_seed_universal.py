@@ -7,7 +7,7 @@ from pathlib import Path
 
 from gobp.core.graph import GraphIndex
 from gobp.core.id_config import DEFAULT_GROUPS, merge_id_groups_with_defaults
-from gobp.core.init import init_project, seed_universal_nodes
+from gobp.core.init import INIT_SCHEMA_VERSION, init_project, seed_universal_nodes, sync_config_schema_version
 import asyncio
 
 from gobp.mcp.dispatcher import dispatch
@@ -73,6 +73,21 @@ def test_create_testkind_gets_defaults(tmp_path: Path) -> None:
     assert node.get("group") == "functional"
     assert node.get("scope") == "project"
     assert isinstance(node.get("template"), dict)
+
+
+def test_sync_config_schema_version_bumps_when_low(tmp_path: Path) -> None:
+    init_project(tmp_path, force=True)
+    cfg = tmp_path / ".gobp" / "config.yaml"
+    raw = yaml.safe_load(cfg.read_text(encoding="utf-8"))
+    raw["schema_version"] = 1
+    cfg.write_text(
+        yaml.safe_dump(raw, allow_unicode=True, default_flow_style=False, sort_keys=False),
+        encoding="utf-8",
+    )
+    out = sync_config_schema_version(tmp_path)
+    assert out["ok"] and out.get("changed")
+    raw2 = yaml.safe_load(cfg.read_text(encoding="utf-8"))
+    assert raw2["schema_version"] == INIT_SCHEMA_VERSION
 
 
 def test_parse_create_handoff_types() -> None:
