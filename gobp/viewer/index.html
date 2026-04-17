@@ -230,17 +230,17 @@ const NODE_TIERS = {
 };
 
 /**
- * Semantic tier weights (doc). Positions use large 3D units so force+links don’t collapse tiers.
+ * Semantic tier weights (doc).
  */
 const TIER_WEIGHT = { core: 20, domain: 10, ops: 8, test: 2, meta: 0 };
 
-/** Vertical band centers (3D Y) — large gaps (~2k+) so layers read as separate bands. */
+/** Vertical band centers (3D Y) — compact; horizontal spread is driven by X + strong forceX. */
 const TIER_Y = {
   core: 0,
-  domain: 2200,
-  ops: 3600,
-  test: 5200,
-  meta: 6800,
+  domain: 400,
+  ops: 600,
+  test: 900,
+  meta: 1200,
 };
 
 /** Horizontal band centers — strong left→right separation. */
@@ -294,8 +294,7 @@ function tierTargetY(node) {
   const group = TYPE_GROUP[node.type] || 'meta';
   const base = TIER_Y[group] ?? TIER_Y.meta;
   const w = TIER_WEIGHT[group] ?? 0;
-  // Wide intra-tier jitter (was too small → everything looked like one stripe).
-  const micro = ((stableHash((node.id || '') + ':y') % 900) - 450) * (0.5 + w / 80);
+  const micro = ((stableHash((node.id || '') + ':y') % 180) - 90) * (0.15 + w / 200);
   return base + micro;
 }
 
@@ -385,7 +384,7 @@ async function loadGraph(root) {
     applyFilters();
     if (FG && GRAPH_DATA.nodes && GRAPH_DATA.nodes.length) {
       setTimeout(() => {
-        FG.cameraPosition({ x: 0, y: 3400, z: 9200 }, { x: 0, y: 3400, z: 0 }, 900);
+        FG.cameraPosition({ x: 0, y: 600, z: 2600 }, { x: 0, y: 600, z: 0 }, 900);
       }, 80);
     }
     document.getElementById('loading').style.display = 'none';
@@ -519,21 +518,21 @@ function initGraph() {
   FG.d3Force('charge').strength(-320);
   const linkForce = FG.d3Force('link');
   linkForce.distance((l) => {
-    if (l.type === 'belongs_to') return 120;
+    if (l.type === 'belongs_to') return 90;
     const sourceTier = NODE_TIERS[(l.source && l.source.type) || 'Node'] || 3;
     const targetTier = NODE_TIERS[(l.target && l.target.type) || 'Node'] || 3;
     const delta = Math.abs(sourceTier - targetTier);
-    return 220 + (delta * 90);
+    return 150 + (delta * 55);
   });
   // Weaker links so tier positioning wins (reduces dense “beam” between hubs).
   if (typeof linkForce.strength === 'function') {
     linkForce.strength(() => 0.12);
   }
-  // Gentle pulls toward tier targets — initial seed + charge do most of the spread.
-  FG.d3Force('x', d3.forceX((n) => tierTargetX(n)).strength(0.045));
-  FG.d3Force('y', d3.forceY((n) => tierTargetY(n)).strength(0.045));
+  // Strong X: fan tiers left/right; softer Y after reverting compact TIER_Y.
+  FG.d3Force('x', d3.forceX((n) => tierTargetX(n)).strength(0.22));
+  FG.d3Force('y', d3.forceY((n) => tierTargetY(n)).strength(0.06));
   if (typeof d3.forceZ === 'function') {
-    FG.d3Force('z', d3.forceZ((n) => tierTargetZ(n)).strength(0.045));
+    FG.d3Force('z', d3.forceZ((n) => tierTargetZ(n)).strength(0.06));
   }
   FG.d3Force('collide', d3.forceCollide((n) => (PRIORITY_SIZE[n.priority] || 3) * 8 + 28).strength(0.92));
   FG.d3VelocityDecay(0.28);
@@ -753,7 +752,7 @@ function showDetail(node) {
 function focusNode(n) {
   if (n.x == null && n.y == null && n.z == null) return;
   const cx = n.x || 0, cy = n.y || 0, cz = n.z || 0;
-  const d = 2800;
+  const d = 1400;
   const dist = Math.hypot(cx, cy, cz) || 1;
   const r = 1 + d / dist;
   FG.cameraPosition({ x: cx * r, y: cy * r, z: cz * r }, n, 800);
@@ -780,7 +779,7 @@ document.getElementById('btn-labels').addEventListener('click', () => {
   SHOW_LABELS = !SHOW_LABELS; FG.refresh();
 });
 document.getElementById('btn-reset').addEventListener('click', () => {
-  FG.cameraPosition({ x: 0, y: 3400, z: 9200 }, { x: 0, y: 3400, z: 0 }, 900);
+  FG.cameraPosition({ x: 0, y: 600, z: 2600 }, { x: 0, y: 600, z: 0 }, 900);
 });
 document.getElementById('btn-refresh').addEventListener('click', () => {
   loadGraph(CURRENT_ROOT);
