@@ -136,6 +136,11 @@
   </section>
   <section>
     <h3>View</h3>
+    <label style="display:flex;align-items:center;gap:8px;font-size:11px;color:var(--text);margin-bottom:10px;cursor:pointer;user-select:none;">
+      <input type="checkbox" id="chk-metadata-edges" style="width:12px;height:12px;">
+      <span>Show metadata edges</span>
+      <span style="font-size:9px;color:var(--text-fade);">(e.g. <code>discovered_in</code>)</span>
+    </label>
     <button id="btn-core">Core Only</button>
     <button id="btn-all">Show All</button>
     <button id="btn-labels">Labels</button>
@@ -230,36 +235,51 @@ const NODE_TIERS = {
 };
 
 /**
- * Semantic tier weights (doc).
+ * Tier weight × -100 → Y (high weight = top). core 20→-2000 … meta 0→0.
  */
 const TIER_WEIGHT = { core: 20, domain: 10, ops: 8, test: 2, meta: 0 };
 
-/** Vertical band centers (3D Y) — compact; horizontal spread is driven by X + strong forceX. */
-const TIER_Y = {
-  core: 0,
-  domain: 400,
-  ops: 600,
-  test: 900,
-  meta: 1200,
-};
-
-/** Horizontal band centers — strong left→right separation. */
-const TIER_X = {
-  core: -2200,
-  domain: -1100,
-  ops: 0,
-  test: 1100,
-  meta: 2200,
-};
-
-/** Depth (Z) band — breaks the “one pillar” when viewed from default camera. */
+/** Depth (Z) — light spread so 3D view doesn’t collapse to a plane. */
 const TIER_Z = {
-  core: -1400,
-  domain: -700,
+  core: -900,
+  domain: -450,
   ops: 0,
-  test: 700,
-  meta: 1400,
+  test: 450,
+  meta: 900,
 };
+
+/**
+ * Horizontal anchor by node type (architecture lanes). Unknown types → 0 + jitter.
+ */
+const TYPE_X_CENTER = {
+  Invariant: -800,
+  Decision: -600,
+  Concept: -600,
+  SoulPrinciple: -800,
+  Entity: -200,
+  Flow: 0,
+  Engine: 200,
+  Feature: 400,
+  Screen: 600,
+  APIEndpoint: 600,
+  TestKind: -400,
+  TestCase: -200,
+  Document: 800,
+  Session: 1000,
+  Task: 800,
+  Wave: 800,
+  Node: 0,
+  Idea: 400,
+  Lesson: 800,
+  Repository: 200,
+  SharedLibModule: -200,
+  Config: -200,
+  DBTable: -200,
+  UIComponent: 400,
+  CtoDevHandoff: 800,
+  QaCodeDevHandoff: 800,
+};
+const TYPE_X_JITTER = 140;
 
 const TYPE_GROUP = {
   Decision: "core", Invariant: "core", Concept: "core",
@@ -278,23 +298,19 @@ function stableHash(input) {
   return Math.abs(h);
 }
 
-/** Horizontal jitter half-width (large → nodes fan instead of a single column). */
-const TIER_X_JITTER = 2400;
-/** Depth jitter half-width (spreads graph along Z). */
-const TIER_Z_JITTER = 2600;
+const TIER_Z_JITTER = 420;
 
 function tierTargetX(node) {
-  const group = TYPE_GROUP[node.type] || 'meta';
-  const center = TIER_X[group] ?? TIER_X.meta;
-  const jitter = (stableHash(node.id || node.name || '') % (TIER_X_JITTER * 2)) - TIER_X_JITTER;
+  const center = TYPE_X_CENTER[node.type] ?? 0;
+  const jitter = (stableHash((node.id || node.name || '') + ':x') % (TYPE_X_JITTER * 2)) - TYPE_X_JITTER;
   return center + jitter;
 }
 
 function tierTargetY(node) {
   const group = TYPE_GROUP[node.type] || 'meta';
-  const base = TIER_Y[group] ?? TIER_Y.meta;
   const w = TIER_WEIGHT[group] ?? 0;
-  const micro = ((stableHash((node.id || '') + ':y') % 180) - 90) * (0.15 + w / 200);
+  const base = -100 * w;
+  const micro = ((stableHash((node.id || '') + ':y') % 120) - 60) * 0.35;
   return base + micro;
 }
 
@@ -343,6 +359,8 @@ const EDGE_SIGNAL_COLORS = {
 
 let FG, GRAPH_DATA = {nodes:[], edges:[], links:[]};
 let VISIBLE_TYPES = new Set(), VISIBLE_STATUSES = new Set();
+/** When false, hide discovered_in (metadata) — default off to declutter. */
+let SHOW_METADATA_EDGES = false;
 let SHOW_LABELS = false;
 let CURRENT_ROOT = null;
 let PROJECTS = [];
@@ -356,6 +374,14 @@ async function boot() {
   }
   buildProjectSwitcher();
   initGraph();
+  const metaChk = document.getElementById('chk-metadata-edges');
+  if (metaChk) {
+    metaChk.checked = SHOW_METADATA_EDGES;
+    metaChk.addEventListener('change', (e) => {
+      SHOW_METADATA_EDGES = e.target.checked;
+      applyFilters();
+    });
+  }
   await loadGraph(PROJECTS[0]?.root || null);
 }
 
@@ -384,7 +410,7 @@ async function loadGraph(root) {
     applyFilters();
     if (FG && GRAPH_DATA.nodes && GRAPH_DATA.nodes.length) {
       setTimeout(() => {
-        FG.cameraPosition({ x: 0, y: 600, z: 2600 }, { x: 0, y: 600, z: 0 }, 900);
+        FG.cameraPosition({ x: 400, y: -900, z: 3400 }, { x: 0, y: -1000, z: 0 }, 900);
       }, 80);
     }
     document.getElementById('loading').style.display = 'none';
@@ -449,9 +475,16 @@ function applyFilters(searchSet=null, hits=null) {
   });
   const ids = new Set(nodes.map(n=>n.id));
   const nodesById = Object.fromEntries(nodes.map(n => [n.id, n]));
-  const links = (GRAPH_DATA.links||GRAPH_DATA.edges||[]).filter(e =>
-    ids.has(e.source||e.from) && ids.has(e.target||e.to)
-  ).map(e => {
+  const rawEdges = GRAPH_DATA.links || GRAPH_DATA.edges || [];
+  let hiddenMeta = 0;
+  const links = rawEdges.filter((e) => {
+    if (!ids.has(e.source || e.from) || !ids.has(e.target || e.to)) return false;
+    if (!SHOW_METADATA_EDGES && e.type === 'discovered_in') {
+      hiddenMeta += 1;
+      return false;
+    }
+    return true;
+  }).map(e => {
     const rawSource = e.source || e.from;
     const rawTarget = e.target || e.to;
     const sourceTier = NODE_TIERS[nodesById[rawSource]?.type] || 3;
@@ -483,8 +516,10 @@ function applyFilters(searchSet=null, hits=null) {
   FG.graphData({nodes, links});
   document.getElementById('status-left').textContent =
     `${nodes.length} / ${GRAPH_DATA.nodes.length} nodes`;
-  document.getElementById('status-right').textContent =
-    `${links.length} edges`;
+  const edgeLine = hiddenMeta
+    ? `${links.length} edges (${hiddenMeta} metadata hidden)`
+    : `${links.length} edges`;
+  document.getElementById('status-right').textContent = edgeLine;
 }
 
 function initGraph() {
@@ -515,26 +550,28 @@ function initGraph() {
     .onNodeClick(n => showDetail(n))
     .onBackgroundClick(() => document.getElementById('detail').classList.remove('visible'));
 
-  FG.d3Force('charge').strength(-320);
+  FG.d3Force('charge').strength(-420);
   const linkForce = FG.d3Force('link');
   linkForce.distance((l) => {
-    if (l.type === 'belongs_to') return 90;
+    const t = l.type || '';
+    if (t === 'discovered_in') return 20;
+    if (t === 'implements' || t === 'depends_on') return 150;
+    if (t === 'relates_to') return 100;
+    if (t === 'belongs_to') return 80;
     const sourceTier = NODE_TIERS[(l.source && l.source.type) || 'Node'] || 3;
     const targetTier = NODE_TIERS[(l.target && l.target.type) || 'Node'] || 3;
     const delta = Math.abs(sourceTier - targetTier);
-    return 150 + (delta * 55);
+    return 120 + (delta * 40);
   });
-  // Weaker links so tier positioning wins (reduces dense “beam” between hubs).
   if (typeof linkForce.strength === 'function') {
     linkForce.strength(() => 0.12);
   }
-  // Strong X: fan tiers left/right; softer Y after reverting compact TIER_Y.
-  FG.d3Force('x', d3.forceX((n) => tierTargetX(n)).strength(0.22));
-  FG.d3Force('y', d3.forceY((n) => tierTargetY(n)).strength(0.06));
+  FG.d3Force('x', d3.forceX((n) => tierTargetX(n)).strength(0.15));
+  FG.d3Force('y', d3.forceY((n) => tierTargetY(n)).strength(0.3));
   if (typeof d3.forceZ === 'function') {
-    FG.d3Force('z', d3.forceZ((n) => tierTargetZ(n)).strength(0.06));
+    FG.d3Force('z', d3.forceZ((n) => tierTargetZ(n)).strength(0.08));
   }
-  FG.d3Force('collide', d3.forceCollide((n) => (PRIORITY_SIZE[n.priority] || 3) * 8 + 28).strength(0.92));
+  FG.d3Force('collide', d3.forceCollide((n) => (PRIORITY_SIZE[n.priority] || 3) * 8 + 32).strength(0.92));
   FG.d3VelocityDecay(0.28);
   if (typeof FG.cooldownTicks === 'function') {
     FG.cooldownTicks(450);
@@ -752,7 +789,7 @@ function showDetail(node) {
 function focusNode(n) {
   if (n.x == null && n.y == null && n.z == null) return;
   const cx = n.x || 0, cy = n.y || 0, cz = n.z || 0;
-  const d = 1400;
+  const d = 1800;
   const dist = Math.hypot(cx, cy, cz) || 1;
   const r = 1 + d / dist;
   FG.cameraPosition({ x: cx * r, y: cy * r, z: cz * r }, n, 800);
@@ -779,7 +816,7 @@ document.getElementById('btn-labels').addEventListener('click', () => {
   SHOW_LABELS = !SHOW_LABELS; FG.refresh();
 });
 document.getElementById('btn-reset').addEventListener('click', () => {
-  FG.cameraPosition({ x: 0, y: 600, z: 2600 }, { x: 0, y: 600, z: 0 }, 900);
+  FG.cameraPosition({ x: 400, y: -900, z: 3400 }, { x: 0, y: -1000, z: 0 }, 900);
 });
 document.getElementById('btn-refresh').addEventListener('click', () => {
   loadGraph(CURRENT_ROOT);
