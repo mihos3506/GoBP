@@ -251,6 +251,42 @@ class GraphIndex:
         """
         return list(self._edges_by_type_idx.get(edge_type, []))
 
+    def remove_node(self, node_id: str) -> bool:
+        """Remove node from in-memory index and drop all edges touching it.
+
+        Returns:
+            True if the node existed and was removed.
+        """
+        if node_id not in self._nodes:
+            return False
+        node = self._nodes.pop(node_id)
+        ntype = node.get("type", "Unknown")
+        if ntype in self._nodes_by_type_idx:
+            self._nodes_by_type_idx[ntype] = [
+                n for n in self._nodes_by_type_idx[ntype] if n.get("id") != node_id
+            ]
+            if not self._nodes_by_type_idx[ntype]:
+                del self._nodes_by_type_idx[ntype]
+
+        self._edges = [
+            e for e in self._edges
+            if e.get("from") != node_id and e.get("to") != node_id
+        ]
+        self._edges_from_idx.clear()
+        self._edges_to_idx.clear()
+        self._edges_by_type_idx.clear()
+        for edge in self._edges:
+            from_id = edge.get("from", "")
+            to_id = edge.get("to", "")
+            edge_type = edge.get("type", "")
+            if from_id:
+                self._edges_from_idx[from_id].append(edge)
+            if to_id:
+                self._edges_to_idx[to_id].append(edge)
+            if edge_type:
+                self._edges_by_type_idx[edge_type].append(edge)
+        return True
+
     def compute_priority_score(self, node_id: str) -> int:
         """Compute numeric priority: edge_count + tier_weight from config."""
         from gobp.core.id_config import get_tier_weight, load_groups

@@ -21,7 +21,7 @@ import yaml
 from gobp.core import cache as _cache_module
 from gobp.core import db as _db
 from gobp.core.history import append_event
-from gobp.core.loader import parse_frontmatter
+from gobp.core.loader import load_node_file, parse_frontmatter
 from gobp.core.validator import validate_edge, validate_node
 
 _EDGE_DEDUPE_CACHE: dict[str, tuple[int, int, int, int]] = {}
@@ -298,6 +298,109 @@ def delete_node(
     )
 
     return node_file
+
+
+def remove_node_from_disk(
+    gobp_root: Path,
+    node_id: str,
+    session_id: str = "",
+    actor: str = "unknown",
+) -> dict[str, Any]:
+    """Delete a node file and remove all edges referencing it from edge YAML lists.
+
+    Unlike :func:`delete_node` (soft-delete / archive), this removes the node
+    markdown file from disk and rewrites edge files.
+
+    Args:
+        gobp_root: Project root.
+        node_id: Node ID to remove.
+        session_id: Active session (for audit payload).
+        actor: Who is deleting.
+
+    Returns:
+        Dict with ``ok``, ``deleted_node_id``, ``deleted_edges_count``, or ``error``.
+    """
+    nodes_dir = gobp_root / ".gobp" / "nodes"
+    node_file = _node_file_path(gobp_root, node_id)
+
+    if not node_file.exists() and nodes_dir.exists():
+        for f in nodes_dir.rglob("*.md"):
+            try:
+                n = load_node_file(f)
+                if n.get("id") == node_id:
+                    node_file = f
+                    break
+            except Exception:
+                continue
+
+    if not node_file.exists():
+        return {"ok": False, "error": f"Node not found: {node_id}"}
+
+    try:
+        node = load_node_file(node_file)
+    except Exception as e:
+        return {"ok": False, "error": f"Failed to read node: {e}"}
+
+    protected_types = {"Session", "Document"}
+    if node.get("type") in protected_types:
+        return {
+            "ok": False,
+            "error": f"Cannot delete {node.get('type')} nodes — protected type",
+        }
+
+    deleted_edges = 0
+    edges_dir = gobp_root / ".gobp" / "edges"
+    if edges_dir.exists():
+        for edge_file in edges_dir.rglob("*.yaml"):
+            try:
+                data = yaml.safe_load(edge_file.read_text(encoding="utf-8"))
+                if not isinstance(data, list):
+                    continue
+                before = len(data)
+                filtered = [
+                    e for e in data
+                    if e.get("from") != node_id and e.get("to") != node_id
+                ]
+                removed = before - len(filtered)
+                if removed:
+                    deleted_edges += removed
+                    new_content = yaml.safe_dump(
+                        filtered,
+                        default_flow_style=False,
+                        sort_keys=False,
+                        allow_unicode=True,
+                    )
+                    _atomic_write(edge_file, new_content)
+            except Exception:
+                continue
+
+    node_file.unlink()
+
+    try:
+        _db.init_schema(gobp_root)
+        _db.delete_node(gobp_root, node_id)
+        _db.delete_edges_for_node(gobp_root, node_id)
+        _cache_module.get_cache().invalidate_all()
+    except Exception:
+        pass
+
+    append_event(
+        gobp_root=gobp_root,
+        event_type="node.deleted",
+        payload={
+            "id": node_id,
+            "session_id": session_id,
+            "deleted_edges_count": deleted_edges,
+            "file": str(node_file),
+        },
+        actor=actor,
+    )
+
+    return {
+        "ok": True,
+        "deleted_node_id": node_id,
+        "deleted_edges_count": deleted_edges,
+    }
 
 
 def create_edge(
