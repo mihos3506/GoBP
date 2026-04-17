@@ -279,6 +279,10 @@ PROTOCOL_GUIDE = {
         "recompute: priorities dry_run=true": "Preview priority changes without writing",
         "recompute: priorities type=Flow session_id='x'": "Recompute only Flow nodes",
         "extract: lessons": "Extract lesson candidates",
+        "delete: {node_id} session_id='x'": "Delete node + edges",
+        "retype: id='{id}' new_type='Engine' session_id='x'": (
+            "Change node type (delete + recreate with correct ID)"
+        ),
         "tasks:": "Pending tasks for cursor",
         "tasks: assignee='haiku'": "Pending tasks for haiku",
         "tasks: status='ALL'": "All tasks",

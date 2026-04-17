@@ -13,7 +13,7 @@ from typing import Any
 from gobp.core.graph import GraphIndex
 from gobp.core.id_config import generate_external_id
 from gobp.core.loader import load_schema, package_schema_dir
-from gobp.core.mutator import create_edge, create_node, update_node
+from gobp.core.mutator import create_edge, create_node, remove_node_from_disk, update_node
 from gobp.core.validator import validate_node
 
 
@@ -198,6 +198,142 @@ def node_upsert(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> 
         "changed_fields": changed_fields,
         "conflicts": [],
         "revision": _get_revision(node_id, project_root),
+    }
+
+
+def delete_node_action(
+    index: GraphIndex,
+    project_root: Path,
+    args: dict[str, Any],
+) -> dict[str, Any]:
+    """Hard-delete a node and strip edges from YAML lists.
+
+    Query shape: ``delete: {node_id} session_id='…'``.
+    """
+    node_id = str(args.get("query") or args.get("id") or "").strip()
+    session_id = str(args.get("session_id", "")).strip()
+
+    if not node_id:
+        return {"ok": False, "error": "Node ID required"}
+    if not session_id:
+        return {"ok": False, "error": "session_id required"}
+
+    session = index.get_node(session_id)
+    if not session:
+        return {"ok": False, "error": f"Session not found: {session_id}"}
+    if session.get("status") == "COMPLETED":
+        return {"ok": False, "error": "Session already ended, start new one"}
+
+    return remove_node_from_disk(
+        project_root,
+        node_id,
+        session_id=session_id,
+        actor="delete_node_action",
+    )
+
+
+def retype_node_action(
+    index: GraphIndex,
+    project_root: Path,
+    args: dict[str, Any],
+) -> dict[str, Any]:
+    """Change node type by removing the old node and creating a new ID in the correct group."""
+    from gobp.mcp.parser import _normalize_type
+
+    node_id = str(args.get("id") or args.get("query") or "").strip()
+    new_type_raw = args.get("new_type")
+    new_type = str(new_type_raw).strip() if new_type_raw is not None else ""
+    session_id = str(args.get("session_id", "")).strip()
+
+    if not node_id:
+        return {"ok": False, "error": "id required"}
+    if not new_type:
+        return {"ok": False, "error": "new_type required"}
+    if not session_id:
+        return {"ok": False, "error": "session_id required"}
+
+    session = index.get_node(session_id)
+    if not session:
+        return {"ok": False, "error": f"Session not found: {session_id}"}
+    if session.get("status") == "COMPLETED":
+        return {"ok": False, "error": "Session already ended, start new one"}
+
+    old_node = index.get_node(node_id)
+    if not old_node:
+        return {"ok": False, "error": f"Node not found: {node_id}"}
+
+    new_type = _normalize_type(new_type)
+
+    related_edges = [
+        e
+        for e in index.all_edges()
+        if e.get("from") == node_id or e.get("to") == node_id
+    ]
+
+    del_result = remove_node_from_disk(
+        project_root,
+        node_id,
+        session_id=session_id,
+        actor="retype_node_action",
+    )
+    if not del_result.get("ok"):
+        return del_result
+
+    name = str(old_node.get("name", ""))
+    skip = {"id", "type"}
+    fields = {k: v for k, v in old_node.items() if k not in skip}
+    for drop in ("session_id", "created", "updated"):
+        fields.pop(drop, None)
+
+    fresh_index = GraphIndex.load_from_disk(project_root)
+
+    upsert_result = node_upsert(
+        fresh_index,
+        project_root,
+        {
+            "type": new_type,
+            "name": name,
+            "fields": fields,
+            "session_id": session_id,
+        },
+    )
+    if not upsert_result.get("ok"):
+        return upsert_result
+
+    new_id = str(upsert_result.get("node_id", ""))
+
+    try:
+        edges_schema = load_schema(package_schema_dir() / "core_edges.yaml")
+    except Exception as e:
+        return {"ok": False, "error": f"Failed to load schema for edge migration: {e}"}
+
+    edges_migrated = 0
+    for edge in related_edges:
+        from_id = new_id if edge.get("from") == node_id else edge.get("from")
+        to_id = new_id if edge.get("to") == node_id else edge.get("to")
+        edge_type = edge.get("type", "relates_to")
+        new_edge: dict[str, Any] = {"from": from_id, "to": to_id, "type": edge_type}
+        for extra in ("reason", "section", "lines", "legacy_from", "legacy_to"):
+            if extra in edge:
+                new_edge[extra] = edge[extra]
+        try:
+            out = create_edge(
+                project_root,
+                new_edge,
+                edges_schema,
+                actor="retype_node_action",
+            )
+            if out.get("ok") and out.get("action") in ("created", "skipped"):
+                edges_migrated += 1
+        except Exception:
+            pass
+
+    return {
+        "ok": True,
+        "old_id": node_id,
+        "new_id": new_id,
+        "new_type": new_type,
+        "edges_migrated": edges_migrated,
     }
 
 

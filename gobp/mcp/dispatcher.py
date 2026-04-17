@@ -419,6 +419,12 @@ async def dispatch(
                     if not result.get("action"):
                         result["action"] = "updated" if existing_node else "created"
 
+        elif action == "delete":
+            result = tools_write.delete_node_action(index, project_root, params)
+
+        elif action == "retype":
+            result = tools_write.retype_node_action(index, project_root, params)
+
         elif action == "lock":
             locked_by_raw = params.get("locked_by", "CEO,Claude-CLI")
             locked_by = [s.strip() for s in locked_by_raw.split(",")]
