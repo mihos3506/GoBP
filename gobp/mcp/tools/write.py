@@ -12,6 +12,7 @@ from typing import Any
 
 from gobp.core.graph import GraphIndex
 from gobp.core.id_config import generate_external_id
+from gobp.core.search import find_similar_nodes
 from gobp.core.loader import load_schema, package_schema_dir
 from gobp.core.mutator import create_edge, create_node, remove_node_from_disk, update_node
 from gobp.core.validator import validate_node
@@ -148,7 +149,25 @@ def node_upsert(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> 
     except Exception as e:
         return {"ok": False, "error": f"Write failed: {e}"}
 
-    warnings: list[str] = []
+    warnings: list[Any] = []
+
+    try:
+        fresh_index = GraphIndex.load_from_disk(project_root)
+        similar = find_similar_nodes(fresh_index, name, node_type, threshold=80)
+        similar = [n for n in similar if n.get("id") != node_id]
+        if similar:
+            preview = ", ".join(
+                f"{n['id']} ({n.get('type', '')})" for n in similar[:3]
+            )
+            warnings.append(
+                {
+                    "type": "potential_duplicate",
+                    "message": f"Similar nodes found: {preview}",
+                    "similar_ids": [n["id"] for n in similar[:3]],
+                }
+            )
+    except Exception:
+        pass
 
     supersedes_id = fields.get("supersedes")
     if supersedes_id:
