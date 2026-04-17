@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Any
 
 from gobp.core import db as _db
+from gobp.core.id_config import generate_external_id
 from gobp.core.loader import load_edge_file, load_node_file, load_schema
 from gobp.core.validator import validate_edge, validate_node
 
@@ -61,6 +62,8 @@ class GraphIndex:
         self._load_errors: list[str] = []
         self._gobp_root: Path | None = None
         self._legacy_id_map: dict[str, str] = {}
+        self._new_nodes: dict[str, dict[str, Any]] = {}
+        self._new_edges: list[dict[str, Any]] = []
 
     @classmethod
     def load_from_disk(cls, gobp_root: Path) -> "GraphIndex":
@@ -301,4 +304,136 @@ class GraphIndex:
         node_type = node.get("type", "Node")
         tier_weight = get_tier_weight(node_type, groups)
         return incoming + outgoing + tier_weight
+
+    def has_pending_writes(self) -> bool:
+        """True if in-memory batch added nodes/edges not yet flushed to disk."""
+        return bool(self._new_nodes or self._new_edges)
+
+    def add_node_in_memory(self, node: dict[str, Any]) -> str:
+        """Add a validated node to the index without writing disk.
+
+        Generates ``id`` when missing (same rules as :func:`gobp.core.id_config.generate_external_id`).
+        Tracks the node in ``_new_nodes`` until :meth:`save_new_nodes_to_disk`.
+
+        Args:
+            node: Node dict; must include ``type`` and ``name``.
+
+        Returns:
+            Assigned node id.
+
+        Raises:
+            ValueError: If schema missing, validation fails, or id already exists.
+        """
+        if not self._nodes_schema:
+            raise ValueError("GraphIndex has no nodes schema; load_from_disk first")
+        data = dict(node)
+        node_type = str(data.get("type", "Node"))
+        name = str(data.get("name", "")).strip()
+        if not name:
+            raise ValueError("add_node_in_memory requires non-empty name")
+
+        testkind = str(data.get("kind_id", ""))
+
+        node_id = str(data.get("id", "")).strip()
+        if not node_id:
+            root = self._gobp_root
+            if root is None:
+                raise ValueError("gobp_root required to generate id")
+            node_id = generate_external_id(
+                node_type,
+                name=name,
+                testkind=testkind,
+                gobp_root=root,
+            )
+        if node_id in self._nodes:
+            raise ValueError(f"Node id already in index: {node_id}")
+
+        data["id"] = node_id
+        data["type"] = node_type
+        data["name"] = name
+
+        result = validate_node(data, self._nodes_schema)
+        if not result.ok:
+            raise ValueError(f"Node validation failed: {result.errors}")
+
+        self._nodes[node_id] = data
+        self._nodes_by_type_idx[node_type].append(data)
+        self._new_nodes[node_id] = data
+        return node_id
+
+    def add_edge_in_memory(self, from_id: str, to_id: str, edge_type: str) -> bool:
+        """Append edge to in-memory index; track for :meth:`save_new_edges_to_disk`.
+
+        Returns:
+            ``False`` if an identical edge already exists.
+        """
+        if not self._edges_schema:
+            raise ValueError("GraphIndex has no edges schema; load_from_disk first")
+        edge: dict[str, Any] = {"from": from_id, "to": to_id, "type": edge_type}
+        result = validate_edge(edge, self._edges_schema)
+        if not result.ok:
+            raise ValueError(f"Edge validation failed: {result.errors}")
+
+        for existing in self._edges:
+            if (
+                existing.get("from") == from_id
+                and existing.get("to") == to_id
+                and existing.get("type") == edge_type
+            ):
+                return False
+
+        self._edges.append(edge)
+        self._new_edges.append(edge)
+        if from_id:
+            self._edges_from_idx[from_id].append(edge)
+        if to_id:
+            self._edges_to_idx[to_id].append(edge)
+        if edge_type:
+            self._edges_by_type_idx[edge_type].append(edge)
+        return True
+
+    def remove_node_in_memory(self, node_id: str) -> bool:
+        """Remove node from index; drop pending new-node entry if present."""
+        self._new_nodes.pop(node_id, None)
+        self._new_edges = [
+            e
+            for e in self._new_edges
+            if e.get("from") != node_id and e.get("to") != node_id
+        ]
+        return self.remove_node(node_id)
+
+    def save_new_nodes_to_disk(self, gobp_root: Path) -> dict[str, Any]:
+        """Write only nodes in ``_new_nodes`` using :func:`gobp.core.mutator.create_node`."""
+        from gobp.core.mutator import create_node
+
+        nodes_written = 0
+        for _node_id, node in list(self._new_nodes.items()):
+            create_node(gobp_root, dict(node), self._nodes_schema, actor="GraphIndex.save_new_nodes")
+            nodes_written += 1
+        self._new_nodes.clear()
+        return {"nodes_written": nodes_written}
+
+    def save_new_edges_to_disk(self, gobp_root: Path) -> dict[str, Any]:
+        """Append edges in ``_new_edges`` via :func:`gobp.core.mutator.create_edge`."""
+        from gobp.core.mutator import create_edge
+
+        edges_written = 0
+        pending = list(self._new_edges)
+        self._new_edges.clear()
+        for edge in pending:
+            out = create_edge(
+                gobp_root,
+                dict(edge),
+                self._edges_schema,
+                actor="GraphIndex.save_new_edges",
+            )
+            if out.get("action") == "created":
+                edges_written += 1
+        return {"edges_written": edges_written}
+
+    def flush_pending_writes(self, gobp_root: Path) -> dict[str, Any]:
+        """Persist ``_new_nodes`` then ``_new_edges`` (nodes first)."""
+        n = self.save_new_nodes_to_disk(gobp_root)
+        e = self.save_new_edges_to_disk(gobp_root)
+        return {"nodes_written": n.get("nodes_written", 0), "edges_written": e.get("edges_written", 0)}
 
