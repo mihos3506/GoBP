@@ -257,6 +257,31 @@ assert parse_query("create:Node automated=true")[2]["automated"] is True
 
 # -- Protocol guide (optional full copy via overview: full_interface=true) -----
 
+QUERY_RULES: dict[str, Any] = {
+    "rules": [
+        "1. overview: — call ONCE at session start. Never again same session.",
+        "2. template: — call once per type BEFORE creating nodes.",
+        "3. template_batch: — when creating multiple nodes of same type.",
+        "4. suggest: — BEFORE creating any new node. Check reusable nodes.",
+        "5. explore: — instead of find+get+related. Use compact=true for quick check.",
+        "6. batch — for ALL write operations. Never single create:/update:/edge:.",
+        "7. find/get — default mode=summary. Only mode=full when debugging.",
+        "8. After getting IDs — keep only id+name in next prompt. No full JSON.",
+        "9. 1 session = 1 goal. session:end when done.",
+        "10. Errors — if batch returns errors, fix and retry ONLY failed ops.",
+    ],
+    "token_guide": {
+        "explore compact": "~200 tokens",
+        "explore full": "~800 tokens",
+        "find mode=summary": "~400 tokens for 20 results",
+        "find mode=full": "~2000 tokens for 20 results",
+        "batch response": "~100 tokens (summary only)",
+        "batch verbose": "~500+ tokens (full details)",
+        "template": "~300 tokens",
+        "suggest": "~400 tokens for 10 suggestions",
+    },
+}
+
 PROTOCOL_GUIDE = {
     "protocol": "gobp query protocol v2",
     "format": "<action>:<NodeType> <key>='<value>' ...",
@@ -346,4 +371,6 @@ PROTOCOL_GUIDE = {
         ),
     },
     "tip": "Always start with overview: to see project state",
+    "query_rules": QUERY_RULES["rules"],
+    "token_guide": QUERY_RULES["token_guide"],
 }
