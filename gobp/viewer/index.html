@@ -219,37 +219,47 @@ const STATUS_COLORS = {
 const CORE_TYPES = new Set(['Engine','Flow','Entity','Feature','Decision',
   'SoulPrinciple','Invariant','Document','Node','Idea']);
 const PRIORITY_SIZE = {critical:8, high:5, medium:3, low:2};
+/** Layer index for edge “signal” direction (lower = visually higher tier). */
 const NODE_TIERS = {
-  // Top / principle layer
-  Repository: 1, Document: 1, SoulPrinciple: 1, Invariant: 1, Concept: 1, Wave: 1,
-  // Architecture / foundation layer
-  Engine: 2, SharedLibModule: 2, Config: 2, APIEndpoint: 2, DBTable: 2, Entity: 2,
-  // Product / behavior layer
-  Flow: 3, Feature: 3, Screen: 3, UIComponent: 3, TestKind: 3,
-  // Execution / validation layer
-  TestCase: 4, Session: 4, Idea: 4, Node: 4, Lesson: 4,
+  SoulPrinciple: 1, Decision: 1, Invariant: 1, Concept: 1,
+  Entity: 2, SharedLibModule: 2, Config: 2, DBTable: 2,
+  Engine: 3, Flow: 3, Feature: 3, Screen: 3, APIEndpoint: 3, UIComponent: 3,
+  TestKind: 4, TestCase: 4,
+  Repository: 5, Document: 5, Wave: 5, Session: 5, Idea: 5, Node: 5, Lesson: 5,
+  Task: 5, CtoDevHandoff: 5, QaCodeDevHandoff: 5,
 };
 
+/**
+ * Semantic tier weights (for documentation / spacing). Target Y uses explicit bands below.
+ * core=20 … meta=0 → mapped to Y: 0 → 1200 with ~180px per weight step feel.
+ */
+const TIER_WEIGHT = { core: 20, domain: 10, ops: 8, test: 2, meta: 0 };
+
+/** Vertical band centers (3D Y). Enough gap so tiers don’t collapse into one column. */
 const TIER_Y = {
-    core:   -800,
-    domain: -400,
-    ops:      0,
-    test:   400,
-    meta:   800,
-};
-const TIER_X = {
   core: 0,
-  domain: 0,
-  ops: 0,
-  test: 0,
-  meta: 0,
+  domain: 400,
+  ops: 600,
+  test: 900,
+  meta: 1200,
 };
+
+/** Horizontal band centers — tiers fan left→right (core left, meta right). */
+const TIER_X = {
+  core: -520,
+  domain: -260,
+  ops: 0,
+  test: 260,
+  meta: 520,
+};
+
 const TYPE_GROUP = {
   Decision: "core", Invariant: "core", Concept: "core",
   Entity: "domain",
   Flow: "ops", Engine: "ops", Feature: "ops", Screen: "ops", APIEndpoint: "ops",
   TestKind: "test", TestCase: "test",
   Session: "meta", Wave: "meta", Document: "meta", Lesson: "meta", Node: "meta", Repository: "meta", Idea: "meta",
+  Task: "meta", CtoDevHandoff: "meta", QaCodeDevHandoff: "meta",
 };
 function stableHash(input) {
   let h = 0;
@@ -260,17 +270,23 @@ function stableHash(input) {
   return Math.abs(h);
 }
 
+/** Horizontal jitter half-width per tier (wider = less single vertical column). */
+const TIER_X_JITTER = 900;
+
 function tierTargetX(node) {
   const group = TYPE_GROUP[node.type] || 'meta';
-  const center = TIER_X[group] ?? 0;
-  // Deterministic spread keeps each tier horizontally balanced.
-  const jitter = (stableHash(node.id || node.name || '') % 1200) - 600;
+  const center = TIER_X[group] ?? TIER_X.meta;
+  const jitter = (stableHash(node.id || node.name || '') % (TIER_X_JITTER * 2)) - TIER_X_JITTER;
   return center + jitter;
 }
 
 function tierTargetY(node) {
   const group = TYPE_GROUP[node.type] || 'meta';
-  return TIER_Y[group] ?? 0;
+  const base = TIER_Y[group] ?? TIER_Y.meta;
+  // Sub-band jitter inside a tier so nodes don’t stack on one line (uses tier_weight spacing feel).
+  const w = TIER_WEIGHT[group] ?? 0;
+  const micro = ((stableHash((node.id || '') + ':y') % 180) - 90) * (0.15 + w / 200);
+  return base + micro;
 }
 const EDGE_STATIC_COLORS = {
   implements: 'rgba(255, 214, 66, 0.92)',
@@ -465,17 +481,18 @@ function initGraph() {
     .onNodeClick(n => showDetail(n))
     .onBackgroundClick(() => document.getElementById('detail').classList.remove('visible'));
 
-  FG.d3Force('charge').strength(-95);
+  FG.d3Force('charge').strength(-120);
   FG.d3Force('link').distance(l => {
-    if (l.type === 'belongs_to') return 35;
+    if (l.type === 'belongs_to') return 45;
     const sourceTier = NODE_TIERS[(l.source && l.source.type) || 'Node'] || 3;
     const targetTier = NODE_TIERS[(l.target && l.target.type) || 'Node'] || 3;
     const delta = Math.abs(sourceTier - targetTier);
-    return 85 + (delta * 15);
+    return 105 + (delta * 28);
   });
-  FG.d3Force('x', d3.forceX(n => tierTargetX(n)).strength(0.11));
-  FG.d3Force('y', d3.forceY(n => tierTargetY(n)).strength(0.32));
-  FG.d3Force('collide', d3.forceCollide(n => (PRIORITY_SIZE[n.priority] || 3) * 4 + 8).strength(0.9));
+  // Softer Y: tiers stay separated but nodes can spread within the band (less “one column”).
+  FG.d3Force('x', d3.forceX(n => tierTargetX(n)).strength(0.09));
+  FG.d3Force('y', d3.forceY(n => tierTargetY(n)).strength(0.12));
+  FG.d3Force('collide', d3.forceCollide(n => (PRIORITY_SIZE[n.priority] || 3) * 5 + 14).strength(0.85));
 }
 
 function makeSprite(text, color) {
