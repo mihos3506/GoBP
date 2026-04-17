@@ -2,7 +2,7 @@
 id: testkind:CHANGEME
 type: TestKind
 name: "CHANGEME"
-group: functional
+group: process
 scope: project
 description: ""
 template:

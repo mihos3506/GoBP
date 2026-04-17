@@ -178,7 +178,9 @@ def test_gobp_overview_has_test_coverage(gobp_root: Path) -> None:
     tc = result["test_coverage"]
     assert tc["kinds_available"] == 16
     assert "security" in tc["kinds_by_group"]
-    assert "functional" in tc["kinds_by_group"]
+    assert tc["kinds_by_group"]["functional"] == 1  # acceptance
+    assert tc["kinds_by_group"]["process"] == 7
+    assert tc["kinds_by_group"]["non_functional"] == 3
     assert tc["kinds_by_group"]["security"] == 5
 
 

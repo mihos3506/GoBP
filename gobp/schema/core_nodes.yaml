@@ -386,6 +386,12 @@ node_types:
       Unit Test; Entity Test; TrustGate Matrix; E2E Flow Test; Middleware Test;
       Level System Test; Integration Test; Performance Test; Security Test;
       Infrastructure Test.
+
+      Field ``group`` classifies what this TestKind row represents (orthogonal to ``id`` / name slugs such as unit, e2e, integration):
+      - process — testing *method* / how the system is exercised (e.g. unit, integration, e2e, contract, regression, smoke, exploratory).
+      - functional — testing *subject* = behaviour / business acceptance (e.g. acceptance against criteria).
+      - non_functional — testing *subject* = quality attributes (performance, accessibility, …); not the ``Invariant`` node type—name TestKind nodes to avoid confusion.
+      - security — testing *subject* = security (auth, injection, network, crypto, API hardening).
     id_prefix: "testkind"
     parent: null
 
@@ -401,6 +407,11 @@ node_types:
       group:
         type: "enum"
         enum_values: ["functional", "non_functional", "security", "process"]
+        description: |
+          process = method (how): unit, integration, e2e, smoke, …
+          functional = behaviour / acceptance subject.
+          non_functional = quality-attribute subject (not node type Invariant).
+          security = security subject.
       scope:
         type: "enum"
         enum_values: ["universal", "platform", "project"]

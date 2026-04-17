@@ -568,13 +568,24 @@ Stores a defined concept or framework idea for AI orientation. When AI connects 
 
 ### 2.8 TestKind
 
-A category of software test with a template and seed examples. GoBP seeds 16 universal TestKind nodes on `gobp init` covering 4 groups: functional, non_functional, security, process.
+A category of software test with a template and seed examples. GoBP seeds 16 universal TestKind nodes on `gobp init` covering all four `group` values.
+
+**Field `group` (classification, not the same as `id` slug):**
+
+| Value | Meaning | Typical TestKind rows (examples) |
+|-------|---------|----------------------------------|
+| `process` | **Phương pháp** — *how* the system is exercised | `testkind:unit`, `testkind:integration`, `testkind:e2e`, contract, regression, smoke, exploratory |
+| `functional` | **Chủ đề chức năng / hành vi** — business acceptance | e.g. `testkind:acceptance` |
+| `non_functional` | **Chủ đề phi chức năng** — quality attributes (performance, a11y, …). Not the `Invariant` node type; name nodes so they do not collide conceptually. | performance, accessibility, compatibility |
+| `security` | **Chủ đề bảo mật** | `testkind:security_*`, encryption, API security, … |
+
+Slugs such as **unit**, **e2e**, **integration** appear in **`id` / `name`**, not as `group` values. `group` is orthogonal: it classifies *what the row represents* (method vs subject).
 
 **Required fields:**
 - `id` — e.g. `testkind:unit`, `testkind:security_network`
 - `type` — always `TestKind`
 - `name` — short name (e.g. "Unit Test", "Network Security Test")
-- `group` — enum: `functional | non_functional | security | process`
+- `group` — enum: `functional | non_functional | security | process` (see table above)
 - `scope` — enum: `universal | platform | project`
 - `description` — what this kind of test verifies
 - `template` — dict with template fields (given/when/then or scenario/threshold/tool etc.)

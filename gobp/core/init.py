@@ -161,12 +161,12 @@ def seed_universal_nodes(project_root: Path, *, only_missing: bool = False) -> d
     nodes_dir = project_root / ".gobp" / "nodes"
 
     seeds = [
-        # --- FUNCTIONAL GROUP (6 kinds) ---
+        # --- PROCESS GROUP (method / how): unit, integration, e2e, contract, regression, smoke, exploratory ---
         {
             "id": "testkind:unit",
             "type": "TestKind",
             "name": "Unit Test",
-            "group": "functional",
+            "group": "process",
             "scope": "universal",
             "description": "Tests a single function, method, or class in isolation. Fast, no external dependencies.",
             "template": {
@@ -187,7 +187,7 @@ def seed_universal_nodes(project_root: Path, *, only_missing: bool = False) -> d
             "id": "testkind:integration",
             "type": "TestKind",
             "name": "Integration Test",
-            "group": "functional",
+            "group": "process",
             "scope": "universal",
             "description": "Tests multiple modules or services working together. Includes DB, API, or service interactions.",
             "template": {
@@ -207,7 +207,7 @@ def seed_universal_nodes(project_root: Path, *, only_missing: bool = False) -> d
             "id": "testkind:e2e",
             "type": "TestKind",
             "name": "End-to-End Test",
-            "group": "functional",
+            "group": "process",
             "scope": "universal",
             "description": "Tests a complete user flow from UI to backend on real device or browser.",
             "template": {
@@ -227,7 +227,7 @@ def seed_universal_nodes(project_root: Path, *, only_missing: bool = False) -> d
             "id": "testkind:contract",
             "type": "TestKind",
             "name": "Contract Test",
-            "group": "functional",
+            "group": "process",
             "scope": "universal",
             "description": "Verifies consumer and provider agree on API shape, fields, and types. Prevents integration breaks.",
             "template": {
@@ -247,7 +247,7 @@ def seed_universal_nodes(project_root: Path, *, only_missing: bool = False) -> d
             "id": "testkind:regression",
             "type": "TestKind",
             "name": "Regression Test",
-            "group": "functional",
+            "group": "process",
             "scope": "universal",
             "description": "Verifies new changes do not break existing functionality. Run after every change.",
             "template": {
@@ -262,6 +262,7 @@ def seed_universal_nodes(project_root: Path, *, only_missing: bool = False) -> d
             "created": now,
             "updated": now,
         },
+        # --- FUNCTIONAL GROUP (behaviour / acceptance subject) ---
         {
             "id": "testkind:acceptance",
             "type": "TestKind",
@@ -343,7 +344,7 @@ def seed_universal_nodes(project_root: Path, *, only_missing: bool = False) -> d
             "created": now,
             "updated": now,
         },
-        # --- PROCESS GROUP (2 kinds) ---
+        # --- PROCESS (continued): smoke, exploratory ---
         {
             "id": "testkind:smoke",
             "type": "TestKind",

@@ -141,7 +141,7 @@ def node_upsert(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> 
 
     if node_type == "TestKind":
         if not node.get("group"):
-            node["group"] = "functional"
+            node["group"] = "process"
         if not node.get("scope"):
             node["scope"] = "project"
         if node.get("template") is None:
