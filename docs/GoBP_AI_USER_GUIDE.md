@@ -1,205 +1,281 @@
-# GoBP — AI User Guide
+# ◈ GoBP AI USER GUIDE
 
-**Audience:** Any AI using the GoBP MCP tool `gobp(query=...)`.  
-**Goal:** Correct protocol, minimal tokens, valid graph writes.  
-**Authority:** Behavior follows `gobp/schema/core_nodes.yaml`, `core_edges.yaml`, and dispatcher/parser in repo.
+Document này dành cho AI agents. Đọc trước khi tương tác với GoBP MCP server.
 
 ---
 
-## 1. Mental model
+## Query format
 
-- **Source of truth:** Markdown + YAML under `.gobp/` (file-first). MCP is a façade.
-- **One tool string:** `gobp(query="<action> ...")` — parsed to `(action, node_type_hint, params)`.
-- **Writes require an open `Session`:** obtain `session_id` from `session:start`, pass on every mutating call / batch.
-
----
-
-## 2. Mandatory workflow (QUERY_RULES)
-
-1. **`overview:`** — once per AI session at start; do not spam.
-2. **`template:`** — once per **node type** before bulk creates (fields + `suggested_edges` + `batch_example`).
-3. **`template_batch:`** — many nodes of the same type (fill placeholders → `batch`).
-4. **`suggest:`** — before creating anything new (reuse / dedupe).
-5. **`explore:`** — prefer over `find` + `get` + `related` for neighborhood; use **`compact=true`** for quick checks.
-6. **`batch`** — all creates / updates / deletes / edges in production use; avoid one-off `create:` in loops.
-7. **`find` / `get`** — default **`mode=summary`**; **`mode=full`** only for deep debug.
-8. **After reads:** carry forward **id + name** only; do not paste full JSON into the next user message.
-9. **One session ≈ one goal** — `session:end` when the unit of work finishes.
-10. **`batch` errors:** fix and resubmit **only failed ops**, not the whole batch.
-
-**Token guide (order of magnitude):** see `PROTOCOL_GUIDE["token_guide"]` via `overview: full_interface=true` (large payload).
-
----
-
-## 3. Session lifecycle (writes)
-
-```text
-session:start actor='<ai_or_tool>' goal='<short goal>'
-→ session_id
-
-… all writes include session_id=…
-
-session:end outcome='<result>' handoff='<optional next>' session_id=…
+```
+gobp(query="{action}: {params}")
+gobp(query="{action} {params}")
 ```
 
-Without a live session, mutators return an error.
-
 ---
 
-## 4. Core node types (canonical list)
+## Query Rules (bắt buộc)
 
-Each row is one **`type`** value (PascalCase). Many **nodes** per type. IDs are generated or use `testkind:slug` / `node:slug` patterns per schema.
-
-| Type | Role (one line) |
-|------|-----------------|
-| **Node** | Generic graph vertex when no finer type fits. |
-| **Idea** | Raw capture / quote / interpretation toward a decision. |
-| **Decision** | Lockable choice (`lock:Decision …`). |
-| **Session** | Audit unit for work (actor, goal, lifecycle). |
-| **Document** | External spec / doc anchor (`references` target). |
-| **Lesson** | Captured learning. |
-| **Concept** | Defined term or pattern (taxonomy / glossary). |
-| **TestKind** | Test **category** (many nodes: unit, integration, project-specific names). |
-| **TestCase** | Single test instance; `kind_id` → TestKind; `covers` → subject node. |
-| **Engine** | Executable business capability. |
-| **Flow** | User- or system-level flow. |
-| **Entity** | Domain object / aggregate. |
-| **Feature** | Product-facing capability slice. |
-| **Invariant** | Hard rule / constraint. |
-| **Screen** | UI surface. |
-| **APIEndpoint** | HTTP/RPC surface. |
-| **Repository** | Code / VCS grouping (when used). |
-| **Wave** | Delivery wave / batch of work. |
-| **Task** | Assignable work item for agents. |
-| **CtoDevHandoff** | CTO-DEV lane: structured handoff CTO ↔ dev tools; **thread:** first node anchors to **Wave** via edges only once; later nodes **chain to previous handoff** only. |
-| **QaCodeDevHandoff** | QAcode-DEV lane: same threading rule as **CtoDevHandoff** (single Wave anchor per thread; then linear chain). |
-
-**Schema field truth:** required/optional per type live in `gobp/schema/core_nodes.yaml` — use **`template: <Type>`** instead of guessing.
-
-**Two different “group” words:**
-
-- **`id_groups` in `.gobp/config.yaml`** — namespace for **IDs** (`slug.ops.12345678`, `.test.unit.…`). Repair drift: CLI `python -m gobp.cli seed-universal` (merges defaults additively; `--rewrite --confirm CEO` overwrites seeds).
-- **`TestKind.group` field** — enum `functional | non_functional | security | process` (taxonomy), **not** the same as `id_groups`. MCP create fills safe defaults if omitted.
-
----
-
-## 5. Read cheat sheet
-
-| Need | Query pattern |
-|------|----------------|
-| Project snapshot (slim) | `overview:` |
-| Full action catalog | `overview: full_interface=true` (heavy) |
-| Search | `find: <keyword> mode=summary` or `find:<Type> <keyword>` |
-| Pagination | Same query + `cursor=<page_info.next_cursor>` until `has_more` is false — do **not** loop on `total_estimate` alone. |
-| One node + edges + near-dupes | `explore: <keyword>` — skips `discovered_in`; add `compact=true` for strings-only edges. |
-| Reuse candidates | `suggest: <short context>` |
-| One node detail | `get: <node_id> mode=brief` or `compact=true` for id/name/type + `edge_count` |
-| Many nodes by id | `get_batch: ids='a,b,c' mode=summary` |
-| Neighbors | `related: <node_id> mode=summary` |
-| Schema frame | `template: Engine` / `template:` (catalog) |
-| Multi-node frame | `template_batch: Engine count=5` |
-
----
-
-## 6. Writes — `batch` only (production)
-
-**Envelope:**
-
-```text
-batch session_id='<sid>' ops='<multiline block>'
+```
+1. overview:          Gọi 1 lần đầu session. Không gọi lại.
+2. template:          Gọi 1 lần per type trước khi tạo nodes.
+3. template_batch:    Khi tạo nhiều nodes cùng type.
+4. suggest:           Trước khi tạo node mới — tìm node tái sử dụng.
+5. explore:           Thay cho find+get+related. Dùng compact=true.
+6. batch:             Cho MỌI write operations. Không create/update đơn lẻ.
+7. find/get:          Default mode=summary. Chỉ mode=full khi cần debug.
+8. Sau khi có IDs:    Chỉ giữ id+name. Không paste full JSON vào prompt sau.
+9. 1 session = 1 mục tiêu. session:end khi xong.
+10. Lỗi batch:        Chỉ retry ops bị fail, không retry toàn bộ.
 ```
 
-**Line grammar (representative):**
+---
 
-- `create: <Type>: Name \| Description`
-- `update: <node_id> field=value …`
-- `replace: <node_id> …` (destructive merge path — treat as dangerous)
-- `delete: <node_id>`
-- `retype: <node_id> new_type=<Type>`
-- `merge: keep=<id> absorb=<id>`
-- `edge+: FromName --edge_type--> ToName` (names or ids per parser rules)
-- `edge-:`, `edge~:` (retype edge), `edge*:` (fan-out replace)
+## Session lifecycle
 
-**Limits:** max **50** ops per `ops` block — split batches.
+```
+# Bắt đầu — bắt buộc trước mọi write
+gobp(query="session:start actor='tên_ai' goal='mô tả mục tiêu'")
+→ Nhận session_id — dùng cho mọi write
 
-**Response:**
-
-- Default: **summary** + truncated `skipped`/`warnings`; **`verbose=true`** for full lists.
+# Kết thúc
+gobp(query="session:end outcome='kết quả' session_id='<id>'")
+```
 
 ---
 
-## 7. Edges (high-signal)
+## Read actions
 
-Use only types declared in `core_edges.yaml`. Common ones:
+### overview: — Project state (1 lần/session)
+```
+gobp(query="overview:")
+```
 
-`relates_to` · `implements` · `depends_on` · `references` · `supersedes` · `discovered_in` (auto/metadata) · `covers` · `of_kind` (TestCase→TestKind) · `tested_by` · `enforces` · `triggers` · `validates` · `produces`
+### explore: — Node + edges + duplicates = 1 call
+```
+gobp(query="explore: TrustGate")
+gobp(query="explore: TrustGate compact=true")    ← nhẹ hơn
+```
 
-**Template:** `template: <Type>` returns **`suggested_edges`** derived from schema — prefer those over inventing edge types.
+### find: — Tìm kiếm
+```
+gobp(query="find: mi hốt mode=summary")          ← Vietnamese OK
+gobp(query="find:Engine mode=summary")            ← filter exact type
+gobp(query="find: keyword mode=summary")          ← Session excluded mặc định
+```
 
----
+### get: — Chi tiết 1 node
+```
+gobp(query="get: node_id mode=brief")
+gobp(query="get: node_id compact=true")           ← id+name+type only
+```
 
-## 8. ID shapes (read-only intuition)
+### suggest: — Tìm node tái sử dụng
+```
+gobp(query="suggest: Payment Flow")
+→ EmberEngine (keyword: payment), EarningLedger (keyword: ledger)
+```
 
-- Most structured nodes: `{slug}.{id_group}.{8digits}` (group from `id_groups`, not free text).
-- **TestCase:** `{slug}.test.<kind>.{8digits}` with `<kind>` from a known test-kind slug family.
-- **Session:** `meta.session.<date>.<hash>`
-- Legacy / colon ids still appear (`testkind:unit`, `node:foo`) — valid per patterns in schema.
+### related: — Relationships
+```
+gobp(query="related: node_id")
+```
 
-Do **not** hand-craft snowflake digits; use auto `create:` / `batch` or follow schema patterns.
+### template: — Frame nhập liệu
+```
+gobp(query="template: Engine")
+→ required fields + optional fields + suggested edges + batch format
+```
 
----
-
-## 9. Anti-patterns (hard)
-
-- Calling **`overview:`** every turn.
-- **`create:` / `update:` / `edge:`** in tight loops instead of **`batch`**.
-- Broad **`find:`** without `mode=summary` or type filter when the graph is large.
-- Ignoring **`suggested_edges`** then orphan nodes (no relationships).
-- Assuming **`total_estimate`** equals “items left to fetch” on a single page — use **`has_more`** + **`next_cursor`**.
-- Creating **new `id_groups` layers** or **new node `type`s** without schema extension — out of scope for MCP-only agents.
-
----
-
-## 10. Human repair hooks (not MCP-gated)
-
-- **`python -m gobp.cli seed-universal`** — restore canonical **TestKind + Concept** files, merge missing **`id_groups`** types (additive), and bump **`.gobp/config.yaml` `schema_version`** up to the packaged baseline when it was lower or broken.  
-- Flags: **`--skip-id-groups`**, **`--skip-schema-version`** if you must avoid touching those files.  
-- **`--rewrite --confirm CEO`** — overwrite all built-in seed files (destructive; human gate).
-
-### 10.1 MCP blocked after schema edit (e.g. `session:end` fails)
-
-**Symptom:** YAML parse error in `gobp/schema/core_nodes.yaml` (historically: **flow map** like `{type: list[str], default: []}` — `default: []` breaks the inline `{…}` parser around **line ~664** in older copies). Any `validate` / graph load then fails; writes such as **`session:end`** appear “stuck”.
-
-**Fix (order matters):**
-
-1. Replace project copy of **`gobp/schema/core_nodes.yaml`** with a **valid** file from the GoBP package (or `git pull` the fix).  
-2. **Restart the MCP server** so it reloads schema from disk — hot edits are not always picked up. See **§10.2** (Cursor).  
-3. Run: **`python -m gobp.cli seed-universal`** (with `GOBP_PROJECT_ROOT` or `cd` to project root) — re-seeds canonical **TestKind** nodes (correct `group` / `scope` fields) and repairs **`schema_version`**.  
-4. Re-run **`session:end`** (or the failing action).
-
-Data already written to `.gobp/nodes/` is usually **safe**; repair targets schema files + config + missing seeds.
-
-### 10.2 Restart MCP (Cursor)
-
-Labels vary by Cursor version; one of these always works:
-
-1. **Command Palette** (`Ctrl+Shift+P` / `Cmd+Shift+P`) → **`Developer: Reload Window`** — reloads the window and reconnects MCP (most reliable after schema edits).  
-2. **Settings → MCP** (or **Cursor Settings → Features → MCP**) → turn your **GoBP** server **Off**, save, then **On** again.  
-3. **Quit Cursor completely** and reopen the project (if the server is a stuck child process).
-
-If GoBP runs from **your own terminal** (stdio MCP): stop that terminal (`Ctrl+C`), then start the same command again from project root with `GOBP_PROJECT_ROOT` set.
-
-**Không cần** commit snapshot `.gobp/nodes` / history vào Git để MCP chạy — chỉ cần process đọc đúng thư mục project trên disk.
+### template_batch: — Frame cho nhiều nodes
+```
+gobp(query="template_batch: Engine count=10")
+→ 10 frames trống với edge suggestions
+→ Điền → batch submit
+→ Không giới hạn nodes hay edges per node
+```
 
 ---
 
-## 11. Where to read more
+## Write actions — Luôn dùng batch
 
-| Doc | Use |
-|-----|-----|
-| `docs/SCHEMA.md` | Human narrative of nodes/edges |
-| `docs/MCP_TOOLS.md` | Tool surface details |
-| `docs/INPUT_MODEL.md` / `IMPORT_MODEL.md` | Import / field contracts |
-| `gobp/mcp/parser.py` | `PROTOCOL_GUIDE`, `QUERY_RULES` literals |
+### batch — Tất cả write operations trong 1 call
 
-When in doubt: **`validate: metadata`**, **`template:`**, and **`explore:` compact=true** before writing.
+```
+gobp(query="batch session_id='<id>' ops='
+  create: Engine: TrustGate | Trust scoring engine
+  create: Engine: AuthEngine | Authentication
+  create: Flow: Verify Gate | GPS verification
+  update: trustgate.ops.00000001 description=Updated desc
+  delete: garbage.meta.00000003
+  retype: wrong.meta.00000002 new_type=Engine
+  merge: keep=trustgate.ops.06043392 absorb=trustgate.meta.53299456
+  edge+: TrustGate --implements--> Mi Hốt Standard
+  edge+: TrustGate --depends_on--> CacheEngine
+  edge-: TrustGate --relates_to--> CacheEngine
+  edge~: TrustGate --relates_to--> GeoIntel to=depends_on
+  edge*: TrustGate --implements--> Mi Hốt Standard, Mi Hốt GPS Jitter
+'")
+```
+
+### Operation reference
+
+| Prefix | Format | Ý nghĩa |
+|--------|--------|---------|
+| `create:` | `Type: Name \| Description` | Tạo node — auto dedupe |
+| `update:` | `id field=value` | Sửa fields — giữ fields khác |
+| `replace:` | `id field=value` | Ghi đè toàn bộ — destructive |
+| `retype:` | `id new_type=X` | Đổi type — ID mới, migrate edges |
+| `delete:` | `id` | Xóa node + cascade edges |
+| `merge:` | `keep=id absorb=id` | Gộp 2 nodes — edges migrated |
+| `edge+:` | `From --type--> To` | Thêm edge — skip nếu đã có |
+| `edge-:` | `From --type--> To` | Xóa edge |
+| `edge~:` | `From --old--> To to=new` | Đổi type edge |
+| `edge*:` | `From --type--> A, B, C` | Replace tất cả edges loại đó |
+
+### Limits
+```
+Max 50 operations per batch call.
+Vượt 50 → chia thành nhiều calls.
+```
+
+### Response
+```
+Default: summary only (~100 tokens)
+  "create:5/6 edge+:8/10 merge:1/1"
+  + skipped list + errors
+
+verbose=true: full details
+```
+
+---
+
+## Node types
+
+| Type | Group | Tier | Dùng để |
+|------|-------|------|---------|
+| Decision | core | 20 | Quyết định kiến trúc đã lock |
+| Invariant | core | 20 | Ràng buộc không thay đổi |
+| Entity | domain | 10 | Domain objects |
+| Flow | ops | 8 | User flows |
+| Engine | ops | 8 | Business logic engines |
+| Feature | ops | 8 | Product features |
+| Screen | ops | 8 | UI screens |
+| APIEndpoint | ops | 8 | API endpoints |
+| TestCase | test | 2 | Test cases |
+| Task | meta | 5 | Work items cho AI queue |
+| Document | meta | 0 | Spec docs |
+| Session | meta | 0 | Working sessions |
+
+---
+
+## Edge types
+
+| Type | Ý nghĩa |
+|------|---------|
+| `implements` | Node thực hiện Flow/Protocol |
+| `depends_on` | Node cần node kia hoạt động |
+| `enforces` | Node enforce Invariant/Decision |
+| `tested_by` | Node được test bởi TestCase |
+| `covers` | TestCase covers Flow/Engine |
+| `references` | Tham chiếu Document |
+| `triggers` | Node trigger node kia |
+| `validates` | Node validate node kia |
+| `produces` | Node tạo ra node kia |
+| `relates_to` | Quan hệ chung |
+| `supersedes` | Thay thế node cũ |
+| `discovered_in` | Metadata: tạo trong session nào |
+
+---
+
+## ID format
+
+```
+{slug}.{group}.{8digits}
+
+trustgate_engine.ops.00000002        ← Engine (ops group)
+traveller_identity.domain.00000001   ← Entity (domain group)
+use_otp_for_auth.core.00000001       ← Decision (core group)
+auth_otp_valid.test.unit.00000001    ← TestCase (test group + kind)
+meta.session.2026-04-17.a3f7c2abc    ← Session
+```
+
+---
+
+## Workflow chuẩn
+
+### Import data mới
+```
+1. overview:                         ← hiểu project
+2. session:start                     ← bắt đầu
+3. template_batch: Engine count=10   ← lấy frame
+4. Điền placeholders
+5. batch session_id='x' ops='...'    ← submit
+6. explore: EngineA compact=true     ← verify
+7. session:end                       ← kết thúc
+```
+
+### Tìm và sử dụng node
+```
+1. suggest: Payment Flow             ← tìm reusable
+2. explore: EmberEngine              ← xem chi tiết + edges
+3. Nếu cần → batch edge+            ← tạo relationship
+```
+
+### Sửa data sai
+```
+1. explore: TrustGate                ← thấy 3 duplicates
+2. batch:
+     merge: keep=id_a absorb=id_b
+     merge: keep=id_a absorb=id_c
+     edge~: id_a --relates_to--> X to=depends_on
+```
+
+---
+
+## Token guide
+
+| Action | Tokens ước tính |
+|--------|:-:|
+| overview: | ~800 |
+| explore: compact | ~200 |
+| explore: full | ~800 |
+| find: mode=summary (20 results) | ~400 |
+| find: mode=full (20 results) | ~2000 |
+| suggest: (10 results) | ~400 |
+| template: | ~300 |
+| batch response (summary) | ~100 |
+| batch response (verbose) | ~500+ |
+
+---
+
+## Những điều KHÔNG làm
+
+```
+❌ Gọi overview: mỗi lần cần data → gọi 1 lần
+❌ Dùng create: đơn lẻ → dùng batch
+❌ find: keyword rộng → find:Type keyword mode=summary
+❌ Paste full JSON response vào prompt sau → chỉ giữ id+name
+❌ Tạo node mới mà không suggest: trước → duplicate risk
+❌ Ghi mà không có session_id → bị reject
+```
+
+---
+
+## Phụ lục — Bổ sung kỹ thuật (không thay thế nội dung CTO phía trên)
+
+Các mục sau làm rõ **triển khai** trong repo; giữ nguyên tinh thần và thứ tự mục của CTO.
+
+- **Tài liệu tham chiếu:** `docs/MCP_TOOLS.md` (hợp đồng tool), `docs/SCHEMA.md` (field/enum), `docs/ARCHITECTURE.md` (khái niệm).
+- **Response:** JSON thường có `_dispatch` (action đã route nội bộ) để audit.
+- **Read-only:** `GOBP_READ_ONLY=true` → mọi write bị từ chối.
+- **`session:end`:** Server yêu cầu `session_id` và `outcome` (đúng như ví dụ lifecycle). Có thể thêm tham số như `handoff='...'` theo `PROTOCOL_GUIDE` trong `gobp/mcp/parser.py`.
+- **Query Rules dòng 2 (`template`):** Chuỗi điều khiển đầy đủ nằm trong `gobp/mcp/parser.py` (`QUERY_RULES`). Ý vận hành: có khung `template: <Type>` trước khi tạo từng type; có thể gọi lại khi cần xem lại field (không đổi mục đích rule CTO).
+- **Batch — đếm operation:** Mỗi **dòng** trong `ops` là một operation. Một batch có thể gồm **một** `create:` và **nhiều** `edge+:` cho cùng node mới — hợp lệ; giới hạn 50 là **tổng số dòng** mỗi lần gọi `batch`.
+- **`find` phân trang:** Thêm `page_size`, `cursor`; gợi ý nằm trong `pagination_hint` của `overview:`.
+- **`get_batch`:** `gobp(query="get_batch: ids='id1,id2' mode=brief")` — đọc nhiều node theo id trong một call.
+- **Import nhiều file:** Mỗi file một `import: <đường_dẫn> session_id='<id>'` (cùng `session_id`).
+- **Node types còn lại:** Bảng CTO liệt kê tầng hay dùng; đủ **21** type trong `gobp/schema/core_nodes.yaml` (ví dụ Node, Idea, Lesson, Concept, TestKind, Repository, Wave, CtoDevHandoff, QaCodeDevHandoff, …).
+- **Edge types trong schema:** Ngoài bảng trên, `gobp/schema/core_edges.yaml` còn định nghĩa `of_kind` (TestCase → TestKind). Trên node `TestCase` có field `kind_id` trỏ tới node `TestKind`.
+- **Khi graph/schema lỗi hoặc MCP cũ:** `python -m gobp.cli validate --scope all`; repair seed: `python -m gobp.cli seed-universal`; sau khi nâng package hoặc sửa schema, **Reload Window** hoặc restart Cursor để process MCP tải lại.
+
+◈

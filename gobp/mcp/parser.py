@@ -262,7 +262,7 @@ assert parse_query("create:Node automated=true")[2]["automated"] is True
 QUERY_RULES: dict[str, Any] = {
     "rules": [
         "1. overview: — call ONCE at session start. Never again same session.",
-        "2. template: — call once per type BEFORE creating nodes.",
+        "2. template: — BEFORE first create of a NodeType, fetch template: ThatType (repeat anytime; not a single-call cap).",
         "3. template_batch: — when creating multiple nodes of same type.",
         "4. suggest: — BEFORE creating any new node. Check reusable nodes.",
         "5. explore: — instead of find+get+related. Use compact=true for quick check.",
