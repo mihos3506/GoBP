@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import unicodedata
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
@@ -12,15 +11,23 @@ if TYPE_CHECKING:
 def normalize_text(text: str) -> str:
     """Normalize text for Vietnamese-aware search.
 
-    Strips diacritics so 'mi hốt' == 'mihot' == 'Mi Hot'.
+    Uses unidecode for consistent romanization:
+        'đăng nhập' -> 'dang nhap'
+        'Mi Hốt' -> 'Mi Hot'
+        'Hà Nội' -> 'Ha Noi'
+        'TrustGate' -> 'TrustGate' (ASCII unchanged)
 
-    Examples:
-        normalize_text('Mi Hốt') → 'mi hot'
-        normalize_text('TrustGate') → 'trustgate'
-        normalize_text('mihot') → 'mihot'
+    Falls back to unicodedata if unidecode not installed.
     """
-    nfd = unicodedata.normalize("NFD", text.lower())
-    return "".join(c for c in nfd if unicodedata.category(c) != "Mn")
+    try:
+        from unidecode import unidecode
+
+        return unidecode(text).lower().strip()
+    except ImportError:
+        import unicodedata as _uc
+
+        nfd = _uc.normalize("NFD", text.lower())
+        return "".join(c for c in nfd if _uc.category(c) != "Mn")
 
 
 def search_score(query_norm: str, node: dict[str, Any]) -> int:
