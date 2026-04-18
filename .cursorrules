@@ -93,6 +93,14 @@ Detailed checklist: `docs/IMPORT_CHECKLIST.md` (when present).
 ### Graph linkage (Decision dec:d006)
 Wave Briefs should reference existing GoBP node IDs where possible. When you create **new** graph content in a wave, the Brief should name types + linkage; avoid silent invention of new concepts without CEO visibility.
 
+### Graph hygiene — Lessons (Decision dec:d011)
+**Lessons = update over create** (only for **Lesson** nodes — AI self-learning / lessons learned, **not** for arbitrary project nodes like Engine, Flow, Task, etc.).
+
+Before creating a new **Lesson** node:
+1. **suggest:** search the graph for the same topic or a very close match (`find:` / `explore:` / `suggest:`).
+2. If a matching **Lesson** exists → **update** that node: append the new takeaway, merge or refine text, and **keep** content that is still valuable.
+3. Create a **new** Lesson only when the topic is genuinely new and does not fit an existing Lesson.
+
 ### Task-level commits
 Each task = **one** commit with the Brief’s message (unless Brief says otherwise).
 
@@ -223,7 +231,7 @@ Python stdlib
 mcp
 pyyaml
 unidecode
-pytest, pytest-asyncio (dev only)
+pytest, pytest-asyncio, pytest-xdist (dev only)
 ```
 
 ---
