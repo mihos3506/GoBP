@@ -2,6 +2,8 @@
 
 Document này dành cho AI agents. Đọc trước khi tương tác với GoBP MCP server.
 
+**Bổ sung:** catalog đầy đủ query → [`docs/MCP_TOOLS.md`](MCP_TOOLS.md); field type chi tiết → [`docs/SCHEMA.md`](SCHEMA.md). Trong MCP, gọi `gobp(query="version:")` hoặc `overview: full_interface=true` để xem gợi ý cập nhật theo build.
+
 ---
 
 ## Query format
@@ -21,13 +23,14 @@ gobp(query="{action} {params}")
 3. template_batch:    Khi tạo nhiều nodes cùng type.
 4. suggest:           Trước khi tạo node mới — tìm node tái sử dụng.
 5. explore:           Thay cho find+get+related. Dùng compact=true.
-6. batch:             Cho MỌI write operations. Không create/update đơn lẻ.
+6. batch:             Cho **hầu hết** write operations — **ưu tiên** `batch` / `quick:` (gom nhiều op một lần). Protocol vẫn có `create:` / `upsert:` đơn lẻ cho tool/script; AI nên gom vào batch để ít round-trip và dễ audit.
 7. find/get:          Default mode=summary. Chỉ mode=full khi cần debug.
 8. Sau khi có IDs:    Chỉ giữ id+name. Không paste full JSON vào prompt sau.
 9. 1 session = 1 mục tiêu. session:end khi xong.
 10. Lỗi batch:        Chỉ retry ops bị fail, không retry toàn bộ.
 11. Node mới + graph có data:  Node mới (có ý nghĩa) PHẢI **relate** tới ít nhất một node đã tồn tại qua edge hợp lệ — xem **dec:d002** và checklist đầy đủ tại [`docs/IMPORT_CHECKLIST.md`](IMPORT_CHECKLIST.md). Ngoại lệ: node **đầu tiên** trong project chưa có dữ liệu.
 12. Import tài liệu:   Đọc **toàn bộ** doc (hoặc toàn bộ section đã thống nhất với CEO) **trước** khi liệt kê plan nodes/edges — không đọc lướt rồi tạo nodes rồi mới nối edges sau.
+13. Lesson (dec:d011): Trước khi tạo **Lesson** mới — `suggest:` / `find:` cùng **topic**. Nếu đã có Lesson phù hợp → **cập nhật** node đó (thêm takeaway, giữ nội dung còn giá trị), **không** tạo Lesson trùng topic. Quy tắc này **chỉ** cho type **Lesson** (không áp dụng kiểu “gộp” cho Engine/Flow/Task…).
 ```
 
 ### Import protocol (chi tiết)
@@ -102,9 +105,9 @@ gobp(query="template_batch: Engine count=10")
 
 ---
 
-## Write actions — Luôn dùng batch
+## Write actions — Ưu tiên batch / quick
 
-### batch — Tất cả write operations trong 1 call
+### batch — Nhiều write operations trong một call
 
 ```
 gobp(query="batch session_id='<id>' ops='
@@ -138,11 +141,18 @@ gobp(query="batch session_id='<id>' ops='
 | `edge~:` | `From --old--> To to=new` | Đổi type edge |
 | `edge*:` | `From --type--> A, B, C` | Replace tất cả edges loại đó |
 
-### Limits
+### Batch size (đúng với server hiện tại)
+
+- **Không** còn giới hạn cố định kiểu “tối đa 50/500 ops” phía client. Danh sách ops **dài** được server xử lý theo **chunk nội bộ** (200 ops/chunk — implementation trong `gobp/mcp/tools/write.py`).
+- Vẫn nên **gom logic** trong một `batch` khi có thể; chỉ chia **nhiều lệnh** `gobp()` khi payload quá lớn cho MCP/JSON hoặc cần tách theo mục tiêu (không phải vì “max 50”).
+
+### quick: — Ghi nhanh nhiều dòng (pipe), delegate sang batch
+
 ```
-Max 50 operations per batch call.
-Vượt 50 → chia thành nhiều calls.
+gobp(query="quick: session_id='<id>' ops='Name1 | w1 | d1 | desc1\\nName2 | w2 | d2 | desc2'")
 ```
+
+Một dòng = một node tối giản; engine xử lý giống batch (cũng chunk nội bộ khi dài).
 
 ### Response
 ```
@@ -152,6 +162,26 @@ Default: summary only (~100 tokens)
 
 verbose=true: full details
 ```
+
+### Hooks & lỗi (MCP server)
+
+Trước khi ghi, server có thể **chặn sớm** (ví dụ: type không có trong schema; thiếu `session_id` cho một số thao tác). Khi lỗi, response thường có `ok: false`, `error`, và có thể có **`suggestion`** (gợi ý sửa: type hợp lệ, `session:start`, node tương tự…). Đọc `suggestion` trước khi retry.
+
+---
+
+## Các action đọc / bảo trì khác (tham chiếu nhanh)
+
+| Khi cần | Ví dụ |
+|--------|--------|
+| Protocol / version | `gobp(query="version:")` |
+| Nhiều node theo id | `gobp(query="get_batch: ids='node:a,node:b' mode=brief")` |
+| Kiểm tra graph / metadata | `gobp(query="validate: metadata")`, `validate: all`, … |
+| Tái tính priority | `gobp(query="recompute: priorities dry_run=true")` |
+| Import file → graph | `gobp(query="import: path/to/doc.md session_id='…'")` |
+| Reload sau sửa tay ngoài MCP | `gobp(query="refresh:")` |
+| Thống kê latency MCP | `gobp(query="stats:")` |
+
+Bảng đầy đủ: [`docs/MCP_TOOLS.md`](MCP_TOOLS.md). `overview:` (có thể `full_interface=true`) liệt kê catalog gợi ý.
 
 ---
 
@@ -168,8 +198,8 @@ Nguồn: `gobp/schema/core_nodes.yaml` (định nghĩa field đầy đủ: `docs
 | **Document** | Tài liệu / spec đã import hoặc soạn |
 | **Lesson** | Bài học rút ra sau sự kiện |
 | **Concept** | Khái niệm / thuật ngữ (glossary) |
-| **TestKind** | Tầng **loại** kiểm thử (cha / category): mỗi **node** TestKind là một kind như **unit, e2e, integration** (thể hiện bằng `id` / `name`, kèm `template`, `group`, `scope` trong schema) — đây là chỗ “đặt” khái niệm unit/e2e/… |
-| **TestCase** | Node **con** so với TestKind: **một ca kiểm thử cụ thể** dùng để **chạy test** đối tượng được bảo vệ (Flow/Engine/Feature…); field `kind_id` trỏ về **node TestKind** tương ứng (Given–When–Then, PASS/FAIL, `code_ref`, cạnh `covers` / `tested_by`) |
+| **TestKind** | Loại kiểm thử (vd. unit / e2e / …) — **một node = một kind**; chi tiết field `group`, `scope`: [`docs/SCHEMA.md`](SCHEMA.md) §2.8 |
+| **TestCase** | Một ca kiểm thử cụ thể; `kind_id` → TestKind; cạnh `covers` / `tested_by` — xem SCHEMA §2.8–2.9 |
 | **Engine** | Engine nghiệp vụ (TrustEngine, …) |
 | **Flow** | Luồng người dùng / quy trình |
 | **Entity** | Thực thể domain |
@@ -183,13 +213,9 @@ Nguồn: `gobp/schema/core_nodes.yaml` (định nghĩa field đầy đủ: `docs
 | **CtoDevHandoff** | Bàn giao lane CTO → dev |
 | **QaCodeDevHandoff** | Bàn giao lane QA-code → dev |
 
-**Ghi chú Wave 16A14 (đọc trong RAM):** Engine dựng **InvertedIndex** (từ khóa → node) và **AdjacencyIndex** (cạnh theo nút) khi load graph; `find` / `explore` / `suggest` / `related` dùng index khi có, có fallback quét. `validate:` có thể báo **chu trình có hướng** trên cạnh `depends_on` / `supersedes` (DFS) — xem `gobp/core/indexes.py`, `gobp/core/graph_algorithms.py`.
+**Đọc thêm (index + validate chu trình):** `find` / `explore` / `suggest` / `related` dùng index trong RAM khi có; `validate:` có thể cảnh báo chu trình trên `depends_on` / `supersedes` — xem `gobp/core/indexes.py`, `graph_algorithms.py`.
 
-**Quan hệ đúng:** **unit / e2e / integration / …** là các **kind** được biểu diễn bởi **node TestKind** (tầng loại). **TestCase** là **node dùng để test** (ca chạy), là “con” theo nghĩa nghiệp vụ: nhiều TestCase thuộc cùng TestKind qua `kind_id` — không đảo: TestKind ≠ TestCase, và không gọi unit/e2e là “tên thay type TestKind”.
-
-**Field `group` trên node TestKind** (`process` \| `functional` \| `non_functional` \| `security`): phân loại *ý nghĩa hàng loại* (phương pháp kiểm thử vs chủ đề chức năng / phi chức năng / bảo mật) — **khác** với slug unit/e2e trong `id`. Bảng định nghĩa: **SCHEMA.md mục 2.8 TestKind**.
-
-**Nhóm id (`id_groups` trong `.gobp/config.yaml`):** `core` / `domain` / `ops` / `test` / `meta` là **namespace sinh id** (slug + group + số), **không** phải “chỉ riêng test mới là một nhóm type”. Ví dụ TestCase/TestKind dùng pattern id khác (xem mục ID format).
+**Nhóm id** (`id_groups` trong `.gobp/config.yaml`): `core` / `domain` / `ops` / `test` / `meta` là namespace sinh id — xem mục ID format bên dưới và SCHEMA.
 
 ---
 
@@ -278,17 +304,17 @@ meta.session.2026-04-17.a3f7c2abc    ← Session (định dạng đặc biệt)
 
 ```
 ❌ Gọi overview: mỗi lần cần data → gọi 1 lần
-❌ Dùng create: đơn lẻ → dùng batch
+❌ Nhiều write mà không gom **batch** / **quick:** → tách nhóm logic / dùng quick khi format pipe
 ❌ find: keyword rộng → find:Type keyword mode=summary
 ❌ Paste full JSON response vào prompt sau → chỉ giữ id+name
-❌ Tạo node mới mà không suggest: trước → duplicate risk
-❌ Ghi mà không có session_id → bị reject
+❌ Tạo node mới mà không suggest: trước → duplicate risk (với **Lesson** bắt buộc tuân **dec:d011** ở rule 13)
+❌ Ghi mà không có session_id → bị reject hoặc hook chặn sớm
 ```
 
 ---
 
 ## Phụ lục (tối thiểu)
 
-Response có `_dispatch` (audit). Read-only: `GOBP_READ_ONLY=true`. Field / cạnh đầy đủ: `docs/SCHEMA.md`, `gobp/schema/core_nodes.yaml`, `gobp/schema/core_edges.yaml`. Import vào graph: [`docs/IMPORT_CHECKLIST.md`](IMPORT_CHECKLIST.md). Lỗi graph hoặc MCP cũ: `python -m gobp.cli validate --scope all`, `seed-universal` nếu cần, Reload Window / restart Cursor.
+Response thường có `_protocol` (phiên bản protocol) và có thể có `_dispatch` (audit route). Read-only: `GOBP_READ_ONLY=true`. Field / cạnh đầy đủ: `docs/SCHEMA.md`, `gobp/schema/core_nodes.yaml`, `gobp/schema/core_edges.yaml`. Import vào graph: [`docs/IMPORT_CHECKLIST.md`](IMPORT_CHECKLIST.md). Lỗi graph hoặc MCP cũ: `python -m gobp.cli validate --scope all`, `seed-universal` nếu cần, Reload Window / restart Cursor.
 
 ◈
