@@ -1,4 +1,4 @@
-# CLAUDE.md — GoBP Project Instructions for Claude CLI (v2)
+# CLAUDE.md — GoBP Project Instructions for Claude CLI (v3)
 
 You are **Claude CLI working as the audit gate for GoBP**. After Cursor completes a wave, you audit every task sequentially. You stop on first failure and wait for fix.
 
@@ -195,6 +195,65 @@ Then wait for CEO to approve push.
 
 ---
 
+## GoBP MCP OBLIGATION (dec:d004)
+
+**INVARIANT PRINCIPLE — NOT OPTIONAL**: Every audit MUST capture a session into GoBP MCP. GoBP is shared memory. If Claude CLI does not write, GoBP becomes outdated and valueless.
+
+### After every wave audit completes, execute in order:
+
+**Step 1 — session:start**
+```python
+from gobp.mcp.tools.write import session_log
+from gobp.core.graph import GraphIndex
+root = Path('D:/GoBP')
+index = GraphIndex.load_from_disk(root)
+r = session_log(index, root, {
+    'action': 'start',
+    'actor': 'claude-cli',
+    'goal': 'Capture Wave <N> audit'
+})
+session_id = r['session_id']
+```
+
+**Step 2 — log wave brief reference**
+
+Record the brief import. Full `import_proposal()` requires a structured proposal payload;
+at minimum create a Lesson node referencing the brief, or log to session notes.
+
+```python
+# Create lesson node linking to wave brief
+session_log(index, root, {
+    'action': 'note',
+    'session_id': session_id,
+    'note': 'Wave <N> brief: waves/wave_<N>_brief.md — <X> tasks audited'
+})
+```
+
+**Step 3 — create Lesson nodes for any insights**
+```python
+# Via dispatcher (sync wrapper) or direct node creation
+# gobp(query="create:Lesson name='<insight>' description='...' session_id='<id>'")
+```
+
+**Step 4 — session:end**
+```python
+session_log(index, root, {
+    'action': 'end',
+    'session_id': session_id,
+    'outcome': 'Wave <N> audit complete — <X> tests passing, all tasks PASS',
+    'handoff_notes': 'Ready for CEO push approval'
+})
+```
+
+### Implementation notes (dec:d004 compliance)
+
+- `dispatcher.dispatch()` is **async** — call `tools.write.session_log()` directly
+- Set `GOBP_DB_URL` env var before loading GraphIndex (bash prefix, not `$env:`)
+- If GoBP session capture fails → report to CEO before approving push
+- Session capture is **part of the audit**, not an afterthought
+
+---
+
 ## CODE QUALITY STANDARDS (same as Cursor)
 
 ### Python
@@ -281,9 +340,22 @@ When CEO runs `claude` in D:\GoBP\:
 
 ---
 
-*CLAUDE.md v0.2 for GoBP project*
-*Role: Sequential auditor with fail-stop*
-*Owner: CTO Chat*
-*Last updated: 2026-04-14*
+*CLAUDE.md v3 for GoBP project*
+*Role: Sequential auditor with fail-stop + GoBP MCP capture*
+*Owner: Claude CLI (dec:d003) — CTO sets requirements, CLI writes*
+*Last updated: 2026-04-18*
+
+---
+
+## LESSONS LEARNED (append-only — do not edit existing entries)
+
+**Wave 16A14 — 2026-04-18**
+
+- `dispatcher.dispatch()` is async; call `tools.write.session_log()` directly from Python scripts.
+- GoBP session capture: `session_log(index, root, {'action': 'start', ...})` returns `session_id` in result dict.
+- `import_proposal()` requires a full structured payload (source_path, proposal_type, ai_notes, proposed_nodes, proposed_edges, confidence, session_id) — not suitable for quick brief logging; use session notes instead.
+- Windows bash env vars: use `GOBP_DB_URL=... python ...` prefix, not `$env:` (PowerShell syntax).
+- Remove `_node_in_memory()` rebuilds adjacency via `adjacency.build()` (O(E)) instead of `adjacency.remove_node()` (O(degree)) — correct but slightly less efficient; acceptable per review.
+- 626 tests ran in ~22 min on this machine; plan time for full suite verification.
 
 ◈
