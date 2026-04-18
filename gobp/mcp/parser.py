@@ -32,6 +32,9 @@ _TYPE_CANONICAL: dict[str, str] = {
     "task": "Task",
     "ctodevhandoff": "CtoDevHandoff",
     "qacodedevhandoff": "QaCodeDevHandoff",
+    # MIHOS extension (gobp/schema/extensions/mihos.yaml)
+    "imprint": "Imprint",
+    "provider": "Provider",
 }
 
 

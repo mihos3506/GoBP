@@ -18,6 +18,19 @@ Format: [Wave N — Title] with date, what was added/changed/fixed.
 
 ---
 
+## [Schema] — MIHOS extension 1.1 — 2026-04-18
+
+### Changed
+
+- **`gobp/schema/extensions/mihos.yaml`** — version **1.1**: optional `description`, `session_id`, `tags` on **Imprint** / **Provider** (align with core `Node` when merged); header notes for syncing after **core `Node`** edits.
+- **`gobp/mcp/parser.py`** — canonical types **`Imprint`**, **`Provider`** for `create:` / queries.
+
+### Tests
+
+- `tests/test_seed_universal.py::test_parse_create_mihos_extension_types`
+
+---
+
 ## [Wave 16A17] — Remove xdist + Test Organization — 2026-04-18
 
 ### Changed

@@ -97,6 +97,14 @@ def test_parse_create_handoff_types() -> None:
     assert t2 == "QaCodeDevHandoff"
 
 
+def test_parse_create_mihos_extension_types() -> None:
+    """MIHOS types from gobp/schema/extensions/mihos.yaml normalize like core types."""
+    a, t, p = parse_query("create:Imprint name='x' session_id='s'")
+    assert a == "create" and t == "Imprint" and p.get("name") == "x"
+    _, t2, _ = parse_query("create:Provider name='y' session_id='s'")
+    assert t2 == "Provider"
+
+
 def test_create_ctodev_handoff_node(tmp_path: Path) -> None:
     init_project(tmp_path, force=True)
     index = GraphIndex.load_from_disk(tmp_path)

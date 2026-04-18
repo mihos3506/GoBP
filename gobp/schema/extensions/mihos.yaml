@@ -2,12 +2,16 @@
 # Extends GoBP core schema with MIHOS-specific node types.
 # Core types (Node, Idea, Decision, Session, Document, Lesson) remain unchanged.
 #
-# To use: reference this file in .gobp/config.yaml as:
+# Load in a project via .gobp/config.yaml:
 #   schema_extensions:
 #     - gobp/schema/extensions/mihos.yaml
+#
+# SYNC (manual): When `Node` or id conventions change in `gobp/schema/core_nodes.yaml`,
+# re-check `parent: Node` merge expectations, required fields, and id patterns here;
+# see `docs/SCHEMA.md` §6 and `.gobp/config.yaml` id_groups.
 
 extension_name: mihos
-version: "1.0"
+version: "1.1"
 extends: gobp_core_v1
 
 node_types:
@@ -15,7 +19,7 @@ node_types:
   Imprint:
     description: A verified heritage presence record — the core MIHOS asset
     id_prefix: "imprint"
-    parent: Node  # extends Node
+    parent: Node
 
     required:
       id:
@@ -53,6 +57,16 @@ node_types:
         type: timestamp
 
     optional:
+      description:
+        type: str
+        description: Longer narrative; mirrors core Node.optional.description when merged
+      session_id:
+        type: node_ref
+        description: Session that created or last updated this record (optional traceability)
+      tags:
+        type: list[str]
+        default: []
+        description: Labels for search and grouping (aligns with core Node.optional.tags)
       photo_hash:
         type: str
         description: SHA-256 of the capture photo
@@ -95,6 +109,16 @@ node_types:
         type: timestamp
 
     optional:
+      description:
+        type: str
+        description: Longer narrative; mirrors core Node.optional.description when merged
+      session_id:
+        type: node_ref
+        description: Session that created or last updated this record (optional traceability)
+      tags:
+        type: list[str]
+        default: []
+        description: Labels for search and grouping (aligns with core Node.optional.tags)
       reputation_score:
         type: float
         default: 0.0
