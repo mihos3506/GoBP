@@ -10,6 +10,7 @@ from typing import Any
 from functools import lru_cache
 
 from gobp.core.graph import GraphIndex
+from gobp.core.graph_algorithms import detect_cycles
 from gobp.core.loader import load_schema, package_schema_dir
 from gobp.core.validator import validate_edge, validate_node
 
@@ -117,6 +118,17 @@ def validate(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> dic
                         "message": f"Edge target {to_id} does not exist",
                     }
                 )
+
+    if scope in ("all", "edges"):
+        for cycle in detect_cycles(index):
+            issues.append(
+                {
+                    "severity": "warning",
+                    "type": "cycle",
+                    "message": "Directed cycle: " + " -> ".join(cycle),
+                    "cycle": cycle,
+                }
+            )
 
     # Apply severity filter
     if severity_filter != "all":
