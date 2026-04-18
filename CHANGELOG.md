@@ -5,6 +5,25 @@ Format: [Wave N — Title] with date, what was added/changed/fixed.
 
 ---
 
+## [Wave 16A12] — MCP Server Cache — 2026-04-18
+
+### Changed
+
+- **MCP server in-memory GraphIndex cache** — `get_cached_index()` keeps the index in RAM; read-heavy actions reuse it instead of reloading all `.gobp/nodes` on every `gobp()` call.
+- **Write path** — after mutations, the graph cache is invalidated so the next read reloads from disk; **`batch`** flushes through `update_cache(working_index)` so the warm cache stays aligned without a full reload.
+- **`refresh:`** — reloads the graph from disk and refreshes the server cache (manual edits, schema work).
+
+### Performance
+
+- Cold load remains proportional to repo size; warm `find` / `explore` / `suggest` avoid per-call full disk scans when served from the MCP process.
+
+### Tests
+
+- `tests/test_wave16a12.py` — cache singleton, invalidate, update, refresh dispatch, perf sanity, `WRITE_ACTIONS`, PROTOCOL_GUIDE.
+- **588** tests (full suite).
+
+---
+
 ## [Wave 16A11] — Batch Performance Fix — 2026-04-18
 
 ### Changed
