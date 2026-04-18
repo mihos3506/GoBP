@@ -332,6 +332,9 @@ async def dispatch(
         elif action == "batch":
             result = tools_write.batch_action(index, project_root, params)
 
+        elif action == "quick":
+            result = tools_write.quick_action(index, project_root, params)
+
         elif action == "create":
             node_type = _normalize_type(node_type or params.pop("type", "Node"))
             name = params.get("name", "")

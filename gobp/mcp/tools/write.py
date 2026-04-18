@@ -824,6 +824,57 @@ def merge_nodes_action(
     }
 
 
+def quick_action(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> dict[str, Any]:
+    """Quick capture: one line per node, ``Name | category | wave | description``."""
+    from gobp.mcp.batch_parser import parse_quick
+
+    session_id = str(args.get("session_id", "")).strip()
+    ops_raw = str(args.get("ops", args.get("query", "")))
+    gate = _batch_require_open_session(index, session_id)
+    if gate:
+        return gate
+
+    qops = parse_quick(ops_raw)
+    if not qops:
+        return {
+            "ok": False,
+            "error": "No items parsed",
+            "hint": "Format: Name | category | wave | description",
+        }
+
+    lines: list[str] = []
+    for q in qops:
+        nt = str(q.get("node_type", "Node"))
+        name = str(q.get("name", "")).strip()
+        if not name:
+            continue
+        desc = str(q.get("description", "")).strip()
+        cat = str(q.get("category", "")).strip()
+        wave = str(q.get("target_wave", "")).strip()
+        bits: list[str] = []
+        if desc:
+            bits.append(desc)
+        if cat:
+            bits.append(f"category: {cat}")
+        if wave:
+            bits.append(f"wave: {wave}")
+        full_desc = " ".join(bits)
+        lines.append(f"create: {nt}: {name} | {full_desc}")
+
+    batch_text = "\n".join(lines)
+    if not batch_text.strip():
+        return {
+            "ok": False,
+            "error": "No items parsed",
+            "hint": "Format: Name | category | wave | description",
+        }
+
+    merged = dict(args)
+    merged["session_id"] = session_id
+    merged["ops"] = batch_text
+    return batch_action(index, project_root, merged)
+
+
 def batch_action(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> dict[str, Any]:
     """Execute up to ``MAX_BATCH_OPS`` structured mutations from one ``ops`` block."""
     from gobp.mcp.batch_parser import parse_batch_ops

@@ -51,7 +51,7 @@ def _query_truthy(val: Any) -> bool:
 
 _READ_ONLY_ACTIONS: frozenset[str] = frozenset({
     "create", "update", "upsert", "lock",
-    "session", "edge", "import", "commit", "batch",
+    "session", "edge", "import", "commit", "batch", "quick",
     "delete", "retype",
 })
 _READ_ONLY: bool = os.environ.get("GOBP_READ_ONLY", "").lower() in ("true", "1", "yes")
@@ -66,6 +66,7 @@ WRITE_ACTIONS: frozenset[str] = frozenset({
     "delete",
     "retype",
     "batch",
+    "quick",
     "import",
     "edge",
     "commit",

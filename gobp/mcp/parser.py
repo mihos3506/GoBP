@@ -56,6 +56,7 @@ def _normalize_node_type(node_type: str) -> str:
 
 _POSITIONAL_KEY: dict[str, str] = {
     "batch": "query",
+    "quick": "query",
     "find": "query",
     "get": "node_id",
     "context": "node_id",
@@ -171,6 +172,30 @@ def parse_query(query: str) -> tuple[str, str, dict[str, Any]]:
                     params["query"] = value
                 positional_consumed = True
         return "batch", "", params
+
+    if query.lower().startswith("quick"):
+        rest = query[5:].strip()
+        if rest.startswith(":"):
+            rest = rest[1:].strip()
+        if not rest:
+            return "quick", "", {}
+        params_q: dict[str, Any] = {}
+        tokens = _tokenize_rest(rest)
+        positional_key = _POSITIONAL_KEY.get("quick", "query")
+        positional_consumed = False
+        for token in tokens:
+            if "=" in token:
+                eq_idx = token.index("=")
+                k = token[:eq_idx].strip()
+                v = token[eq_idx + 1 :].strip().strip("'\"")
+                params_q[k] = _coerce_value(v)
+            elif not positional_consumed:
+                value = token.strip("'\"")
+                params_q[positional_key] = value
+                if positional_key != "query":
+                    params_q["query"] = value
+                positional_consumed = True
+        return "quick", "", params_q
 
     colon_idx = query.find(":")
     if colon_idx == -1:
@@ -322,6 +347,9 @@ PROTOCOL_GUIDE = {
         "suggest: auth login": "Finds related nodes from short context text",
         "batch session_id='x' ops='create: Engine: A | desc\\nedge+: A --implements--> B'": (
             "Unified batch: create/update/delete/retype/merge/edge ops (max 500 ops per call)"
+        ),
+        "quick: session_id='x' ops='Idea Name | category | wave | description'": (
+            "Quick capture: one line per node, pipe-separated; auto-chunked like batch"
         ),
         "template: Engine": "Input frame for Engine type (required/optional fields from schema)",
         "template: Flow": "Input frame for Flow type (required/optional fields from schema)",

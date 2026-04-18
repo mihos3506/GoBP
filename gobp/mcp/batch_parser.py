@@ -173,6 +173,41 @@ def parse_batch_ops(ops_text: str) -> tuple[list[dict[str, Any]], list[str]]:
     return parsed, errors
 
 
+def parse_quick(raw: str) -> list[dict[str, Any]]:
+    """Parse quick-capture lines: ``Name | category | wave | description``.
+
+    Minimum: ``Name | description`` (two parts). Produces dicts compatible with
+    :func:`parse_batch_line` output shape via :func:`quick_action` in write tools.
+    """
+    text = raw.replace("\\\\n", "\n").replace("\\n", "\n")
+    ops: list[dict[str, Any]] = []
+    for line in text.splitlines():
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        parts = [p.strip() for p in line.split("|")]
+        if not parts or not parts[0]:
+            continue
+        op: dict[str, Any] = {
+            "kind": "create",
+            "node_type": "Node",
+            "name": parts[0],
+            "description": "",
+            "raw": line,
+        }
+        if len(parts) == 2:
+            op["description"] = parts[1]
+        elif len(parts) == 3:
+            op["category"] = parts[1]
+            op["description"] = parts[2]
+        elif len(parts) >= 4:
+            op["category"] = parts[1]
+            op["target_wave"] = parts[2]
+            op["description"] = parts[3]
+        ops.append(op)
+    return ops
+
+
 def parse_batch(raw: str) -> list[dict[str, Any]]:
     """Parse batch ops text; same newline rules as :func:`parse_batch_ops`.
 
