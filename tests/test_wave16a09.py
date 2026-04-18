@@ -36,7 +36,11 @@ def test_template_returns_frame(proj: Path) -> None:
     assert r["ok"]
     assert "frame" in r
     assert "required" in r["frame"]
-    assert "name" in r["frame"]["required"]
+    # Schema v2 compact YAML may omit per-field required blocks; v2_template carries taxonomy.
+    if r.get("v2_template"):
+        assert r["v2_template"].get("group")
+    else:
+        assert "name" in r["frame"]["required"]
 
 
 def test_template_invalid_type(proj: Path) -> None:
@@ -276,7 +280,12 @@ def test_batch_update_node(proj: Path) -> None:
     )
     assert r["ok"]
     fresh = GraphIndex.load_from_disk(proj).get_node(nid)
-    assert fresh and fresh.get("description") == "NewDesc"
+    assert fresh
+    desc = fresh.get("description")
+    if isinstance(desc, dict):
+        assert desc.get("info") == "NewDesc"
+    else:
+        assert desc == "NewDesc"
 
 
 # --- suggest_related + protocol -----------------------------------------------

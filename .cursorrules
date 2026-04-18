@@ -1,4 +1,4 @@
-# Cursor Rules — GoBP Project (v6)
+# Cursor Rules — GoBP Project (v7)
 
 You are **Cursor working on the GoBP project**. You execute Wave Briefs task-by-task sequentially, commit after each task passes its tests, and report the full wave at the end.
 
@@ -29,7 +29,7 @@ When all tasks done:
   - Run **full test suite once** if the last task did not already (R9-C): see **R9 (C)** below.
   Report full wave summary to CEO with:
     - Tasks completed with commit hashes
-    - Full-suite result (pass count, baseline 626+ unless Brief added tests)
+    - Full-suite result (pass count, baseline 670+ unless Brief added tests)
     - Files created/modified
     - Documentation / GoBP MCP changes (R11)
     - Any warnings or notes
@@ -63,7 +63,7 @@ You do NOT stop between tasks for CEO approval unless blocked.
   - `D:/GoBP/venv/Scripts/python.exe -m pytest tests/ --override-ini="addopts=" -q --tb=no`  
   (Bash can use `pytest tests/ -m ''` instead; **PowerShell** often drops an empty `-m ""`, so prefer `--override-ini` on Windows.)  
   **No** `-n auto` / no pytest-xdist.
-- Confirms no regression. Baseline is expected to stay **626+** unless the Brief intentionally adds tests.
+- Confirms no regression. Baseline is expected to stay **670+** unless the Brief intentionally adds tests.
 
 **Test data rule:** **Do not** rely on live MIHOS databases, checked-in MIHOS production exports, or proprietary MIHOS datasets in GoBP tests. Use **isolated** `tmp_path` / synthetic projects only (scale fixtures may build a graph in-memory or under `tmp_path`, but must not depend on external MIHOS data).
 
@@ -94,6 +94,11 @@ Before importing external knowledge into the graph:
 4. **Batch execute** — use `batch:` / `quick:`; do **not** create orphan nodes and “add edges later”.
 5. **Relate new nodes** — when the graph already has data, **new** substantive nodes must connect to **existing** nodes via a valid edge (exception: the **first** node in a greenfield project may have nothing to attach to).
 
+**Importing errors / ErrorCase nodes (schema v2):** Before importing error catalogs from external docs:
+- Read the relevant **ErrorDomain** (and related taxonomy) in the graph first.
+- `find:` / `explore:` with `group="Error"` or domain filters — avoid duplicate **ErrorCase** rows (check `code` pattern and naming convention below).
+- Prefer linking new cases to existing domains and **validated_by** / **relates_to** edges over orphan Error nodes.
+
 Detailed checklist: `docs/IMPORT_CHECKLIST.md` (when present).
 
 ### Graph linkage (Decision dec:d006)
@@ -106,6 +111,8 @@ Before creating a new **Lesson** node:
 1. **suggest:** search the graph for the same topic or a very close match (`find:` / `explore:` / `suggest:`).
 2. If a matching **Lesson** exists → **update** that node: append the new takeaway, merge or refine text, and **keep** content that is still valuable.
 3. Create a **new** Lesson only when the topic is genuinely new and does not fit an existing Lesson.
+
+Lesson sub-types in schema v2: **LessonRule**, **LessonSkill**, **LessonDev**, **LessonCTO**, **LessonQA** — pick the correct type; do not default everything to generic **Lesson** if the Brief implies a subtype.
 
 ### Task-level commits
 Each task = **one** commit with the Brief’s message (unless Brief says otherwise).
@@ -123,6 +130,33 @@ Before adding a new module, class, public function, or schema field: **search th
 
 ### Brief code authoritative
 If Brief conflicts with chat, **Brief wins** for scope; if Brief conflicts with `CHARTER.md` / `docs/SCHEMA.md`, **stop and escalate**.
+
+---
+
+## Schema v2 Rules (Wave 17A02 — production)
+
+**GoBP schema v2** — `core_nodes.yaml` is the promoted v2 taxonomy (**93+ node types** with **`group`** breadcrumb paths, e.g. `Dev > Infrastructure > Engine`). Backup of legacy v1 YAML: `gobp/schema/core_nodes_v1.yaml` and `gobp/schema/core_edges_v1.yaml`.
+
+### Node creation (v2)
+- **`group`** — required on every node for validation; if omitted at capture time, tooling may **infer** it from `type` via `ValidatorV2.auto_fix()` / MCP defaults.
+- **`description`** — must be non-empty human meaning: use **`description.info`** (required string); **`description.code`** optional (examples, stack snippets). Plain strings are auto-wrapped to `{info, code}`.
+- **`lifecycle`** replaces ad-hoc lifecycle fields where applicable: `draft` | `specified` | `implemented` | `tested` | `deprecated` (use project conventions; do not invent new values without Brief/SCHEMA).
+- **`read_order`** replaces numeric **priority** for *reading* emphasis: `foundational` | `important` | `reference` | `background`. Node records may still carry legacy **`priority`** where the schema allows it.
+- **Validator v2** — `make_validator_v2(schema_dir)` + **`auto_fix()`** fill **group**, **lifecycle**, **read_order**, and normalize **description** when possible.
+
+### ErrorCase naming (v2)
+- Format: **`{DOMAIN}_{SEVERITY}_{SEQ}`** — e.g. `GPS_E_001`, `AUTH_F_001`, `EMBER_W_003`.
+- Severity letter: **F** = Fatal, **E** = Error, **W** = Warning, **I** = Info.
+- Before creating a new **ErrorCase**: `find:` within the right domain / `group="Error > ErrorCase"` (or equivalent) and ensure the **`code`** pattern is not already taken.
+- **ErrorCase** nodes should include **`context`** (features, flows, engines, keywords) so retrieval can match real incidents.
+
+### Invariant vs policy
+- **Invariant** — **`rule`** field is **required** (boolean expression over graph facts). Use for things that must *always* hold.
+- Do **not** use **Invariant** for “must never do X” product policy alone — use **BusinessRule** (or the Brief’s designated type) for normative “don’t” rules.
+
+### Cutover (Wave 17A02)
+- Treat **`gobp/schema/core_nodes.yaml`** and **`core_edges.yaml`** as **v2** — do not assume old v1-only type names or edge names (e.g. prefer **`validated_by`** over legacy **`tested_by`** / **`validates`** where the schema lists **`validated_by`**).
+- Packaged schema under `gobp/schema/` is canonical for tests and `package_schema_dir()`.
 
 ---
 
@@ -175,7 +209,7 @@ $env:GOBP_DB_URL = "postgresql://postgres:Hieu%408283%40@localhost/gobp"
 ```
 gobp/core/     graph, search, indexes, graph_algorithms, mutator, init, …
 gobp/mcp/      server, dispatcher, parser, batch_parser, tools/
-gobp/schema/   core_nodes.yaml, core_edges.yaml
+gobp/schema/   core_nodes.yaml, core_edges.yaml (v2 taxonomy post–Wave 17A02); core_nodes_v2.yaml / core_edges_v2.yaml retained as sources; *_v1.yaml backups
 tests/         test_*.py — full suite is the gate
 waves/         wave_*_brief.md
 docs/          guides (only edit per Brief + R12)
@@ -297,7 +331,7 @@ What I need from CEO: <specific question>
 
 ---
 
-*v6.0 — Thin harness / fat skills; aligns with dec:d001–dec:d006 and `AGENTS.md`*
+*v7.0 — Schema v2 production rules (Wave 17A02); thin harness / fat skills; aligns with dec:d001–dec:d006 and `AGENTS.md`*
 *Works with Claude CLI audit (`CLAUDE.md`) and CTO Wave Briefs*
 
 ◈

@@ -17,13 +17,13 @@ from gobp.core.id_config import generate_external_id
 from gobp.core.search import find_similar_nodes, normalize_text
 from gobp.core.loader import load_schema, package_schema_dir
 from gobp.core.mutator import (
+    coerce_and_validate_node,
     create_edge,
     create_node,
     remove_edge_from_disk,
     remove_node_from_disk,
     update_node,
 )
-from gobp.core.validator import validate_node
 
 
 # Defaults for types with many required fields — quick capture / minimal batch lines.
@@ -55,7 +55,7 @@ TYPE_DEFAULTS: dict[str, dict[str, Any]] = {
 }
 
 # Inferred from ``core_nodes_v2.yaml`` (group, lifecycle, read_order). Applied after
-# TYPE_DEFAULTS; :func:`gobp.core.validator.validate_node` still uses v1 schema for writes.
+# TYPE_DEFAULTS; :func:`coerce_and_validate_node` uses Validator v2 when schema is v2.
 _TYPE_DEFAULTS_V2_CACHE: dict[str, dict[str, Any]] | None = None
 
 
@@ -110,6 +110,23 @@ def _normalize_document_content_hash(node: dict[str, Any]) -> None:
             node["content_hash"] = "sha256:" + rest.lower()
 
 
+def _apply_v2_defaults(node: dict[str, Any], schema_v2: Any) -> None:
+    """Apply schema v2 taxonomy and normalize ``description`` (mutates ``node``)."""
+    from gobp.core.file_format import auto_fill_description
+
+    nt = str(node.get("type", ""))
+    if not node.get("group") and nt:
+        g = schema_v2.get_group(nt)
+        if g:
+            node["group"] = g
+    if not node.get("lifecycle"):
+        node["lifecycle"] = "draft"
+    if not node.get("read_order") and nt:
+        node["read_order"] = schema_v2.get_default_read_order(nt)
+    if "description" in node:
+        node["description"] = auto_fill_description(node["description"])
+
+
 def _auto_fill_defaults(node: dict[str, Any], node_type: str) -> None:
     """Fill missing required schema fields with safe defaults (mutates ``node``)."""
     defaults = TYPE_DEFAULTS.get(node_type, {})
@@ -123,6 +140,12 @@ def _auto_fill_defaults(node: dict[str, Any], node_type: str) -> None:
         if cur is not None and str(cur).strip() != "":
             continue
         node[field] = default(node) if callable(default) else default
+    try:
+        from gobp.core.schema_loader import load_schema_v2
+
+        _apply_v2_defaults(node, load_schema_v2(package_schema_dir()))
+    except Exception:
+        pass
 
 
 # (type_name, id_prefix_full, slice_index) — for auto-numbered node types.
@@ -240,8 +263,6 @@ def node_upsert(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> 
             node["assignee"] = "cursor"
 
     if node_type == "TestKind":
-        if not node.get("group"):
-            node["group"] = "process"
         if not node.get("scope"):
             node["scope"] = "project"
         if node.get("template") is None:
@@ -260,7 +281,7 @@ def node_upsert(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> 
     except Exception as e:
         return {"ok": False, "error": f"Failed to load schema: {e}"}
 
-    result = validate_node(node, nodes_schema)
+    result = coerce_and_validate_node(project_root, node, nodes_schema)
     if not result.ok:
         return {"ok": False, "errors": result.errors}
 
@@ -538,7 +559,7 @@ def decision_lock(index: GraphIndex, project_root: Path, args: dict[str, Any]) -
     except Exception as e:
         return {"ok": False, "error": f"Failed to load schema: {e}"}
 
-    result = validate_node(decision, nodes_schema)
+    result = coerce_and_validate_node(project_root, decision, nodes_schema)
     if not result.ok:
         return {"ok": False, "errors": result.errors}
 
@@ -640,7 +661,7 @@ def session_log(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> 
             "role": role,
         }
 
-        result = validate_node(session_node, schema)
+        result = coerce_and_validate_node(project_root, session_node, schema)
         if not result.ok:
             return {"ok": False, "errors": result.errors}
 
@@ -686,7 +707,7 @@ def session_log(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> 
         if field in args:
             updated[field] = args[field]
 
-    result = validate_node(updated, schema)
+    result = coerce_and_validate_node(project_root, updated, schema)
     if not result.ok:
         return {"ok": False, "errors": result.errors}
 
@@ -772,8 +793,6 @@ def _batch_build_create_node(
             node["assignee"] = "cursor"
 
     if node_type == "TestKind":
-        if not node.get("group"):
-            node["group"] = "process"
         if not node.get("scope"):
             node["scope"] = "project"
         if node.get("template") is None:
@@ -787,7 +806,7 @@ def _batch_build_create_node(
     _normalize_document_content_hash(node)
 
     nodes_schema = load_schema(package_schema_dir() / "core_nodes.yaml")
-    result = validate_node(node, nodes_schema)
+    result = coerce_and_validate_node(project_root, node, nodes_schema)
     if not result.ok:
         return None, str(result.errors)
     return node, None

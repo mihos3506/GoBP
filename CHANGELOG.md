@@ -5,6 +5,30 @@ Format: [Wave N — Title] with date, what was added/changed/fixed.
 
 ---
 
+## [Wave 17A02] — Validator bridge + schema v2 cutover — 2026-04-19
+
+### Added
+
+- **`gobp/core/validator_v2.py`** — `ValidatorV2` / `make_validator_v2()` for `schema_name: gobp_core_v2`; `validate_node`, `validate_edge`, `auto_fix()` (description wrap, group/lifecycle/read_order).
+- **`gobp/schema/core_nodes_v1.yaml`**, **`gobp/schema/core_edges_v1.yaml`** — backups of pre-cutover v1 schema files.
+
+### Changed
+
+- **`gobp/schema/core_nodes.yaml`**, **`core_edges.yaml`** — promoted from v2 sources; production taxonomy is v2 (`gobp_core_v2` / `gobp_core_edges_v2`).
+- **`gobp/core/schema_loader.py`** — `SchemaV2` loads `core_nodes_v2.yaml` when present, else **`core_nodes.yaml`** when `schema_name` is v2.
+- **`gobp/core/mutator.py`**, **`gobp/mcp/tools/write.py`**, **`gobp/mcp/tools/maintain.py`**, **`gobp/mcp/tools/import_.py`**, **`gobp/core/graph.py`** — `coerce_and_validate_node()` uses Validator v2 when schema is v2.
+- **`gobp/core/init.py`** — `seed_universal_nodes()` enriched with v2 **group**, **lifecycle**, **read_order**, **`description` `{info, code}`**.
+- **`gobp/mcp/hooks.py`** — optional Validator v2 pre-check on create/upsert.
+- **`gobp/mcp/tools/read.py`** — `template:` response may include **`v2_template`** (group, lifecycle, read_order, description shape).
+- **`gobp/core/search.py`**, **`gobp/core/indexes.py`**, **`gobp/viewer/server.py`** — tolerate **`description`** as `{info, code}` dict.
+- **`.cursorrules` v7** — schema v2 rules, ErrorCase naming, cutover notes, import hints for ErrorCase.
+
+### Tests
+
+- **670** tests passing in full suite (`pytest tests/ --override-ini="addopts="`).
+
+---
+
 ## [Docs] — GoBP AI User Guide refresh — 2026-04-18
 
 ### Changed

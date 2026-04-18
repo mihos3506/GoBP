@@ -1,710 +1,320 @@
-# GoBP Core Node Types
-# Reference: docs/SCHEMA.md section 2
-# Schema version: 1.0
-
-schema_version: "2.0"
-schema_name: "gobp_core"
-
+schema_version: '2.0'
+version: '2.0'
+schema_name: gobp_core_v2
 node_types:
-
-  Node:
-    description: "Generic container for any entity, feature, tool, concept"
-    id_prefix: "node"
-    parent: null
-
-    required:
-      id:
-        type: "str"
-        pattern: '^([a-z0-9_]{1,40}\.meta\.[0-9]{8}|(?:meta)\.node:[0-9]+|node:[a-z][a-z0-9_]*)$'
-      type:
-        type: "str"
-      name:
-        type: "str"
-      status:
-        type: "enum"
-        enum_values: ["DRAFT", "ACTIVE", "DEPRECATED", "ARCHIVED"]
-      created:
-        type: "timestamp"
-      updated:
-        type: "timestamp"
-
-    optional:
-      subtype:
-        type: "str"
-      description:
-        type: "str"
-      priority:
-        type: "enum"
-        enum_values: ["critical", "high", "medium", "low"]
-        default: "medium"
-        description: "Importance level: critical=must have, high=important, medium=standard, low=nice to have"
-      tags:
-        type: "list[str]"
-        default: []
-      custom_fields:
-        type: "dict"
-        default: {}
-      code_refs:
-        type: "list[dict]"
-        default: []
-        description: "Code files implementing or related to this node"
-      invariants:
-        type: "list[str]"
-        default: []
-        description: "Hard constraints that must always be true for this node"
-
-    constraints:
-      - "created <= updated"
-
-  Idea:
-    description: "Unstructured brainstorm captured from conversation"
-    id_prefix: "idea"
-    parent: null
-
-    required:
-      id:
-        type: "str"
-        pattern: '^([a-z0-9_]{1,40}\.meta\.[0-9]{8}|(?:meta)\.idea:[0-9]+|idea:i[0-9]{3,})$'
-      type:
-        type: "str"
-        enum_values: ["Idea"]
-      raw_quote:
-        type: "str"
-      interpretation:
-        type: "str"
-      subject:
-        type: "str"
-      maturity:
-        type: "enum"
-        enum_values: ["RAW", "REFINED", "DISCUSSED", "LOCKED", "DEPRECATED"]
-      confidence:
-        type: "enum"
-        enum_values: ["low", "medium", "high"]
-      session_id:
-        type: "node_ref"
-      created:
-        type: "timestamp"
-      updated:
-        type: "timestamp"
-
-    optional:
-      supersedes:
-        type: "node_ref"
-      context_notes:
-        type: "str"
-      priority:
-        type: "enum"
-        enum_values: ["critical", "high", "medium", "low"]
-        default: "medium"
-        description: "Importance level: critical=must have, high=important, medium=standard, low=nice to have"
-      ceo_verified:
-        type: "bool"
-        default: false
-      status:
-        type: "enum"
-        enum_values: ["ACTIVE", "SUPERSEDED"]
-        default: "ACTIVE"
-      code_refs:
-        type: "list[dict]"
-        default: []
-        description: "Code files implementing or related to this node"
-      invariants:
-        type: "list[str]"
-        default: []
-        description: "Hard constraints that must always be true for this node"
-
+  Spec:
+    group: Document > Spec
+    read_order: important
   Decision:
-    description: "Locked authoritative knowledge"
-    id_prefix: "dec"
-    parent: null
-
+    group: Document > Decision
+    read_order: foundational
     required:
-      id:
-        type: "str"
-        pattern: '^([a-z0-9_]{1,40}\.core\.[0-9]{8}|(?:core)\.dec:[0-9]+|dec:d[0-9]{3,})$'
-      type:
-        type: "str"
-        enum_values: ["Decision"]
-      topic:
-        type: "str"
-      what:
-        type: "str"
-      why:
-        type: "str"
-      status:
-        type: "enum"
-        enum_values: ["LOCKED", "SUPERSEDED", "WITHDRAWN"]
-      locked_at:
-        type: "timestamp"
-      locked_by:
-        type: "list[str]"
-      session_id:
-        type: "node_ref"
-      created:
-        type: "timestamp"
-      updated:
-        type: "timestamp"
-
-    optional:
-      alternatives_considered:
-        type: "list[dict]"
-        default: []
-      risks:
-        type: "list[str]"
-      priority:
-        type: "enum"
-        enum_values: ["critical", "high", "medium", "low"]
-        default: "medium"
-        description: "Importance level: critical=must have, high=important, medium=standard, low=nice to have"
-      blocks:
-        type: "list[node_ref]"
-      supersedes:
-        type: "node_ref"
-      related_ideas:
-        type: "list[node_ref]"
-      code_refs:
-        type: "list[dict]"
-        default: []
-        description: "Code files implementing or related to this node"
-      invariants:
-        type: "list[str]"
-        default: []
-        description: "Hard constraints that must always be true for this node"
-
-  Session:
-    description: "Record of one AI working session"
-    id_prefix: "session"
-    parent: null
-
-    required:
-      id:
-        type: "str"
-        pattern: '^((?:meta)\.session\.[0-9]{4}-[0-9]{2}-[0-9]{2}\.[a-f0-9]{9}|(?:meta)\.session:[0-9]{4}-[0-9]{2}-[0-9]{2}_[a-f0-9]{9}|session:[0-9]{4}-[0-9]{2}-[0-9]{2}.*)$'
-      type:
-        type: "str"
-        enum_values: ["Session"]
-      actor:
-        type: "str"
-      started_at:
-        type: "timestamp"
-      goal:
-        type: "str"
-      status:
-        type: "enum"
-        enum_values: ["IN_PROGRESS", "COMPLETED", "INTERRUPTED", "FAILED"]
-      created:
-        type: "timestamp"
-      updated:
-        type: "timestamp"
-
-    optional:
-      ended_at:
-        type: "timestamp"
-      outcome:
-        type: "str"
-      nodes_touched:
-        type: "list[node_ref]"
-        default: []
-      decisions_locked:
-        type: "list[node_ref]"
-        default: []
-      pending:
-        type: "list[str]"
-        default: []
-      tokens_used:
-        type: "int"
-      human_present:
-        type: "bool"
-      handoff_notes:
-        type: "str"
-      role:
-        type: "enum"
-        enum_values: ["observer", "contributor", "admin"]
-        default: "contributor"
-        description: "Agent role for this session (audit trail only)"
-
-  Document:
-    description: "Pointer to external doc file with metadata"
-    id_prefix: "doc"
-    parent: null
-
-    required:
-      id:
-        type: "str"
-        pattern: '^([a-z0-9_]{1,40}\.meta\.[a-f0-9]{6}|(?:meta)\.doc:[A-Za-z0-9_.\-]+|doc:.+)$'
-      type:
-        type: "str"
-        enum_values: ["Document"]
-      name:
-        type: "str"
-      source_path:
-        type: "str"
-      content_hash:
-        type: "str"
-        pattern: "^sha256:[a-f0-9]{64}$"
-      registered_at:
-        type: "timestamp"
-      last_verified:
-        type: "timestamp"
-      created:
-        type: "timestamp"
-      updated:
-        type: "timestamp"
-
-    optional:
-      sections:
-        type: "list[dict]"
-        default: []
-      priority:
-        type: "enum"
-        enum_values: ["critical", "high", "medium", "low"]
-        default: "medium"
-        description: "Importance level: critical=must have, high=important, medium=standard, low=nice to have"
-      tags:
-        type: "list[str]"
-        default: []
-      owned_by:
-        type: "str"
-      phase:
-        type: "int"
-      status:
-        type: "enum"
-        enum_values: ["ACTIVE", "STALE", "MISSING", "DEPRECATED"]
-        default: "ACTIVE"
-      code_refs:
-        type: "list[dict]"
-        default: []
-        description: "Code files implementing or related to this node"
-      invariants:
-        type: "list[str]"
-        default: []
-        description: "Hard constraints that must always be true for this node"
-
-  Lesson:
-    description: "Something learned from experience"
-    id_prefix: "lesson"
-    parent: null
-
-    required:
-      id:
-        type: "str"
-        pattern: '^([a-z0-9_]{1,40}\.meta\.[0-9]{8}|(?:meta)\.lesson:[0-9]+|lesson:ll[0-9]{3,})$'
-      type:
-        type: "str"
-        enum_values: ["Lesson"]
-      title:
-        type: "str"
-      trigger:
-        type: "str"
-      what_happened:
-        type: "str"
-      why_it_matters:
-        type: "str"
-      mitigation:
-        type: "str"
-      severity:
-        type: "enum"
-        enum_values: ["low", "medium", "high", "critical"]
-      captured_in_session:
-        type: "node_ref"
-      created:
-        type: "timestamp"
-      updated:
-        type: "timestamp"
-
-    optional:
-      related_nodes:
-        type: "list[node_ref]"
-        default: []
-      related_ideas:
-        type: "list[node_ref]"
-        default: []
-      priority:
-        type: "enum"
-        enum_values: ["critical", "high", "medium", "low"]
-        default: "medium"
-        description: "Importance level: critical=must have, high=important, medium=standard, low=nice to have"
-      verified_count:
-        type: "int"
-        default: 1
-      last_applied:
-        type: "timestamp"
-      tags:
-        type: "list[str]"
-        default: []
-
+      what: str
+      why: str
   Concept:
-    description: "A defined concept stored for AI orientation and framework understanding"
-    id_prefix: "concept"
-    parent: null
-
+    group: Document > Concept
+    read_order: important
     required:
-      id:
-        type: "str"
-        pattern: '^([a-z0-9_]{1,40}\.core\.[0-9]{8}|(?:core)\.con:[0-9]+|concept:.+)$'
-      type:
-        type: "str"
-        enum_values: ["Concept"]
-      name:
-        type: "str"
-      definition:
-        type: "str"
-        description: "What this concept means"
-      usage_guide:
-        type: "str"
-        description: "How AI should use this concept"
-      created:
-        type: "timestamp"
-      updated:
-        type: "timestamp"
-
-    optional:
-      applies_to:
-        type: "list[str]"
-        default: []
-      seed_values:
-        type: "list[str]"
-        default: []
-      priority:
-        type: "enum"
-        enum_values: ["critical", "high", "medium", "low"]
-        default: "medium"
-        description: "Importance level: critical=must have, high=important, medium=standard, low=nice to have"
-      extensible:
-        type: "bool"
-        default: true
-      tags:
-        type: "list[str]"
-        default: []
-
-  TestKind:
-    description: |
-      A category of software test with template and seed examples.
-      One node type, many nodes: each TestKind row is a separate category (e.g. ids
-      testkind:unit, testkind:integration, or project ids testkind:<slug>).
-      Example display names (illustrative — add your own as separate TestKind nodes):
-      Unit Test; Entity Test; TrustGate Matrix; E2E Flow Test; Middleware Test;
-      Level System Test; Integration Test; Performance Test; Security Test;
-      Infrastructure Test.
-
-      Field ``group`` classifies what this TestKind row represents (orthogonal to ``id`` / name slugs such as unit, e2e, integration):
-      - process — testing *method* / how the system is exercised (e.g. unit, integration, e2e, contract, regression, smoke, exploratory).
-      - functional — testing *subject* = behaviour / business acceptance (e.g. acceptance against criteria).
-      - non_functional — testing *subject* = quality attributes (performance, accessibility, …); not the ``Invariant`` node type—name TestKind nodes to avoid confusion.
-      - security — testing *subject* = security (auth, injection, network, crypto, API hardening).
-    id_prefix: "testkind"
-    parent: null
-
-    required:
-      id:
-        type: "str"
-        pattern: '^([a-z0-9_]{1,40}\.test\.[0-9]{8}|(?:test)\.kind:[0-9]+|testkind:.+)$'
-      type:
-        type: "str"
-        enum_values: ["TestKind"]
-      name:
-        type: "str"
-      group:
-        type: "enum"
-        enum_values: ["functional", "non_functional", "security", "process"]
-        description: |
-          process = method (how): unit, integration, e2e, smoke, …
-          functional = behaviour / acceptance subject.
-          non_functional = quality-attribute subject (not node type Invariant).
-          security = security subject.
-      scope:
-        type: "enum"
-        enum_values: ["universal", "platform", "project"]
-      description:
-        type: "str"
-      template:
-        type: "dict"
-      created:
-        type: "timestamp"
-      updated:
-        type: "timestamp"
-
-    optional:
-      platform:
-        type: "str"
-        default: null
-      seed_examples:
-        type: "list[str]"
-        default: []
-      extensible:
-        type: "bool"
-        default: true
-      tags:
-        type: "list[str]"
-        default: []
-
-  TestCase:
-    description: "A specific test instance linked to a TestKind and a feature/node"
-    id_prefix: "tc"
-    parent: null
-
-    required:
-      id:
-        type: "str"
-        pattern: '^([a-z0-9_]{1,40}\.test\.(unit|integration|e2e|smoke|performance|security|acceptance|regression|compatibility|contract|exploratory|accessibility)\.[0-9]{8}|(?:test)\.case:[0-9]+|tc:.+)$'
-      type:
-        type: "str"
-        enum_values: ["TestCase"]
-      name:
-        type: "str"
-      kind_id:
-        type: "node_ref"
-        description: "TestKind this test belongs to"
-      covers:
-        type: "node_ref"
-        description: "Feature/Node being tested"
-      status:
-        type: "enum"
-        enum_values: ["DRAFT", "READY", "PASSING", "FAILING", "SKIPPED", "DEPRECATED"]
-      priority:
-        type: "enum"
-        enum_values: ["low", "medium", "high", "critical"]
-      created:
-        type: "timestamp"
-      updated:
-        type: "timestamp"
-
-    optional:
-      given:
-        type: "str"
-      when:
-        type: "str"
-      then:
-        type: "str"
-      scenario:
-        type: "str"
-        description: "Alternative to Given/When/Then for non-BDD kinds"
-      automated:
-        type: "bool"
-        default: false
-      code_ref:
-        type: "str"
-        description: "e.g. test/auth_test.dart#login_valid"
-      tags:
-        type: "list[str]"
-        default: []
-
-  Engine:
-    description: "Business logic engine (TrustEngine, LevelEngine, etc.)"
-    id_prefix: "engine"
-    required:
-      id: {type: str, pattern: '^([a-z0-9_]{1,40}\.ops\.[0-9]{8}|(?:ops)\.engine:[0-9]+|engine:.+)$'}
-      type: {type: str, enum_values: ["Engine"]}
-      name: {type: str}
-      status: {type: enum, enum_values: ["DRAFT", "ACTIVE", "DEPRECATED"]}
-      created: {type: timestamp}
-      updated: {type: timestamp}
-    optional:
-      priority: {type: enum, enum_values: ["critical","high","medium","low"], default: "medium"}
-      description: {type: str}
-      code_refs: {type: "list[dict]", default: []}
-      invariants: {type: "list[str]", default: []}
-      spec_source: {type: str}
-
-  Flow:
-    description: "User flow or process flow (registration, auth, etc.)"
-    id_prefix: "flow"
-    required:
-      id: {type: str, pattern: '^([a-z0-9_]{1,40}\.ops\.[0-9]{8}|(?:ops)\.flow:[0-9]+|flow:.+)$'}
-      type: {type: str, enum_values: ["Flow"]}
-      name: {type: str}
-      status: {type: enum, enum_values: ["DRAFT", "ACTIVE", "DEPRECATED"]}
-      created: {type: timestamp}
-      updated: {type: timestamp}
-    optional:
-      priority: {type: enum, enum_values: ["critical","high","medium","low"], default: "medium"}
-      description: {type: str}
-      code_refs: {type: "list[dict]", default: []}
-      invariants: {type: "list[str]", default: []}
-      spec_source: {type: str}
-
+      definition: str
+      usage_guide: str
+  Idea:
+    group: Document > Idea
+    read_order: background
+  LessonRule:
+    group: Document > Lesson > Rule
+    read_order: foundational
+  LessonSkill:
+    group: Document > Lesson > Skill
+    read_order: important
+  LessonDev:
+    group: Document > Lesson > Dev
+    read_order: reference
+  LessonCTO:
+    group: Document > Lesson > CTO
+    read_order: reference
+  LessonQA:
+    group: Document > Lesson > QA
+    read_order: reference
   Entity:
-    description: "Domain entity (Traveller, Place, Moment, etc.)"
-    id_prefix: "entity"
-    required:
-      id: {type: str, pattern: '^([a-z0-9_]{1,40}\.domain\.[0-9]{8}|(?:domain)\.entity:[0-9]+|entity:.+)$'}
-      type: {type: str, enum_values: ["Entity"]}
-      name: {type: str}
-      status: {type: enum, enum_values: ["DRAFT", "ACTIVE", "DEPRECATED"]}
-      created: {type: timestamp}
-      updated: {type: timestamp}
-    optional:
-      priority: {type: enum, enum_values: ["critical","high","medium","low"], default: "medium"}
-      description: {type: str}
-      code_refs: {type: "list[dict]", default: []}
-      invariants: {type: "list[str]", default: []}
-      spec_source: {type: str}
-
+    group: Dev > Domain > Entity
+    read_order: foundational
+  ValueObject:
+    group: Dev > Domain > ValueObject
+    read_order: important
+  DomainEvent:
+    group: Dev > Domain > DomainEvent
+    read_order: important
+  Aggregate:
+    group: Dev > Domain > Aggregate
+    read_order: important
+  Flow:
+    group: Dev > Application > Flow
+    read_order: important
   Feature:
-    description: "Product feature (user-facing capability)"
-    id_prefix: "feat"
-    required:
-      id: {type: str, pattern: '^([a-z0-9_]{1,40}\.ops\.[0-9]{8}|(?:ops)\.feat:[0-9]+|feat:.+)$'}
-      type: {type: str, enum_values: ["Feature"]}
-      name: {type: str}
-      status: {type: enum, enum_values: ["DRAFT", "ACTIVE", "DEPRECATED"]}
-      created: {type: timestamp}
-      updated: {type: timestamp}
-    optional:
-      priority: {type: enum, enum_values: ["critical","high","medium","low"], default: "medium"}
-      description: {type: str}
-      code_refs: {type: "list[dict]", default: []}
-      invariants: {type: "list[str]", default: []}
-      spec_source: {type: str}
-
-  Invariant:
-    description: "Hard constraint that must always be true"
-    id_prefix: "inv"
-    required:
-      id: {type: str, pattern: '^([a-z0-9_]{1,40}\.core\.[0-9]{8}|(?:core)\.inv:[0-9]+|inv:.+)$'}
-      type: {type: str, enum_values: ["Invariant"]}
-      name: {type: str}
-      status: {type: enum, enum_values: ["DRAFT", "ACTIVE", "DEPRECATED"]}
-      created: {type: timestamp}
-      updated: {type: timestamp}
-    optional:
-      priority: {type: enum, enum_values: ["critical","high","medium","low"], default: "high"}
-      description: {type: str}
-      rule: {type: str}
-      spec_source: {type: str}
-
-  Screen:
-    description: "UI screen or page"
-    id_prefix: "screen"
-    required:
-      id: {type: str, pattern: '^([a-z0-9_]{1,40}\.ops\.[0-9]{8}|(?:ops)\.screen:[0-9]+|screen:.+)$'}
-      type: {type: str, enum_values: ["Screen"]}
-      name: {type: str}
-      status: {type: enum, enum_values: ["DRAFT", "ACTIVE", "DEPRECATED"]}
-      created: {type: timestamp}
-      updated: {type: timestamp}
-    optional:
-      priority: {type: enum, enum_values: ["critical","high","medium","low"], default: "medium"}
-      description: {type: str}
-      code_refs: {type: "list[dict]", default: []}
-      spec_source: {type: str}
-
-  APIEndpoint:
-    description: "REST/RPC API endpoint"
-    id_prefix: "api"
-    required:
-      id: {type: str, pattern: '^([a-z0-9_]{1,40}\.ops\.[0-9]{8}|(?:ops)\.api:[0-9]+|api:.+)$'}
-      type: {type: str, enum_values: ["APIEndpoint"]}
-      name: {type: str}
-      status: {type: enum, enum_values: ["DRAFT", "ACTIVE", "DEPRECATED"]}
-      created: {type: timestamp}
-      updated: {type: timestamp}
-    optional:
-      priority: {type: enum, enum_values: ["critical","high","medium","low"], default: "medium"}
-      description: {type: str}
-      code_refs: {type: "list[dict]", default: []}
-      spec_source: {type: str}
-
+    group: Dev > Application > Feature
+    read_order: important
+  Command:
+    group: Dev > Application > Command
+    read_order: reference
+  UseCase:
+    group: Dev > Application > UseCase
+    read_order: reference
+  DTO:
+    group: Dev > Application > DTO
+    read_order: background
+  Engine:
+    group: Dev > Infrastructure > Engine
+    read_order: foundational
   Repository:
-    description: "Code repository (flutter, backend, etc.)"
-    id_prefix: "repo"
+    group: Dev > Infrastructure > Repository
+    read_order: reference
+  APIContract:
+    group: Dev > Infrastructure > API > APIContract
+    read_order: important
+  APIEndpoint:
+    group: Dev > Infrastructure > API > APIEndpoint
+    read_order: reference
+  APIRequest:
+    group: Dev > Infrastructure > API > APIRequest
+    read_order: reference
+  APIResponse:
+    group: Dev > Infrastructure > API > APIResponse
+    read_order: reference
+  APIMiddleware:
+    group: Dev > Infrastructure > API > APIMiddleware
+    read_order: reference
+  Webhook:
+    group: Dev > Infrastructure > API > Webhook
+    read_order: background
+  AuthFlow:
+    group: Dev > Infrastructure > Security > AuthFlow
+    read_order: foundational
+  AuthZ:
+    group: Dev > Infrastructure > Security > AuthZ
+    read_order: foundational
+  Permission:
+    group: Dev > Infrastructure > Security > Permission
+    read_order: important
+  Policy:
+    group: Dev > Infrastructure > Security > Policy
+    read_order: important
+  Token:
+    group: Dev > Infrastructure > Security > Token
+    read_order: important
+  Encryption:
+    group: Dev > Infrastructure > Security > Encryption
+    read_order: important
+  Secret:
+    group: Dev > Infrastructure > Security > Secret
+    read_order: important
+  SecurityAudit:
+    group: Dev > Infrastructure > Security > Audit
+    read_order: reference
+  ThreatModel:
+    group: Dev > Infrastructure > Security > ThreatModel
+    read_order: important
+  Vulnerability:
+    group: Dev > Infrastructure > Security > Vulnerability
+    read_order: important
+  DBSchema:
+    group: Dev > Infrastructure > Database > Schema
+    read_order: important
+  Migration:
+    group: Dev > Infrastructure > Database > Migration
+    read_order: reference
+  DBIndex:
+    group: Dev > Infrastructure > Database > Index
+    read_order: background
+  NamedQuery:
+    group: Dev > Infrastructure > Database > Query
+    read_order: reference
+  Seed:
+    group: Dev > Infrastructure > Database > Seed
+    read_order: background
+  EventBus:
+    group: Dev > Infrastructure > Messaging > EventBus
+    read_order: important
+  Queue:
+    group: Dev > Infrastructure > Messaging > Queue
+    read_order: reference
+  Topic:
+    group: Dev > Infrastructure > Messaging > Topic
+    read_order: reference
+  Worker:
+    group: Dev > Infrastructure > Messaging > Worker
+    read_order: reference
+  Metric:
+    group: Dev > Infrastructure > Observability > Metric
+    read_order: reference
+  LogSpec:
+    group: Dev > Infrastructure > Observability > Log
+    read_order: reference
+  TraceSpec:
+    group: Dev > Infrastructure > Observability > Trace
+    read_order: reference
+  Alert:
+    group: Dev > Infrastructure > Observability > Alert
+    read_order: reference
+  CacheStrategy:
+    group: Dev > Infrastructure > Cache > CacheStrategy
+    read_order: reference
+  FileStorage:
+    group: Dev > Infrastructure > Storage > FileStorage
+    read_order: background
+  CDN:
+    group: Dev > Infrastructure > Storage > CDN
+    read_order: background
+  EnvConfig:
+    group: Dev > Infrastructure > Config > EnvConfig
+    read_order: reference
+  FeatureFlag:
+    group: Dev > Infrastructure > Config > FeatureFlag
+    read_order: reference
+  Screen:
+    group: Dev > Frontend > Screen
+    read_order: reference
+  Component:
+    group: Dev > Frontend > Component
+    read_order: reference
+  Layout:
+    group: Dev > Frontend > Layout
+    read_order: background
+  Theme:
+    group: Dev > Frontend > Theme
+    read_order: background
+  Animation:
+    group: Dev > Frontend > Animation
+    read_order: background
+  UIState:
+    group: Dev > Frontend > State
+    read_order: reference
+  Interface:
+    group: Dev > Code > Interface
+    read_order: important
+  AbstractClass:
+    group: Dev > Code > AbstractClass
+    read_order: reference
+  Class:
+    group: Dev > Code > Class
+    read_order: reference
+  Mixin:
+    group: Dev > Code > Mixin
+    read_order: background
+  CodeEnum:
+    group: Dev > Code > Enum
+    read_order: reference
+  TypeAlias:
+    group: Dev > Code > TypeAlias
+    read_order: background
+  Generic:
+    group: Dev > Code > Generic
+    read_order: reference
+  Function:
+    group: Dev > Code > Function
+    read_order: reference
+  Method:
+    group: Dev > Code > Method
+    read_order: background
+  Constructor:
+    group: Dev > Code > Constructor
+    read_order: background
+  Extension:
+    group: Dev > Code > Extension
+    read_order: background
+  Field:
+    group: Dev > Code > Field
+    read_order: background
+  Variable:
+    group: Dev > Code > Variable
+    read_order: background
+  Constant:
+    group: Dev > Code > Constant
+    read_order: reference
+  Parameter:
+    group: Dev > Code > Parameter
+    read_order: background
+  Module:
+    group: Dev > Code > Module
+    read_order: reference
+  Invariant:
+    group: Constraint > Invariant
+    read_order: foundational
     required:
-      id: {type: str, pattern: '^([a-z0-9_]{1,40}\.meta\.[0-9]{8}|(?:meta)\.repo:[0-9]+|repo:.+)$'}
-      type: {type: str, enum_values: ["Repository"]}
-      name: {type: str}
-      status: {type: enum, enum_values: ["DRAFT", "ACTIVE", "DEPRECATED"]}
-      created: {type: timestamp}
-      updated: {type: timestamp}
+      rule: str
+      scope: str
+      enforcement: str
+      violation_action: str
+  Precondition:
+    group: Constraint > Precondition
+    read_order: important
+  Postcondition:
+    group: Constraint > Postcondition
+    read_order: important
+  BusinessRule:
+    group: Constraint > BusinessRule
+    read_order: important
+  ErrorDomain:
+    group: Error > ErrorDomain
+    read_order: important
+    required:
+      domain: str
+      fix_guide: str
+  ErrorCase:
+    group: Error > ErrorCase
+    read_order: reference
+    required:
+      code:
+        type: str
+        pattern: '^[A-Z]+_[FEWI]_[0-9]{3}$'
+      trigger: str
+      severity: str
+      handling: str
+      fix: str
     optional:
-      priority: {type: enum, enum_values: ["critical","high","medium","low"], default: "high"}
-      description: {type: str}
-      url: {type: str}
-
+      context:
+        type: dict
+        fields:
+          domains: list[str]
+          features: list[str]
+          flows: list[str]
+          engines: list[str]
+          functions: list[str]
+          modules: list[str]
+          entities: list[str]
+          screens: list[str]
+      keywords: list[str]
+      error_messages: list[str]
+      stack_patterns: list[str]
+  TestSuite:
+    group: Test > TestSuite
+    read_order: reference
+  TestKind:
+    group: Test > TestKind
+    read_order: reference
+  TestCase:
+    group: Test > TestCase
+    read_order: background
+  Session:
+    group: Meta > Session
+    read_order: background
   Wave:
-    description: "Build wave / sprint"
-    id_prefix: "wave"
-    required:
-      id: {type: str, pattern: '^([a-z0-9_]{1,40}\.meta\.[0-9]{8}|(?:meta)\.wave:[0-9]+|wave:.+)$'}
-      type: {type: str, enum_values: ["Wave"]}
-      name: {type: str}
-      status: {type: enum, enum_values: ["DRAFT", "ACTIVE", "COMPLETED", "DEPRECATED"]}
-      created: {type: timestamp}
-      updated: {type: timestamp}
-    optional:
-      priority: {type: enum, enum_values: ["critical","high","medium","low"], default: "medium"}
-      description: {type: str}
-
+    group: Meta > Wave
+    read_order: background
   Task:
-    description: "Work item for AI agent communication queue"
-    id_prefix: "task"
-    required:
-      id: {type: str, pattern: '^([a-z0-9_]{1,40}\.meta\.[0-9]{8}|(?:meta)\.task:[0-9]+|task:.+)$'}
-      type: {type: str, enum_values: ["Task"]}
-      name: {type: str}
-      assignee: {type: enum, enum_values: ["cursor", "claude-cli", "haiku", "any"], default: "cursor"}
-      status: {type: enum, enum_values: ["PENDING", "RUNNING", "DONE", "FAILED", "BLOCKED"], default: "PENDING"}
-      created: {type: timestamp}
-      updated: {type: timestamp}
-    optional:
-      session_id: {type: node_ref}
-      brief_path: {type: str}
-      wave: {type: str}
-      priority: {type: enum, enum_values: ["critical", "high", "medium", "low"], default: "medium"}
-      error: {type: str}
-      result_summary: {type: str}
-
+    group: Meta > Task
+    read_order: background
+  Document:
+    group: Document > Spec
+    read_order: important
+  Lesson:
+    group: Document > Lesson > Dev
+    read_order: reference
+  Node:
+    group: Meta > Graph > Node
+    read_order: reference
   CtoDevHandoff:
-    description: >
-      CTO-DEV lane: structured message between CTO-side and dev tooling (Cursor, Augment, etc.).
-      Threading convention: only the thread head links to a Wave via graph edges; every later
-      node links only to the previous handoff node (one direction), never a second edge to the Wave.
-    id_prefix: "ctodev"
-    parent: null
-    required:
-      id: {type: str, pattern: '^([a-z0-9_]{1,40}\.meta\.[0-9]{8}|(?:meta)\.ctodev:[0-9]+|ctodev:.+)$'}
-      type: {type: str, enum_values: ["CtoDevHandoff"]}
-      name: {type: str}
-      status: {type: enum, enum_values: ["OPEN", "ACKED", "SUPERSEDED", "ARCHIVED"], default: "OPEN"}
-      created: {type: timestamp}
-      updated: {type: timestamp}
-    optional:
-      session_id:
-        type: node_ref
-      continues_from:
-        type: node_ref
-        description: "Previous handoff in the same thread (omit on first node)"
-      summary:
-        type: str
-      body:
-        type: str
-      tags:
-        type: list[str]
-        default: []
-
+    group: Meta > Handoff > CTO
+    read_order: reference
   QaCodeDevHandoff:
-    description: >
-      QAcode-DEV lane: structured message between QA-code review and dev tooling.
-      Same threading convention as CtoDevHandoff: single Wave anchor per thread via edges;
-      subsequent handoffs chain only to the prior node.
-    id_prefix: "qacodev"
-    parent: null
-    required:
-      id: {type: str, pattern: '^([a-z0-9_]{1,40}\.meta\.[0-9]{8}|(?:meta)\.qacodev:[0-9]+|qacodev:.+)$'}
-      type: {type: str, enum_values: ["QaCodeDevHandoff"]}
-      name: {type: str}
-      status: {type: enum, enum_values: ["OPEN", "ACKED", "SUPERSEDED", "ARCHIVED"], default: "OPEN"}
-      created: {type: timestamp}
-      updated: {type: timestamp}
-    optional:
-      session_id:
-        type: node_ref
-      continues_from:
-        type: node_ref
-        description: "Previous handoff in the same thread (omit on first node)"
-      summary:
-        type: str
-      body:
-        type: str
-      tags:
-        type: list[str]
-        default: []
+    group: Meta > Handoff > QA
+    read_order: reference

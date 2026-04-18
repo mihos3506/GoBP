@@ -70,7 +70,7 @@ def test_create_testkind_gets_defaults(tmp_path: Path) -> None:
     index = GraphIndex.load_from_disk(tmp_path)
     node = index.get_node("testkind:custom_acme")
     assert node is not None
-    assert node.get("group") == "process"
+    assert node.get("group") == "Test > TestKind"
     assert node.get("scope") == "project"
     assert isinstance(node.get("template"), dict)
 

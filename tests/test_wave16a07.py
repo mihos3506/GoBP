@@ -210,8 +210,8 @@ def test_tested_by_edge_valid(tmp_path):
     id_tc = r2["node_id"]
 
     index = GraphIndex.load_from_disk(tmp_path)
-    r3 = asyncio.run(dispatch(f"edge: {id_flow} --tested_by--> {id_tc}", index, tmp_path))
-    assert r3.get("ok") is True, f"tested_by edge failed: {r3}"
+    r3 = asyncio.run(dispatch(f"edge: {id_flow} --validated_by--> {id_tc}", index, tmp_path))
+    assert r3.get("ok") is True, f"validated_by edge failed: {r3}"
 
 
 # ── duplicate detection tests ─────────────────────────────────────────────────

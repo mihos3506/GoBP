@@ -8,7 +8,7 @@ if TYPE_CHECKING:
     from gobp.core.graph import GraphIndex
 
 
-def normalize_text(text: str) -> str:
+def normalize_text(text: Any) -> str:
     """Normalize text for Vietnamese-aware search.
 
     Uses unidecode for consistent romanization:
@@ -17,8 +17,16 @@ def normalize_text(text: str) -> str:
         'Hà Nội' -> 'Ha Noi'
         'TrustGate' -> 'TrustGate' (ASCII unchanged)
 
+    ``description`` may be a ``{info, code}`` dict (schema v2); it is flattened first.
+
     Falls back to unicodedata if unidecode not installed.
     """
+    if isinstance(text, dict):
+        text = f"{text.get('info', '')} {text.get('code', '')}"
+    elif not isinstance(text, str):
+        text = str(text if text is not None else "")
+    if not text.strip():
+        return ""
     try:
         from unidecode import unidecode
 

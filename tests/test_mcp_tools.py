@@ -25,7 +25,7 @@ def populated_root(tmp_path: Path) -> Path:
     root.mkdir(parents=True)
 
     # Schema expected at <root>/gobp/schema
-    schema_src = Path("gobp/schema")
+    schema_src = Path(__file__).resolve().parent.parent / "gobp" / "schema"
     schema_dst = root / "gobp" / "schema"
     schema_dst.parent.mkdir(parents=True, exist_ok=True)
     shutil.copytree(schema_src, schema_dst)
@@ -85,6 +85,7 @@ def populated_root(tmp_path: Path) -> Path:
         {
             "id": "session:2026-04-14-1",
             "type": "Session",
+            "name": "Ship MCP server",
             "actor": "cursor",
             "started_at": "2026-04-14T10:00:00Z",
             "ended_at": "2026-04-14T11:00:00Z",
@@ -102,6 +103,7 @@ def populated_root(tmp_path: Path) -> Path:
         {
             "id": "session:2026-04-15-1",
             "type": "Session",
+            "name": "Implement read tools",
             "actor": "cursor",
             "started_at": "2026-04-15T10:00:00Z",
             "goal": "Implement read tools",
@@ -115,6 +117,7 @@ def populated_root(tmp_path: Path) -> Path:
         {
             "id": "dec:d001",
             "type": "Decision",
+            "name": "MCP Transport",
             "topic": "MCP Transport",
             "what": "Use stdio server mode for compatibility and simplicity.",
             "why": "Broad client support and lower operational complexity.",
@@ -132,6 +135,7 @@ def populated_root(tmp_path: Path) -> Path:
         {
             "id": "dec:d002",
             "type": "Decision",
+            "name": "Wave 3 read tools scope",
             "topic": "MCP Transport",
             "what": "Retain exactly seven read tools in Wave 3 scope.",
             "why": "Matches brief and keeps v1 minimal.",

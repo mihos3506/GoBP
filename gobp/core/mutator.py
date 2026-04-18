@@ -21,10 +21,33 @@ import yaml
 from gobp.core import cache as _cache_module
 from gobp.core import db as _db
 from gobp.core.history import append_event
-from gobp.core.loader import load_node_file, parse_frontmatter
-from gobp.core.validator import validate_edge, validate_node
+from gobp.core.loader import load_node_file, package_schema_dir, parse_frontmatter
+from gobp.core.validator import ValidationResult, validate_edge, validate_node
 
 _EDGE_DEDUPE_CACHE: dict[str, tuple[int, int, int, int]] = {}
+
+
+def coerce_and_validate_node(
+    gobp_root: Path,
+    node: dict[str, Any],
+    schema: dict[str, Any],
+) -> ValidationResult:
+    """Validate ``node`` against schema; use Validator v2 when ``schema_name`` is v2."""
+    if str(schema.get("schema_name", "")) == "gobp_core_v2":
+        from gobp.core.validator_v2 import make_validator_v2
+
+        schema_dir = gobp_root / "gobp" / "schema"
+        if not (schema_dir / "core_nodes.yaml").exists():
+            schema_dir = package_schema_dir()
+        v = make_validator_v2(schema_dir)
+        fixed = v.auto_fix(dict(node))
+        errs = v.validate_node(fixed)
+        node.clear()
+        node.update(fixed)
+        if errs:
+            return ValidationResult(ok=False, errors=errs)
+        return ValidationResult(ok=True)
+    return validate_node(node, schema)
 
 
 def _generate_session_id(goal: str = "") -> str:
@@ -122,7 +145,7 @@ def create_node(
         ValueError: If node fails validation or lacks 'id'.
         FileExistsError: If node file already exists (use update_node instead).
     """
-    result = validate_node(node, schema)
+    result = coerce_and_validate_node(gobp_root, node, schema)
     if not result.ok:
         raise ValueError(f"Node validation failed: {result.errors}")
 
@@ -186,7 +209,7 @@ def create_nodes_batch(
     except Exception:
         pass
     for node in nodes:
-        result = validate_node(node, schema)
+        result = coerce_and_validate_node(gobp_root, node, schema)
         if not result.ok:
             raise ValueError(f"Node validation failed: {result.errors}")
         node_id = node.get("id")
@@ -250,7 +273,7 @@ def update_node(
         ValueError: If validation fails or node lacks 'id'.
         FileNotFoundError: If node file does not exist (use create_node).
     """
-    result = validate_node(node, schema)
+    result = coerce_and_validate_node(gobp_root, node, schema)
     if not result.ok:
         raise ValueError(f"Node validation failed: {result.errors}")
 

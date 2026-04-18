@@ -70,6 +70,7 @@ def _populate_mihos_project(root: Path) -> None:
         {
             "id": "session:2026-04-14_foundation",
             "type": "Session",
+            "name": "Import MIHOS foundational docs",
             "actor": "Claude Opus 4.6",
             "started_at": _days_ago(3),
             "ended_at": _days_ago(3),
@@ -85,6 +86,7 @@ def _populate_mihos_project(root: Path) -> None:
         {
             "id": "session:2026-04-14_features",
             "type": "Session",
+            "name": "Extract Feature nodes from DOC-07",
             "actor": "Claude Opus 4.6",
             "started_at": _days_ago(2),
             "ended_at": _days_ago(2),
@@ -100,6 +102,7 @@ def _populate_mihos_project(root: Path) -> None:
         {
             "id": "session:2026-04-15_decisions",
             "type": "Session",
+            "name": "Lock core architectural decisions",
             "actor": "Claude Opus 4.6",
             "started_at": _days_ago(1),
             "ended_at": _days_ago(1),
@@ -115,6 +118,7 @@ def _populate_mihos_project(root: Path) -> None:
         {
             "id": "session:2026-04-15_current",
             "type": "Session",
+            "name": "Wave 8 integration test session",
             "actor": "Claude Opus 4.6",
             "started_at": _now(),
             "goal": "Wave 8 integration test session",
@@ -396,6 +400,7 @@ def _populate_mihos_project(root: Path) -> None:
     lessons = [
         {
             "id": "lesson:ll001", "type": "Lesson",
+            "name": "Schema-aware test fixtures required for GraphIndex",
             "title": "Schema-aware test fixtures required for GraphIndex",
             "trigger": "Writing tests that call GraphIndex.load_from_disk()",
             "what_happened": (
@@ -411,6 +416,7 @@ def _populate_mihos_project(root: Path) -> None:
         },
         {
             "id": "lesson:ll002", "type": "Lesson",
+            "name": "Async handlers must be awaited in MCP server dispatch",
             "title": "Async handlers must be awaited in MCP server dispatch",
             "trigger": "Adding an async tool handler to server.py",
             "what_happened": (

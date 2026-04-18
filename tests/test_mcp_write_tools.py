@@ -119,9 +119,9 @@ def test_node_upsert_validation_failure(populated_root):
         index,
         populated_root,
         {
-            "type": "Idea",
-            "name": "Bad idea",
-            "fields": {"status": "INVALID_STATUS"},  # not in enum
+            "type": "Decision",
+            "name": "Bad decision",
+            "fields": {"what": "", "why": "missing what"},
             "session_id": "session:2026-04-14_test",
         },
     )

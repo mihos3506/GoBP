@@ -1,0 +1,263 @@
+# GoBP Core Edge Types
+# Reference: docs/SCHEMA.md section 3
+# Schema version: 1.0
+
+schema_version: "2.0"
+schema_name: "gobp_core"
+
+edge_types:
+
+  relates_to:
+    description: "Generic connection between two nodes"
+    directional: false
+    cardinality: "many_to_many"
+    allowed_node_types: ["all"]
+
+    required:
+      from:
+        type: "node_ref"
+      to:
+        type: "node_ref"
+      type:
+        type: "str"
+        enum_values: ["relates_to"]
+
+    optional:
+      reason:
+        type: "str"
+
+  supersedes:
+    description: "New version replaces old version"
+    directional: true
+    cardinality: "one_to_one"
+    allowed_node_types: ["Idea", "Decision", "Node"]
+
+    required:
+      from:
+        type: "node_ref"
+      to:
+        type: "node_ref"
+      type:
+        type: "str"
+        enum_values: ["supersedes"]
+
+    optional:
+      reason:
+        type: "str"
+      superseded_at:
+        type: "timestamp"
+
+  implements:
+    description: "Concrete implementation of abstract spec"
+    directional: true
+    cardinality: "many_to_many"
+    allowed_node_types: ["Node->Decision", "Node->Node"]
+
+    required:
+      from:
+        type: "node_ref"
+      to:
+        type: "node_ref"
+      type:
+        type: "str"
+        enum_values: ["implements"]
+
+    optional:
+      partial:
+        type: "bool"
+        default: false
+      notes:
+        type: "str"
+
+  discovered_in:
+    description: "Node was created in this session"
+    directional: true
+    cardinality: "many_to_one"
+    allowed_node_types: ["all->Session"]
+
+    required:
+      from:
+        type: "node_ref"
+      to:
+        type: "node_ref"
+      type:
+        type: "str"
+        enum_values: ["discovered_in"]
+
+    optional:
+      position_in_session:
+        type: "int"
+
+  references:
+    description: "Node points to document section for detail"
+    directional: true
+    cardinality: "many_to_many"
+    allowed_node_types: ["all->Document"]
+
+    required:
+      from:
+        type: "node_ref"
+      to:
+        type: "node_ref"
+      type:
+        type: "str"
+        enum_values: ["references"]
+
+    optional:
+      section:
+        type: "str"
+      lines:
+        type: "list[int]"
+
+  covers:
+    description: "TestCase A covers functionality of Node B (validation / test coverage)"
+    directional: true
+    cardinality: "many_to_many"
+    notes: "Inverse of tested_by. TestCase covers Flow/Engine/Feature"
+    allowed_node_types:
+      - "TestCase->Node"
+      - "TestCase->Idea"
+      - "TestCase->Decision"
+      - "TestCase->Flow"
+      - "TestCase->Engine"
+      - "TestCase->Feature"
+
+    required:
+      from:
+        type: "node_ref"
+      to:
+        type: "node_ref"
+      type:
+        type: "str"
+        enum_values: ["covers"]
+
+    optional:
+      coverage_type:
+        type: "str"
+        description: "happy_path | error_path | boundary | security"
+
+  depends_on:
+    description: "Node A requires Node B to function correctly"
+    directional: true
+    cardinality: "many_to_many"
+    notes: "Use for: Engine depends_on Engine, Flow depends_on Entity"
+    allowed_node_types:
+      - "Engine->Engine"
+      - "Flow->Flow"
+      - "Flow->Engine"
+      - "Flow->Entity"
+      - "Engine->Flow"
+      - "Feature->Feature"
+      - "Node->Node"
+
+    required:
+      from:
+        type: "node_ref"
+      to:
+        type: "node_ref"
+      type:
+        type: "str"
+        enum_values: ["depends_on"]
+
+    optional:
+      notes:
+        type: "str"
+
+  tested_by:
+    description: "Node A is validated by TestCase B"
+    directional: true
+    cardinality: "many_to_many"
+    notes: "Use for: Flow tested_by TestCase, Engine tested_by TestCase"
+    allowed_node_types:
+      - "Flow->TestCase"
+      - "Engine->TestCase"
+      - "Feature->TestCase"
+      - "Node->TestCase"
+
+    required:
+      from:
+        type: "node_ref"
+      to:
+        type: "node_ref"
+      type:
+        type: "str"
+        enum_values: ["tested_by"]
+
+    optional:
+      notes:
+        type: "str"
+
+  of_kind:
+    description: "TestCase belongs to a TestKind"
+    directional: true
+    cardinality: "many_to_one"
+    allowed_node_types: ["TestCase->TestKind"]
+
+    required:
+      from:
+        type: "node_ref"
+      to:
+        type: "node_ref"
+      type:
+        type: "str"
+        enum_values: ["of_kind"]
+
+  enforces:
+    description: "Node enforces a constraint or rule"
+    directional: true
+    cardinality: "many_to_many"
+    allowed_node_types: ["Engine->Invariant", "Flow->Invariant", "Feature->Invariant", "Decision->Decision", "Decision->Node"]
+
+    required:
+      from:
+        type: "node_ref"
+      to:
+        type: "node_ref"
+      type:
+        type: "str"
+        enum_values: ["enforces"]
+
+  triggers:
+    description: "Node triggers another node or process"
+    directional: true
+    cardinality: "many_to_many"
+    allowed_node_types: ["Flow->Flow", "Flow->Engine", "Flow->Feature", "Flow->Node", "Engine->Flow", "Engine->Engine", "Engine->Feature", "Engine->Node", "Feature->Flow", "Feature->Engine", "Feature->Feature", "Feature->Node"]
+
+    required:
+      from:
+        type: "node_ref"
+      to:
+        type: "node_ref"
+      type:
+        type: "str"
+        enum_values: ["triggers"]
+
+  validates:
+    description: "Node validates another node"
+    directional: true
+    cardinality: "many_to_many"
+    allowed_node_types: ["Engine->Entity", "Engine->Node", "Engine->Feature", "Flow->Entity", "Flow->Node", "Flow->Feature", "TestCase->Entity", "TestCase->Node", "TestCase->Feature"]
+
+    required:
+      from:
+        type: "node_ref"
+      to:
+        type: "node_ref"
+      type:
+        type: "str"
+        enum_values: ["validates"]
+
+  produces:
+    description: "Node produces or outputs another node"
+    directional: true
+    cardinality: "many_to_many"
+    allowed_node_types: ["Flow->Entity", "Flow->Node", "Engine->Entity", "Engine->Node", "Feature->Entity", "Feature->Node"]
+
+    required:
+      from:
+        type: "node_ref"
+      to:
+        type: "node_ref"
+      type:
+        type: "str"
+        enum_values: ["produces"]

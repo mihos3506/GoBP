@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 # Actions that participate in before_write validation (subset of server write actions).
@@ -36,6 +37,25 @@ def before_write(action: str, params: dict[str, Any], index: Any) -> dict[str, A
                 "error": f"Unknown node type: {node_type}",
                 "suggestion": f"Valid types: {', '.join(_get_valid_types(index))}",
             }
+
+        try:
+            from gobp.core.validator_v2 import make_validator_v2
+
+            schema_dir = _schema_dir_for_index(index)
+            validator = make_validator_v2(schema_dir)
+            node_data = _extract_node_data_for_v2(params)
+            if node_data:
+                fixed = validator.auto_fix(dict(node_data))
+                errs = validator.validate_node(fixed)
+                if errs:
+                    return {
+                        "ok": False,
+                        "error": errs[0],
+                        "all_errors": errs,
+                        "suggestion": _suggest_fix_v2(errs[0], fixed),
+                    }
+        except Exception:
+            pass  # Fallback to downstream validation
 
     # 2. Session required for writes
     session_id = params.get("session_id", "")
@@ -112,6 +132,46 @@ def _get_valid_types(index: Any) -> list[str]:
         return sorted(schema.get("node_types", {}).keys())
     except Exception:
         return []
+
+
+def _schema_dir_for_index(index: Any) -> Path:
+    """Resolve ``gobp/schema`` for the project, else packaged schema."""
+    from gobp.core.loader import package_schema_dir
+
+    try:
+        root = index._gobp_root
+        if root:
+            d = root / "gobp" / "schema"
+            if d.exists():
+                return d
+    except Exception:
+        pass
+    return package_schema_dir()
+
+
+def _extract_node_data_for_v2(params: dict[str, Any]) -> dict[str, Any] | None:
+    """Build a minimal node dict for Validator v2 pre-check."""
+    ntype = params.get("type")
+    name = params.get("name")
+    if not ntype or not name:
+        return None
+    fields = params.get("fields")
+    if not isinstance(fields, dict):
+        fields = {}
+    out: dict[str, Any] = {**fields, "type": str(ntype), "name": str(name)}
+    if params.get("id"):
+        out["id"] = str(params["id"])
+    return out
+
+
+def _suggest_fix_v2(first_error: str, node_data: dict[str, Any]) -> str:
+    """Short hint for common v2 validation failures."""
+    err_l = first_error.lower()
+    if "description" in err_l or "info" in err_l:
+        return "Set fields.description or provide non-empty description.info for schema v2."
+    if "group" in err_l:
+        return "Ensure group is set; use template: to see v2 group breadcrumb for this type."
+    return f"Check node fields against schema v2: {node_data.get('type', '')}"
 
 
 def _extract_type_from_query(query: str) -> str:

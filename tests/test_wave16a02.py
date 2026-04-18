@@ -181,7 +181,7 @@ def test_new_edge_types_in_schema() -> None:
 
     schema = yaml.safe_load(Path("gobp/schema/core_edges.yaml").read_text(encoding="utf-8"))
     edge_types = list(schema.get("edge_types", {}).keys())
-    for required in ("enforces", "triggers", "validates", "produces"):
+    for required in ("enforces", "triggers", "validated_by", "produces"):
         assert required in edge_types, f"Edge type '{required}' missing from schema"
 
 

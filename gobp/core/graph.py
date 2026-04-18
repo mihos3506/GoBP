@@ -16,7 +16,8 @@ from gobp.core import db as _db
 from gobp.core.id_config import generate_external_id
 from gobp.core.indexes import AdjacencyIndex, InvertedIndex
 from gobp.core.loader import load_edge_file, load_node_file, load_schema
-from gobp.core.validator import validate_edge, validate_node
+from gobp.core.mutator import coerce_and_validate_node
+from gobp.core.validator import validate_edge
 
 
 PRIORITY_THRESHOLDS: list[tuple[int, str]] = [
@@ -135,7 +136,9 @@ class GraphIndex:
         for node_file in nodes_dir.glob("**/*.md"):
             try:
                 node = load_node_file(node_file)
-                result = validate_node(node, self._nodes_schema)
+                if self._gobp_root is None:
+                    raise RuntimeError("GraphIndex._gobp_root must be set before loading nodes")
+                result = coerce_and_validate_node(self._gobp_root, node, self._nodes_schema)
                 if result.ok:
                     node_id = node.get("id")
                     if node_id:
@@ -363,7 +366,10 @@ class GraphIndex:
         data["type"] = node_type
         data["name"] = name
 
-        result = validate_node(data, self._nodes_schema)
+        root = self._gobp_root
+        if root is None:
+            raise ValueError("gobp_root required for node validation")
+        result = coerce_and_validate_node(root, data, self._nodes_schema)
         if not result.ok:
             raise ValueError(f"Node validation failed: {result.errors}")
 

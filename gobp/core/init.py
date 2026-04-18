@@ -22,6 +22,40 @@ from gobp.core.id_config import DEFAULT_GROUPS
 INIT_SCHEMA_VERSION = 2  # Wave 4 introduces schema v2
 
 
+def _enrich_seeds_with_schema_v2(seeds: list[dict[str, Any]]) -> None:
+    """Add v2 taxonomy and ``description`` shape to universal seed dicts (mutates list)."""
+    from gobp.core.file_format import auto_fill_description
+    from gobp.core.loader import package_schema_dir
+    from gobp.core.schema_loader import load_schema_v2
+
+    schema_dir = package_schema_dir()
+    try:
+        sv2 = load_schema_v2(schema_dir)
+    except Exception:
+        return
+
+    for node in seeds:
+        nt = str(node.get("type", ""))
+        if nt:
+            gg = sv2.get_group(nt)
+            if gg:
+                node["group"] = gg
+            node["read_order"] = sv2.get_default_read_order(nt)
+        node.setdefault("lifecycle", "draft")
+
+        if nt == "Concept":
+            if isinstance(node.get("description"), dict):
+                continue
+            defn = str(node.get("definition", "")).strip()
+            usage = str(node.get("usage_guide", "")).strip()
+            parts = [p for p in (defn, usage) if p]
+            node["description"] = {"info": "\n\n".join(parts), "code": ""}
+        elif "description" in node:
+            node["description"] = auto_fill_description(node["description"])
+        else:
+            node["description"] = {"info": "", "code": ""}
+
+
 def sync_config_schema_version(project_root: Path) -> dict[str, Any]:
     """Raise ``.gobp/config.yaml`` ``schema_version`` to ``INIT_SCHEMA_VERSION`` if lower or missing.
 
@@ -523,6 +557,8 @@ def seed_universal_nodes(project_root: Path, *, only_missing: bool = False) -> d
             "updated": now,
         },
     ]
+
+    _enrich_seeds_with_schema_v2(seeds)
 
     created_ids: list[str] = []
     skipped_ids: list[str] = []

@@ -27,15 +27,40 @@ class SchemaV2:
     """
 
     def __init__(self, schema_dir: Path) -> None:
-        nodes_path = schema_dir / "core_nodes_v2.yaml"
-        edges_path = schema_dir / "core_edges_v2.yaml"
-        if not nodes_path.exists():
+        nodes_v2 = schema_dir / "core_nodes_v2.yaml"
+        nodes_prod = schema_dir / "core_nodes.yaml"
+        if nodes_v2.exists():
+            nodes_path = nodes_v2
+        elif nodes_prod.exists():
+            raw_probe = yaml.safe_load(nodes_prod.read_text(encoding="utf-8")) or {}
+            if str(raw_probe.get("schema_name", "")) == "gobp_core_v2":
+                nodes_path = nodes_prod
+            else:
+                raise FileNotFoundError(
+                    f"Schema v2 not found: {nodes_v2} "
+                    f"(and {nodes_prod} is not gobp_core_v2)"
+                )
+        else:
             raise FileNotFoundError(
-                f"Schema v2 not found: {nodes_path} (expected packaged core_nodes_v2.yaml)"
+                f"Schema v2 not found: {nodes_v2} (expected core_nodes_v2.yaml "
+                f"or promoted core_nodes.yaml)"
             )
         self._nodes = yaml.safe_load(nodes_path.read_text(encoding="utf-8")) or {}
+
         self._edges: dict[str, Any] = {}
-        if edges_path.exists():
+        edges_v2 = schema_dir / "core_edges_v2.yaml"
+        edges_prod = schema_dir / "core_edges.yaml"
+        if edges_v2.exists():
+            edges_path = edges_v2
+        elif edges_prod.exists():
+            eraw = yaml.safe_load(edges_prod.read_text(encoding="utf-8")) or {}
+            if str(eraw.get("schema_name", "")) == "gobp_core_edges_v2":
+                edges_path = edges_prod
+            else:
+                edges_path = None
+        else:
+            edges_path = None
+        if edges_path is not None and edges_path.exists():
             self._edges = yaml.safe_load(edges_path.read_text(encoding="utf-8")) or {}
 
     @property

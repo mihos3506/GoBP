@@ -290,11 +290,11 @@ assert parse_query("create:Node automated=true")[2]["automated"] is True
 QUERY_RULES: dict[str, Any] = {
     "rules": [
         "1. overview: — call ONCE at session start. Never again same session.",
-        "2. template: — BEFORE first create of a NodeType, fetch template: ThatType (repeat anytime; not a single-call cap).",
-        "3. template_batch: — when creating multiple nodes of same type.",
+        "2. template: — BEFORE first create of an unfamiliar NodeType, fetch template: ThatType (repeat per type in planning; not one-type-per-MCP-call).",
+        "3. template_batch: — many nodes of the SAME type (blank forms). For MIXED types in one write, use one batch with multiple create: lines (different types) + edges — see docs/GoBP_AI_USER_GUIDE.md.",
         "4. suggest: — BEFORE creating any new node. Check reusable nodes.",
         "5. explore: — instead of find+get+related. Use compact=true for quick check.",
-        "6. batch / quick — for ALL write operations; large op lists are auto-chunked internally (no fixed client limit).",
+        "6. batch / quick — for ALL writes; ONE batch may mix create: ops of different types + edge+:/update:; large op lists are auto-chunked internally (no fixed client limit).",
         "7. find/get — default mode=summary. Only mode=full when debugging.",
         "8. After getting IDs — keep only id+name in next prompt. No full JSON.",
         "9. 1 session = 1 goal. session:end when done.",
@@ -349,7 +349,7 @@ PROTOCOL_GUIDE = {
         "suggest: Payment Flow": "Keyword overlap — surfaces existing engines/entities to reuse",
         "suggest: auth login": "Finds related nodes from short context text",
         "batch session_id='x' ops='create: Engine: A | desc\\nedge+: A --implements--> B'": (
-            "Unified batch: create/update/delete/retype/merge/edge ops (internally chunked)"
+            "Unified batch: create/update/delete/retype/merge/edge ops (internally chunked); ops may mix multiple node types in one batch"
         ),
         "quick: session_id='x' ops='Idea Name | category | wave | description'": (
             "Quick capture: one line per node, pipe-separated; auto-chunked like batch"

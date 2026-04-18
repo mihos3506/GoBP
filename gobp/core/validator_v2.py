@@ -108,6 +108,17 @@ class ValidatorV2:
             out["description"] = auto_fill_description(out["description"])
         else:
             out["description"] = {"info": "", "code": ""}
+        if not str(out["description"].get("info", "")).strip():
+            fb = (
+                str(out.get("name") or "").strip()
+                or str(out.get("goal") or "").strip()
+                or str(out.get("what") or "").strip()
+                or "—"
+            )
+            out["description"] = {
+                "info": fb[:8000],
+                "code": str(out["description"].get("code", "") or ""),
+            }
 
         nt = str(out.get("type", ""))
         if not out.get("group") and nt:

@@ -48,6 +48,7 @@ def test_p1_detects_interrupted_session(gobp_root: Path):
     _write_node(root, {
         "id": "session:2026-04-14_s001",
         "type": "Session",
+        "name": "Build something complex",
         "actor": "test",
         "started_at": _days_ago_iso(2),
         "goal": "Build something complex",
@@ -72,6 +73,7 @@ def test_p1_detects_failed_session_as_high_severity(gobp_root: Path):
     _write_node(root, {
         "id": "session:2026-04-14_s002",
         "type": "Session",
+        "name": "Ship wave",
         "actor": "test",
         "started_at": _days_ago_iso(3),
         "goal": "Ship wave",
@@ -94,6 +96,7 @@ def test_p1_skips_completed_sessions(gobp_root: Path):
     _write_node(root, {
         "id": "session:s003",
         "type": "Session",
+        "name": "Write docs",
         "actor": "test",
         "started_at": _now_iso(),
         "goal": "Write docs",
@@ -276,6 +279,7 @@ def test_max_candidates_cap(gobp_root: Path):
         _write_node(root, {
             "id": f"session:s{i:03d}",
             "type": "Session",
+            "name": f"Goal {i}",
             "actor": "test",
             "started_at": _days_ago_iso(i + 1),
             "goal": f"Goal {i}",

@@ -13,8 +13,8 @@ import yaml
 
 from gobp.core.graph import GraphIndex
 from gobp.core.loader import load_schema, package_schema_dir
-from gobp.core.mutator import _atomic_write, create_edge, create_node
-from gobp.core.validator import validate_edge, validate_node
+from gobp.core.mutator import _atomic_write, coerce_and_validate_node, create_edge, create_node
+from gobp.core.validator import validate_edge
 
 
 def import_proposal(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> dict[str, Any]:
@@ -195,7 +195,8 @@ def import_commit(index: GraphIndex, project_root: Path, args: dict[str, Any]) -
     # Validate everything first (no writes yet)
     errors: list[dict[str, Any]] = []
     for node in all_nodes:
-        result = validate_node(node, nodes_schema)
+        n = dict(node)
+        result = coerce_and_validate_node(project_root, n, nodes_schema)
         if not result.ok:
             errors.append({"node_id": node.get("id"), "errors": result.errors})
 

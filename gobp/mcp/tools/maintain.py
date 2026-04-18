@@ -12,7 +12,8 @@ from functools import lru_cache
 from gobp.core.graph import GraphIndex
 from gobp.core.graph_algorithms import detect_cycles
 from gobp.core.loader import load_schema, package_schema_dir
-from gobp.core.validator import validate_edge, validate_node
+from gobp.core.mutator import coerce_and_validate_node
+from gobp.core.validator import validate_edge
 
 
 @lru_cache(maxsize=1)
@@ -50,7 +51,8 @@ def validate(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> dic
     # Nodes
     if scope in ("all", "nodes"):
         for node in index.all_nodes():
-            result = validate_node(node, nodes_schema)
+            n = dict(node)
+            result = coerce_and_validate_node(project_root, n, nodes_schema)
             node_id = node.get("id", "<unknown>")
             for err in result.errors:
                 issues.append(

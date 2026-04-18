@@ -77,6 +77,13 @@ def _load_graph_data(project_root: Path) -> dict[str, Any]:
 
     index = GraphIndex.load_from_disk(project_root)
 
+    def _desc_preview(raw: object) -> str:
+        if isinstance(raw, dict):
+            text = f"{raw.get('info', '')} {raw.get('code', '')}"
+        else:
+            text = str(raw or "")
+        return text[:200]
+
     # Build node list
     nodes = []
     for node in index.all_nodes():
@@ -86,7 +93,7 @@ def _load_graph_data(project_root: Path) -> dict[str, Any]:
             "type": node.get("type", "Node"),
             "priority": node.get("priority", "medium"),
             "status": node.get("status", "ACTIVE"),
-            "description": node.get("description", "")[:200],
+            "description": _desc_preview(node.get("description", "")),
             "topic": node.get("topic", ""),
             "group": node.get("group", ""),
         })

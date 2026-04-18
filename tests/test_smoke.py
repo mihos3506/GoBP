@@ -122,6 +122,7 @@ def test_core_edges_yaml_valid():
     assert data["schema_version"] == "2.0"
     assert "edge_types" in data
 
+    # Schema v2 edge taxonomy (minimal edge YAML; names differ from legacy v1)
     expected_types = {
         "relates_to",
         "supersedes",
@@ -130,39 +131,39 @@ def test_core_edges_yaml_valid():
         "references",
         "covers",
         "depends_on",
-        "tested_by",
+        "validated_by",
         "of_kind",
         "enforces",
         "triggers",
-        "validates",
         "produces",
+        "specified_in",
+        "belongs_to",
+        "affects",
     }
     actual_types = set(data["edge_types"].keys())
-    assert actual_types == expected_types, f"Expected {expected_types}, got {actual_types}"
+    assert expected_types == actual_types, f"Expected {expected_types}, got {actual_types}"
 
 
 def test_every_node_type_has_required_fields():
-    """Each node type declares required fields."""
+    """Each node type declares taxonomy (schema v2: group breadcrumb)."""
     schema_file = get_schema_dir() / "core_nodes.yaml"
     with open(schema_file, "r", encoding="utf-8") as f:
         data = yaml.safe_load(f)
 
     for type_name, type_def in data["node_types"].items():
-        assert "required" in type_def, f"{type_name} missing 'required' section"
-        assert "id" in type_def["required"], f"{type_name} missing required 'id'"
-        assert "created" in type_def["required"], f"{type_name} missing required 'created'"
+        assert isinstance(type_def, dict), type_name
+        assert type_def.get("group"), f"{type_name} missing 'group' breadcrumb"
 
 
-def test_every_edge_type_has_from_to():
-    """Each edge type has from and to fields."""
+def test_every_edge_type_has_description():
+    """Each edge type has a human description (schema v2 minimal edge YAML)."""
     schema_file = get_schema_dir() / "core_edges.yaml"
     with open(schema_file, "r", encoding="utf-8") as f:
         data = yaml.safe_load(f)
 
     for type_name, type_def in data["edge_types"].items():
-        assert "required" in type_def, f"{type_name} missing 'required' section"
-        assert "from" in type_def["required"], f"{type_name} missing 'from'"
-        assert "to" in type_def["required"], f"{type_name} missing 'to'"
+        assert isinstance(type_def, dict), type_name
+        assert type_def.get("description"), f"{type_name} missing 'description'"
 
 
 # =============================================================================

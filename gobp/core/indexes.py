@@ -10,7 +10,10 @@ from gobp.core.search import normalize_text
 
 def _tokenize_node_text(node: dict[str, Any]) -> set[str]:
     """Extract normalized tokens (length >= 2) from name + description."""
-    raw = f"{node.get('name', '')} {node.get('description', '')}"
+    desc = node.get("description", "")
+    if isinstance(desc, dict):
+        desc = f"{desc.get('info', '')} {desc.get('code', '')}"
+    raw = f"{node.get('name', '')} {desc}"
     norm = normalize_text(raw)
     tokens = re.findall(r"[a-z0-9]+", norm)
     return {t for t in tokens if len(t) >= 2}

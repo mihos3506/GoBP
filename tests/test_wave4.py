@@ -64,24 +64,22 @@ def test_init_seeded_kinds_loadable(gobp_root: Path) -> None:
 
 
 def test_init_all_groups_present(gobp_root: Path) -> None:
-    """All 4 groups present in seeded TestKind nodes."""
+    """Seeded TestKind nodes share schema v2 group breadcrumb."""
     init_project(gobp_root, force=True)
     index = GraphIndex.load_from_disk(gobp_root)
     groups = {n.get("group") for n in index.all_nodes() if n.get("type") == "TestKind"}
-    assert "functional" in groups
-    assert "non_functional" in groups
-    assert "security" in groups
-    assert "process" in groups
+    assert groups == {"Test > TestKind"}
 
 
 def test_init_security_kinds_count(gobp_root: Path) -> None:
-    """Security group has exactly 5 TestKind nodes."""
+    """Security TestKind seeds (by id prefix) count is 5."""
     init_project(gobp_root, force=True)
     index = GraphIndex.load_from_disk(gobp_root)
     sec = [
         n
         for n in index.all_nodes()
-        if n.get("type") == "TestKind" and n.get("group") == "security"
+        if n.get("type") == "TestKind"
+        and str(n.get("id", "")).startswith("testkind:security_")
     ]
     assert len(sec) == 5
 
@@ -169,7 +167,7 @@ def test_gobp_overview_has_concepts(gobp_root: Path) -> None:
 
 
 def test_gobp_overview_has_test_coverage(gobp_root: Path) -> None:
-    """gobp_overview returns test_coverage with 16 kinds."""
+    """gobp_overview returns test_coverage with 16 kinds (schema v2 group breadcrumb)."""
     init_project(gobp_root, force=True)
     index = GraphIndex.load_from_disk(gobp_root)
     result = tools_read.gobp_overview(index, gobp_root, {})
@@ -177,11 +175,7 @@ def test_gobp_overview_has_test_coverage(gobp_root: Path) -> None:
     assert "test_coverage" in result
     tc = result["test_coverage"]
     assert tc["kinds_available"] == 16
-    assert "security" in tc["kinds_by_group"]
-    assert tc["kinds_by_group"]["functional"] == 1  # acceptance
-    assert tc["kinds_by_group"]["process"] == 7
-    assert tc["kinds_by_group"]["non_functional"] == 3
-    assert tc["kinds_by_group"]["security"] == 5
+    assert tc["kinds_by_group"].get("Test > TestKind") == 16
 
 
 # ── CLI subprocess tests ──────────────────────────────────────────────────────

@@ -1,263 +1,39 @@
-# GoBP Core Edge Types
-# Reference: docs/SCHEMA.md section 3
-# Schema version: 1.0
+# GoBP Core Edge Types v2 — reason field on every edge (optional, default "")
+# Reference: docs/GOBP_SCHEMA_REDESIGN_v2.1.md, waves/wave_17a01_brief.md Task 2
+# Validator v1 still uses core_edges.yaml until cutover.
 
 schema_version: "2.0"
-schema_name: "gobp_core"
+version: "2.0"
+schema_name: "gobp_core_edges_v2"
 
 edge_types:
-
-  relates_to:
-    description: "Generic connection between two nodes"
-    directional: false
-    cardinality: "many_to_many"
-    allowed_node_types: ["all"]
-
-    required:
-      from:
-        type: "node_ref"
-      to:
-        type: "node_ref"
-      type:
-        type: "str"
-        enum_values: ["relates_to"]
-
-    optional:
-      reason:
-        type: "str"
-
-  supersedes:
-    description: "New version replaces old version"
-    directional: true
-    cardinality: "one_to_one"
-    allowed_node_types: ["Idea", "Decision", "Node"]
-
-    required:
-      from:
-        type: "node_ref"
-      to:
-        type: "node_ref"
-      type:
-        type: "str"
-        enum_values: ["supersedes"]
-
-    optional:
-      reason:
-        type: "str"
-      superseded_at:
-        type: "timestamp"
-
-  implements:
-    description: "Concrete implementation of abstract spec"
-    directional: true
-    cardinality: "many_to_many"
-    allowed_node_types: ["Node->Decision", "Node->Node"]
-
-    required:
-      from:
-        type: "node_ref"
-      to:
-        type: "node_ref"
-      type:
-        type: "str"
-        enum_values: ["implements"]
-
-    optional:
-      partial:
-        type: "bool"
-        default: false
-      notes:
-        type: "str"
-
-  discovered_in:
-    description: "Node was created in this session"
-    directional: true
-    cardinality: "many_to_one"
-    allowed_node_types: ["all->Session"]
-
-    required:
-      from:
-        type: "node_ref"
-      to:
-        type: "node_ref"
-      type:
-        type: "str"
-        enum_values: ["discovered_in"]
-
-    optional:
-      position_in_session:
-        type: "int"
-
+  specified_in:
+    description: "Node được đặc tả trong Document"
   references:
-    description: "Node points to document section for detail"
-    directional: true
-    cardinality: "many_to_many"
-    allowed_node_types: ["all->Document"]
-
-    required:
-      from:
-        type: "node_ref"
-      to:
-        type: "node_ref"
-      type:
-        type: "str"
-        enum_values: ["references"]
-
-    optional:
-      section:
-        type: "str"
-      lines:
-        type: "list[int]"
-
-  covers:
-    description: "TestCase A covers functionality of Node B (validation / test coverage)"
-    directional: true
-    cardinality: "many_to_many"
-    notes: "Inverse of tested_by. TestCase covers Flow/Engine/Feature"
-    allowed_node_types:
-      - "TestCase->Node"
-      - "TestCase->Idea"
-      - "TestCase->Decision"
-      - "TestCase->Flow"
-      - "TestCase->Engine"
-      - "TestCase->Feature"
-
-    required:
-      from:
-        type: "node_ref"
-      to:
-        type: "node_ref"
-      type:
-        type: "str"
-        enum_values: ["covers"]
-
-    optional:
-      coverage_type:
-        type: "str"
-        description: "happy_path | error_path | boundary | security"
-
+    description: "Node tham chiếu đến node khác"
+  implements:
+    description: "Node implement spec/interface"
   depends_on:
-    description: "Node A requires Node B to function correctly"
-    directional: true
-    cardinality: "many_to_many"
-    notes: "Use for: Engine depends_on Engine, Flow depends_on Entity"
-    allowed_node_types:
-      - "Engine->Engine"
-      - "Flow->Flow"
-      - "Flow->Engine"
-      - "Flow->Entity"
-      - "Engine->Flow"
-      - "Feature->Feature"
-      - "Node->Node"
-
-    required:
-      from:
-        type: "node_ref"
-      to:
-        type: "node_ref"
-      type:
-        type: "str"
-        enum_values: ["depends_on"]
-
-    optional:
-      notes:
-        type: "str"
-
-  tested_by:
-    description: "Node A is validated by TestCase B"
-    directional: true
-    cardinality: "many_to_many"
-    notes: "Use for: Flow tested_by TestCase, Engine tested_by TestCase"
-    allowed_node_types:
-      - "Flow->TestCase"
-      - "Engine->TestCase"
-      - "Feature->TestCase"
-      - "Node->TestCase"
-
-    required:
-      from:
-        type: "node_ref"
-      to:
-        type: "node_ref"
-      type:
-        type: "str"
-        enum_values: ["tested_by"]
-
-    optional:
-      notes:
-        type: "str"
-
-  of_kind:
-    description: "TestCase belongs to a TestKind"
-    directional: true
-    cardinality: "many_to_one"
-    allowed_node_types: ["TestCase->TestKind"]
-
-    required:
-      from:
-        type: "node_ref"
-      to:
-        type: "node_ref"
-      type:
-        type: "str"
-        enum_values: ["of_kind"]
-
+    description: "Node phụ thuộc vào node khác"
+  relates_to:
+    description: "Mối liên hệ chung"
   enforces:
-    description: "Node enforces a constraint or rule"
-    directional: true
-    cardinality: "many_to_many"
-    allowed_node_types: ["Engine->Invariant", "Flow->Invariant", "Feature->Invariant", "Decision->Decision", "Decision->Node"]
-
-    required:
-      from:
-        type: "node_ref"
-      to:
-        type: "node_ref"
-      type:
-        type: "str"
-        enum_values: ["enforces"]
-
+    description: "Constraint áp dụng cho node"
+  validated_by:
+    description: "Node được validate bởi Engine/TestCase"
+  covers:
+    description: "TestCase cover node"
+  belongs_to:
+    description: "Node thuộc về group/suite"
+  of_kind:
+    description: "TestCase thuộc TestKind"
+  supersedes:
+    description: "Node mới thay thế node cũ"
+  discovered_in:
+    description: "Node được tạo trong Session"
+  affects:
+    description: "Node ảnh hưởng đến node khác"
   triggers:
-    description: "Node triggers another node or process"
-    directional: true
-    cardinality: "many_to_many"
-    allowed_node_types: ["Flow->Flow", "Flow->Engine", "Flow->Feature", "Flow->Node", "Engine->Flow", "Engine->Engine", "Engine->Feature", "Engine->Node", "Feature->Flow", "Feature->Engine", "Feature->Feature", "Feature->Node"]
-
-    required:
-      from:
-        type: "node_ref"
-      to:
-        type: "node_ref"
-      type:
-        type: "str"
-        enum_values: ["triggers"]
-
-  validates:
-    description: "Node validates another node"
-    directional: true
-    cardinality: "many_to_many"
-    allowed_node_types: ["Engine->Entity", "Engine->Node", "Engine->Feature", "Flow->Entity", "Flow->Node", "Flow->Feature", "TestCase->Entity", "TestCase->Node", "TestCase->Feature"]
-
-    required:
-      from:
-        type: "node_ref"
-      to:
-        type: "node_ref"
-      type:
-        type: "str"
-        enum_values: ["validates"]
-
+    description: "Node trigger node khác"
   produces:
-    description: "Node produces or outputs another node"
-    directional: true
-    cardinality: "many_to_many"
-    allowed_node_types: ["Flow->Entity", "Flow->Node", "Engine->Entity", "Engine->Node", "Feature->Entity", "Feature->Node"]
-
-    required:
-      from:
-        type: "node_ref"
-      to:
-        type: "node_ref"
-      type:
-        type: "str"
-        enum_values: ["produces"]
+    description: "Node produce output node"

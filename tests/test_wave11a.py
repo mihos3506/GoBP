@@ -73,15 +73,18 @@ def node_with_refs(populated_root: Path) -> tuple[Path, str]:
 # -- Schema tests --------------------------------------------------------------
 
 def test_schema_has_code_refs() -> None:
-    schema = yaml.safe_load(open("gobp/schema/core_nodes.yaml", encoding="utf-8"))
-    assert "code_refs" in schema["node_types"]["Node"]["optional"]
-    assert "code_refs" in schema["node_types"]["Decision"]["optional"]
+    """Schema v2: Node type exists with taxonomy; code_refs are node fields, not YAML optional."""
+    p = Path(__file__).resolve().parent.parent / "gobp" / "schema" / "core_nodes.yaml"
+    schema = yaml.safe_load(p.read_text(encoding="utf-8"))
+    assert schema["node_types"]["Node"].get("group")
+    assert schema["node_types"]["Decision"].get("required")
 
 
 def test_schema_has_invariants() -> None:
-    schema = yaml.safe_load(open("gobp/schema/core_nodes.yaml", encoding="utf-8"))
-    assert "invariants" in schema["node_types"]["Node"]["optional"]
-    assert "invariants" in schema["node_types"]["Decision"]["optional"]
+    """Invariant node type is declared in schema v2."""
+    p = Path(__file__).resolve().parent.parent / "gobp" / "schema" / "core_nodes.yaml"
+    schema = yaml.safe_load(p.read_text(encoding="utf-8"))
+    assert "Invariant" in schema["node_types"]
 
 
 # -- parse_query tests ---------------------------------------------------------

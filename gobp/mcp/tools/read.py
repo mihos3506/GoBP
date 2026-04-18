@@ -1433,7 +1433,7 @@ def template_action(index: GraphIndex, project_root: Path, args: dict[str, Any])
     if edge_lines_out:
         batch_example = batch_example + "\n" + "\n".join(edge_lines_out)
 
-    return {
+    out: dict[str, Any] = {
         "ok": True,
         "type": node_type,
         "group": group,
@@ -1446,6 +1446,26 @@ def template_action(index: GraphIndex, project_root: Path, args: dict[str, Any])
             "Use explore: before creating to avoid duplicates."
         ),
     }
+
+    if isinstance(schema, dict) and str(schema.get("schema_name", "")) == "gobp_core_v2":
+        from gobp.core.loader import package_schema_dir
+        from gobp.core.schema_loader import load_schema_v2
+
+        sd = project_root / "gobp" / "schema"
+        if not sd.exists():
+            sd = package_schema_dir()
+        try:
+            sv2 = load_schema_v2(sd)
+            out["v2_template"] = {
+                "group": sv2.get_group(node_type),
+                "lifecycle": "draft",
+                "read_order": sv2.get_default_read_order(node_type),
+                "description": {"info": "(required, non-empty)", "code": ""},
+            }
+        except Exception:
+            pass
+
+    return out
 
 
 def template_batch_action(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> dict[str, Any]:

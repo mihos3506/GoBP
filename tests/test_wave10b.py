@@ -62,12 +62,12 @@ def test_node_file_no_escaped_unicode(gobp_root: Path):
 # -- Priority field tests ------------------------------------------------------
 
 def test_priority_field_in_schema():
-    """priority field exists in Node schema."""
-    schema = yaml.safe_load(
-        open("gobp/schema/core_nodes.yaml", encoding="utf-8")
-    )
-    node_optional = schema["node_types"]["Node"].get("optional", {})
-    assert "priority" in node_optional
+    """Schema v2 Node uses read_order; priority may still be set on nodes at runtime."""
+    schema_path = Path(__file__).resolve().parent.parent / "gobp" / "schema" / "core_nodes.yaml"
+    schema = yaml.safe_load(schema_path.read_text(encoding="utf-8"))
+    node_def = schema["node_types"]["Node"]
+    assert node_def.get("read_order")
+    assert node_def.get("group")
 
 
 def test_create_node_with_priority(gobp_root: Path):

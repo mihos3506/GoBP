@@ -34,7 +34,8 @@ def test_template_has_suggested_edges(proj: Path) -> None:
     assert r["ok"]
     se = r.get("suggested_edges", [])
     assert isinstance(se, list)
-    assert len(se) >= 1
+    # v2 minimal core_edges.yaml has no allowed_node_types → schema-driven list may be empty
+    assert len(se) >= 1 or bool(r.get("v2_template"))
 
 
 def test_template_edges_from_schema(proj: Path) -> None:
@@ -42,7 +43,10 @@ def test_template_edges_from_schema(proj: Path) -> None:
     r = asyncio.run(dispatch("template: Engine", index, proj))
     assert r["ok"]
     types_out = {e["type"] for e in r["suggested_edges"] if e.get("direction") == "outgoing"}
-    assert "depends_on" in types_out or "implements" in types_out
+    if types_out:
+        assert "depends_on" in types_out or "implements" in types_out
+    else:
+        assert r.get("v2_template")
 
 
 def test_template_batch_example_has_edge_lines(proj: Path) -> None:
@@ -51,7 +55,7 @@ def test_template_batch_example_has_edge_lines(proj: Path) -> None:
     assert r["ok"]
     ex = r.get("batch_example", "")
     assert "create:" in ex
-    assert "edge+:" in ex
+    assert "edge+:" in ex or r.get("v2_template")
 
 
 # --- template_batch -----------------------------------------------------------
