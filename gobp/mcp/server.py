@@ -56,6 +56,23 @@ _READ_ONLY_ACTIONS: frozenset[str] = frozenset({
 })
 _READ_ONLY: bool = os.environ.get("GOBP_READ_ONLY", "").lower() in ("true", "1", "yes")
 
+# Actions that mutate graph files or require dropping the in-memory GraphIndex cache.
+WRITE_ACTIONS: frozenset[str] = frozenset({
+    "session",
+    "create",
+    "update",
+    "upsert",
+    "lock",
+    "delete",
+    "retype",
+    "batch",
+    "import",
+    "edge",
+    "commit",
+    "dedupe",
+    "extract",
+})
+
 
 def _inject_protocol(result: Any) -> Any:
     """Attach protocol version metadata for MCP clients."""
@@ -303,26 +320,14 @@ async def call_tool(
             error = True
 
         # Invalidate optional caches after mutations (SQLite / memory layers).
-        reload_writes = action in (
-            "create",
-            "update",
-            "upsert",
-            "lock",
-            "session",
-            "commit",
-            "edge",
-            "import",
-            "dedupe",
-            "extract",
-            "delete",
-            "retype",
-        )
         reload_recompute = (
             action == "recompute"
             and isinstance(result, dict)
             and result.get("dry_run") is not True
         )
-        if reload_writes or reload_recompute:
+        graph_reload = action in WRITE_ACTIONS or reload_recompute
+        if graph_reload:
+            invalidate_cache()
             try:
                 from gobp.core.cache import get_cache
 

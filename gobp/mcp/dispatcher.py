@@ -123,6 +123,25 @@ async def dispatch(
         if action == "overview":
             result = tools_read.gobp_overview(index, project_root, params)
 
+        elif action == "refresh":
+            import time as _t
+
+            t0 = _t.time()
+            fresh = GraphIndex.load_from_disk(project_root)
+            elapsed_ms = (_t.time() - t0) * 1000
+            try:
+                from gobp.mcp.server import update_cache
+
+                update_cache(fresh, project_root)
+            except ImportError:
+                pass
+            result = {
+                "ok": True,
+                "nodes_loaded": len(fresh.all_nodes()),
+                "edges_loaded": len(fresh.all_edges()),
+                "elapsed_ms": round(elapsed_ms, 2),
+            }
+
         elif action == "version":
             import gobp as _gobp
 
