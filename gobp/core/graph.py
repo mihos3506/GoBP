@@ -70,6 +70,8 @@ class GraphIndex:
         self._new_edges: list[dict[str, Any]] = []
         self._inverted = InvertedIndex()
         self._adjacency = AdjacencyIndex()
+        # group path prefix -> node ids (schema v2 top-down queries, Wave 17A03)
+        self._group_index: dict[str, list[str]] = {}
 
     @classmethod
     def load_from_disk(cls, gobp_root: Path) -> "GraphIndex":
@@ -127,6 +129,7 @@ class GraphIndex:
             # SQLite failure is non-fatal â€” in-memory index still works
             pass
 
+        index._build_group_index()
         return index
 
     def _load_nodes(self, nodes_dir: Path) -> None:
@@ -274,6 +277,9 @@ class GraphIndex:
         if node_id not in self._nodes:
             return False
         node = self._nodes.pop(node_id)
+        old_group = str(node.get("group", "") or "").strip()
+        if old_group:
+            self._remove_node_from_group_index(node_id, old_group)
         ntype = node.get("type", "Unknown")
         if ntype in self._nodes_by_type_idx:
             self._nodes_by_type_idx[ntype] = [
@@ -302,7 +308,95 @@ class GraphIndex:
             if edge_type:
                 self._edges_by_type_idx[edge_type].append(edge)
         self._adjacency.build(self._edges)
+        self._rebuild_group_index()
         return True
+
+    def _build_group_index(self) -> None:
+        """Build group prefix index from all loaded nodes."""
+        self._group_index.clear()
+        for node_id, node in self._nodes.items():
+            group = str(node.get("group", "") or "").strip()
+            if not group:
+                continue
+            self._add_node_to_group_index(str(node_id), group)
+
+    def _rebuild_group_index(self) -> None:
+        """Rebuild group index after structural changes."""
+        self._build_group_index()
+
+    def _add_node_to_group_index(self, node_id: str, group: str) -> None:
+        """Register node_id under every prefix segment of ``group``."""
+        parts = [p.strip() for p in group.split(">") if p.strip()]
+        if not parts:
+            return
+        for i in range(1, len(parts) + 1):
+            prefix = " > ".join(parts[:i])
+            self._group_index.setdefault(prefix, [])
+            if node_id not in self._group_index[prefix]:
+                self._group_index[prefix].append(node_id)
+
+    def _remove_node_from_group_index(self, node_id: str, group: str) -> None:
+        """Remove node_id from all prefix keys derived from ``group``."""
+        parts = [p.strip() for p in group.split(">") if p.strip()]
+        if not parts:
+            return
+        for i in range(1, len(parts) + 1):
+            prefix = " > ".join(parts[:i])
+            lst = self._group_index.get(prefix)
+            if not lst:
+                continue
+            self._group_index[prefix] = [x for x in lst if x != node_id]
+            if not self._group_index[prefix]:
+                del self._group_index[prefix]
+
+    def find_by_group(self, group_path: str, exact: bool = False) -> list[str]:
+        """Find node IDs by schema v2 ``group`` breadcrumb (top-down).
+
+        Args:
+            group_path: Full or partial group path (e.g. ``Dev > Infrastructure``).
+            exact: If True, only nodes whose ``group`` equals ``group_path``.
+        """
+        normalized = group_path.strip()
+        if not normalized:
+            return []
+
+        if exact:
+            # Prefix index also places nodes under ancestor keys; exact means full path match only.
+            candidates = list(self._group_index.get(normalized, []))
+            return [
+                nid
+                for nid in candidates
+                if str(self._nodes.get(nid, {}).get("group", "") or "").strip() == normalized
+            ]
+
+        result: list[str] = []
+        seen: set[str] = set()
+        for indexed_path, node_ids in self._group_index.items():
+            if indexed_path == normalized or indexed_path.startswith(normalized + " >"):
+                for nid in node_ids:
+                    if nid not in seen:
+                        seen.add(nid)
+                        result.append(nid)
+        return result
+
+    def find_siblings(self, node_id: str) -> list[str]:
+        """Return other node IDs sharing the same exact ``group`` as ``node_id``."""
+        node = self._nodes.get(node_id)
+        if not node:
+            return []
+        group = str(node.get("group", "") or "").strip()
+        if not group:
+            return []
+        return [nid for nid in self._group_index.get(group, []) if nid != node_id]
+
+    def get_group_tree(self) -> dict[str, int]:
+        """Top-level group segment -> count of nodes indexed under that root."""
+        tree: dict[str, int] = {}
+        for group_path, node_ids in self._group_index.items():
+            if group_path.count(">") != 0:
+                continue
+            tree[group_path] = len(node_ids)
+        return tree
 
     def compute_priority_score(self, node_id: str) -> int:
         """Compute numeric priority: edge_count + tier_weight from config."""
@@ -377,6 +471,9 @@ class GraphIndex:
         self._nodes_by_type_idx[node_type].append(data)
         self._new_nodes[node_id] = data
         self._inverted.add_node(data)
+        g = str(data.get("group", "") or "").strip()
+        if g:
+            self._add_node_to_group_index(node_id, g)
         return node_id
 
     def add_edge_in_memory(self, from_id: str, to_id: str, edge_type: str) -> bool:
