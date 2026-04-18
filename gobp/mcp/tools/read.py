@@ -388,7 +388,21 @@ def find(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> dict[st
         query_lower = query_str.lower()
 
         scored_map: dict[str, tuple[int, dict[str, Any]]] = {}
-        for node in index.all_nodes():
+        inv = getattr(index, "_inverted", None)
+        cand_ids: set[str] | None = None
+        if inv is not None:
+            cand_ids = set(inv.search(query_str, max(page_size * 100, 200)))
+            if not cand_ids:
+                cand_ids = None
+        if cand_ids is not None:
+            nodes_iter = [index.get_node(nid) for nid in cand_ids]
+            nodes_to_score = [n for n in nodes_iter if n]
+            if not nodes_to_score:
+                nodes_to_score = list(index.all_nodes())
+        else:
+            nodes_to_score = list(index.all_nodes())
+
+        for node in nodes_to_score:
             if type_filter and node.get("type") != type_filter:
                 continue
             if node.get("type", "") in exclude_types:
@@ -404,6 +418,24 @@ def find(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> dict[st
             prev = scored_map.get(node_id)
             if prev is None or base > prev[0]:
                 scored_map[node_id] = (base, node)
+
+        if cand_ids is not None:
+            for node in index.all_nodes():
+                node_id = str(node.get("id", "") or "")
+                if not node_id or node_id in scored_map:
+                    continue
+                if type_filter and node.get("type") != type_filter:
+                    continue
+                if node.get("type", "") in exclude_types:
+                    continue
+                base = search_score(query_norm, node)
+                if base == 0 and _legacy_substring_hit(query_lower, node):
+                    base = 20
+                if base == 0:
+                    continue
+                prev = scored_map.get(node_id)
+                if prev is None or base > prev[0]:
+                    scored_map[node_id] = (base, node)
 
         scored = sorted(scored_map.values(), key=lambda x: -x[0])
 
@@ -1064,8 +1096,12 @@ def node_related(index: GraphIndex, project_root: Path, args: dict[str, Any]) ->
     edge_type_filter = args.get("edge_type")
 
     outgoing = []
+    adj = getattr(index, "_adjacency", None)
     if direction in ("outgoing", "both"):
-        for edge in index.get_edges_from(node_id):
+        out_edges = (
+            adj.get_outgoing(node_id) if adj is not None else index.get_edges_from(node_id)
+        )
+        for edge in out_edges:
             if edge_type_filter and edge.get("type") != edge_type_filter:
                 continue
             neighbor = index.get_node(edge.get("to", ""))
@@ -1088,7 +1124,10 @@ def node_related(index: GraphIndex, project_root: Path, args: dict[str, Any]) ->
 
     incoming = []
     if direction in ("incoming", "both"):
-        for edge in index.get_edges_to(node_id):
+        in_edges = (
+            adj.get_incoming(node_id) if adj is not None else index.get_edges_to(node_id)
+        )
+        for edge in in_edges:
             if edge_type_filter and edge.get("type") != edge_type_filter:
                 continue
             neighbor = index.get_node(edge.get("from", ""))
@@ -1485,11 +1524,11 @@ def explore_action(index: GraphIndex, project_root: Path, args: dict[str, Any]) 
     edges_out: list[dict[str, Any]] = []
     edges_in: list[dict[str, Any]] = []
 
-    for edge in index.all_edges():
-        edge_type = str(edge.get("type", "relates_to"))
-        if edge_type == "discovered_in":
-            continue
-        if edge.get("from") == node_id:
+    ex_meta = {"discovered_in"}
+    adj_ex = getattr(index, "_adjacency", None)
+    if adj_ex is not None:
+        for edge in adj_ex.get_outgoing(node_id, exclude_types=ex_meta):
+            edge_type = str(edge.get("type", "relates_to"))
             target = index.get_node(str(edge.get("to", "")))
             if target:
                 edges_out.append(
@@ -1503,7 +1542,8 @@ def explore_action(index: GraphIndex, project_root: Path, args: dict[str, Any]) 
                         },
                     }
                 )
-        elif edge.get("to") == node_id:
+        for edge in adj_ex.get_incoming(node_id, exclude_types=ex_meta):
+            edge_type = str(edge.get("type", "relates_to"))
             source = index.get_node(str(edge.get("from", "")))
             if source:
                 edges_in.append(
@@ -1517,12 +1557,49 @@ def explore_action(index: GraphIndex, project_root: Path, args: dict[str, Any]) 
                         },
                     }
                 )
+    else:
+        for edge in index.all_edges():
+            edge_type = str(edge.get("type", "relates_to"))
+            if edge_type == "discovered_in":
+                continue
+            if edge.get("from") == node_id:
+                target = index.get_node(str(edge.get("to", "")))
+                if target:
+                    edges_out.append(
+                        {
+                            "dir": "out",
+                            "type": edge_type,
+                            "node": {
+                                "id": target.get("id"),
+                                "name": target.get("name", ""),
+                                "type": target.get("type", ""),
+                            },
+                        }
+                    )
+            elif edge.get("to") == node_id:
+                source = index.get_node(str(edge.get("from", "")))
+                if source:
+                    edges_in.append(
+                        {
+                            "dir": "in",
+                            "type": edge_type,
+                            "node": {
+                                "id": source.get("id"),
+                                "name": source.get("name", ""),
+                                "type": source.get("type", ""),
+                            },
+                        }
+                    )
 
     all_edges = edges_out + edges_in
     also_found: list[dict[str, Any]] = []
+    adj_ct = getattr(index, "_adjacency", None)
     for score, node in results[1:6]:
         nid = str(node.get("id", ""))
-        ec = len(index.get_edges_from(nid)) + len(index.get_edges_to(nid))
+        if adj_ct is not None:
+            ec = adj_ct.edge_count(nid)
+        else:
+            ec = len(index.get_edges_from(nid)) + len(index.get_edges_to(nid))
         note = "potential duplicate" if score >= 80 else "related"
         also_found.append(
             {

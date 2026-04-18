@@ -101,6 +101,28 @@ def search_nodes(
         return []
 
     exclude_set = set(exclude_types)
+
+    inv = getattr(index, "_inverted", None)
+    if inv is not None:
+        cand_ids = set(inv.search(query, max(limit * 20, 50)))
+        if cand_ids:
+            results_inv: list[tuple[int, dict]] = []
+            for nid in cand_ids:
+                node = index.get_node(nid)
+                if not node:
+                    continue
+                node_type = node.get("type", "")
+                if type_filter and node_type != type_filter:
+                    continue
+                if node_type in exclude_set:
+                    continue
+                score = search_score(query_norm, node)
+                if score > 0:
+                    results_inv.append((score, node))
+            if results_inv:
+                results_inv.sort(key=lambda x: -x[0])
+                return results_inv[:limit]
+
     results: list[tuple[int, dict]] = []
 
     for node in index.all_nodes():
@@ -176,21 +198,21 @@ def suggest_related(
     context_key = context_norm.replace(" ", "")
     suggestions: list[dict[str, Any]] = []
 
-    for node in index.all_nodes():
+    def _score_suggestion(node: dict[str, Any]) -> dict[str, Any] | None:
         node_type = str(node.get("type", ""))
         if node_type in exclude_set:
-            continue
+            return None
 
         name = str(node.get("name", "") or "")
         desc = str(node.get("description", "") or "")
         name_norm = normalize_text(name).replace(" ", "")
         if context_key and name_norm == context_key:
-            continue
+            return None
 
         node_text = normalize_text(f"{name} {desc}")
         matched_keywords = [kw for kw in keywords if kw in node_text]
         if not matched_keywords:
-            continue
+            return None
 
         overlap_score = len(matched_keywords) / max(len(keywords), 1)
         name_norm_spaced = normalize_text(name)
@@ -200,16 +222,36 @@ def suggest_related(
 
         relevance = "high" if overlap_score >= 0.6 else "medium" if overlap_score >= 0.3 else "low"
 
-        suggestions.append(
-            {
-                "id": node.get("id"),
-                "type": node_type,
-                "name": name,
-                "why": f"keyword: {', '.join(matched_keywords)}",
-                "relevance": relevance,
-                "_score": overlap_score,
-            }
-        )
+        return {
+            "id": node.get("id"),
+            "type": node_type,
+            "name": name,
+            "why": f"keyword: {', '.join(matched_keywords)}",
+            "relevance": relevance,
+            "_score": overlap_score,
+        }
+
+    inv = getattr(index, "_inverted", None)
+    if inv is not None:
+        cand_ids = set(inv.search(context, max(limit * 50, 100)))
+        if cand_ids:
+            for nid in cand_ids:
+                node = index.get_node(nid)
+                if not node:
+                    continue
+                row = _score_suggestion(node)
+                if row:
+                    suggestions.append(row)
+            if suggestions:
+                suggestions.sort(key=lambda s: float(s.get("_score", 0.0)), reverse=True)
+                for s in suggestions:
+                    s.pop("_score", None)
+                return suggestions[:limit]
+
+    for node in index.all_nodes():
+        row = _score_suggestion(node)
+        if row:
+            suggestions.append(row)
 
     suggestions.sort(key=lambda s: float(s.get("_score", 0.0)), reverse=True)
     for s in suggestions:
