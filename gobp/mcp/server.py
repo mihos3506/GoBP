@@ -327,7 +327,8 @@ async def call_tool(
         )
         graph_reload = action in WRITE_ACTIONS or reload_recompute
         if graph_reload:
-            invalidate_cache()
+            if action != "batch":
+                invalidate_cache()
             try:
                 from gobp.core.cache import get_cache
 

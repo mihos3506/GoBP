@@ -1030,6 +1030,13 @@ def batch_action(index: GraphIndex, project_root: Path, args: dict[str, Any]) ->
     if working_index.has_pending_writes():
         working_index.flush_pending_writes(project_root)
 
+    try:
+        from gobp.mcp.server import update_cache
+
+        update_cache(working_index, project_root)
+    except ImportError:
+        pass
+
     succeeded = sum(v[0] for v in tally.values())
     total = sum(v[1] for v in tally.values())
     parts = [f"{k}:{tally[k][0]}/{tally[k][1]}" for k in sorted(tally.keys()) if tally[k][1]]

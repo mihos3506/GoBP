@@ -295,6 +295,7 @@ PROTOCOL_GUIDE = {
         "validate: metadata type=Flow": "Check only Flow nodes",
         "overview:": "Project stats (slim); full_interface=true for full action catalog",
         "overview: full_interface=true": "Same as overview with full PROTOCOL_GUIDE (large JSON)",
+        "refresh:": "Force reload GraphIndex cache from disk (use after manual .md edits or schema changes)",
         "find: <keyword>": "Search any node by keyword",
         "find: <keyword> mode=summary": "Lightweight results (~50 tokens/node)",
         "find: <keyword> mode=brief": "Medium results (~150 tokens/node)",
