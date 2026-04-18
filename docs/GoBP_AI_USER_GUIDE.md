@@ -26,7 +26,13 @@ gobp(query="{action} {params}")
 8. Sau khi có IDs:    Chỉ giữ id+name. Không paste full JSON vào prompt sau.
 9. 1 session = 1 mục tiêu. session:end khi xong.
 10. Lỗi batch:        Chỉ retry ops bị fail, không retry toàn bộ.
+11. Node mới + graph có data:  Node mới (có ý nghĩa) PHẢI **relate** tới ít nhất một node đã tồn tại qua edge hợp lệ — xem **dec:d002** và checklist đầy đủ tại [`docs/IMPORT_CHECKLIST.md`](IMPORT_CHECKLIST.md). Ngoại lệ: node **đầu tiên** trong project chưa có dữ liệu.
+12. Import tài liệu:   Đọc **toàn bộ** doc (hoặc toàn bộ section đã thống nhất với CEO) **trước** khi liệt kê plan nodes/edges — không đọc lướt rồi tạo nodes rồi mới nối edges sau.
 ```
+
+### Import protocol (chi tiết)
+
+Quy trình **template → đọc hết → plan (nodes+edges) → review → batch** nằm trong [`docs/IMPORT_CHECKLIST.md`](IMPORT_CHECKLIST.md).
 
 ---
 
@@ -177,6 +183,8 @@ Nguồn: `gobp/schema/core_nodes.yaml` (định nghĩa field đầy đủ: `docs
 | **CtoDevHandoff** | Bàn giao lane CTO → dev |
 | **QaCodeDevHandoff** | Bàn giao lane QA-code → dev |
 
+**Ghi chú Wave 16A14 (đọc trong RAM):** Engine dựng **InvertedIndex** (từ khóa → node) và **AdjacencyIndex** (cạnh theo nút) khi load graph; `find` / `explore` / `suggest` / `related` dùng index khi có, có fallback quét. `validate:` có thể báo **chu trình có hướng** trên cạnh `depends_on` / `supersedes` (DFS) — xem `gobp/core/indexes.py`, `gobp/core/graph_algorithms.py`.
+
 **Quan hệ đúng:** **unit / e2e / integration / …** là các **kind** được biểu diễn bởi **node TestKind** (tầng loại). **TestCase** là **node dùng để test** (ca chạy), là “con” theo nghĩa nghiệp vụ: nhiều TestCase thuộc cùng TestKind qua `kind_id` — không đảo: TestKind ≠ TestCase, và không gọi unit/e2e là “tên thay type TestKind”.
 
 **Field `group` trên node TestKind** (`process` \| `functional` \| `non_functional` \| `security`): phân loại *ý nghĩa hàng loại* (phương pháp kiểm thử vs chủ đề chức năng / phi chức năng / bảo mật) — **khác** với slug unit/e2e trong `id`. Bảng định nghĩa: **SCHEMA.md mục 2.8 TestKind**.
@@ -281,6 +289,6 @@ meta.session.2026-04-17.a3f7c2abc    ← Session (định dạng đặc biệt)
 
 ## Phụ lục (tối thiểu)
 
-Response có `_dispatch` (audit). Read-only: `GOBP_READ_ONLY=true`. Field / cạnh đầy đủ: `docs/SCHEMA.md`, `gobp/schema/core_nodes.yaml`, `gobp/schema/core_edges.yaml`. Lỗi graph hoặc MCP cũ: `python -m gobp.cli validate --scope all`, `seed-universal` nếu cần, Reload Window / restart Cursor.
+Response có `_dispatch` (audit). Read-only: `GOBP_READ_ONLY=true`. Field / cạnh đầy đủ: `docs/SCHEMA.md`, `gobp/schema/core_nodes.yaml`, `gobp/schema/core_edges.yaml`. Import vào graph: [`docs/IMPORT_CHECKLIST.md`](IMPORT_CHECKLIST.md). Lỗi graph hoặc MCP cũ: `python -m gobp.cli validate --scope all`, `seed-universal` nếu cần, Reload Window / restart Cursor.
 
 ◈
