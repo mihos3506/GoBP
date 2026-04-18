@@ -63,6 +63,10 @@ class SchemaV2:
     def is_valid_type(self, node_type: str) -> bool:
         return node_type in self.node_types
 
+    def is_valid_edge_type(self, edge_type: str) -> bool:
+        """Return True if ``edge_type`` is a known key in ``edge_types``."""
+        return edge_type in self.edge_types
+
     def validate_node(self, node: dict[str, Any]) -> list[str]:
         """Lightweight checks: core fields + type-specific required keys."""
         errors: list[str] = []

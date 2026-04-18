@@ -157,6 +157,31 @@ def _validate_typed_entity(
     type_def = type_registry[entity_type]
 
     required = type_def.get("required", {})
+    optional = type_def.get("optional", {})
+
+    # Minimal edge schema (taxonomy-only v2): no per-field YAML specs.
+    if entity_label == "edge" and not required and not optional:
+        for field_name in ("from", "to", "type"):
+            if field_name not in data or data[field_name] is None:
+                errors.append(f"missing required field: {field_name}")
+            elif isinstance(data[field_name], str) and not str(data[field_name]).strip():
+                errors.append(f"missing required field: {field_name}")
+        allowed_extra = {
+            "from",
+            "to",
+            "type",
+            "reason",
+            "created_at",
+            "section",
+            "lines",
+            "legacy_from",
+            "legacy_to",
+        }
+        for unknown in set(data.keys()) - allowed_extra:
+            warnings.append(f"unknown field: {unknown}")
+        return ValidationResult(ok=len(errors) == 0, errors=errors, warnings=warnings)
+
+    required = type_def.get("required", {})
     for field_name, field_spec in required.items():
         errors.extend(_check_field(data, field_name, field_spec, is_required=True))
 
