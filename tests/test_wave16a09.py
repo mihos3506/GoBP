@@ -236,6 +236,7 @@ def test_batch_edge_add_by_name(proj: Path) -> None:
     assert r["errors"] == []
 
 
+@pytest.mark.slow
 def test_batch_max_ops_guard(proj: Path) -> None:
     """Large batches are accepted; execution is chunked internally (Wave 16A13)."""
     sid = _sid(proj)

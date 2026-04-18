@@ -146,6 +146,7 @@ def test_quick_action_creates_nodes(proj: Path) -> None:
 # --- Chunking -----------------------------------------------------------------
 
 
+@pytest.mark.slow
 def test_batch_no_limit_300_ops(proj: Path) -> None:
     sid = _sid(proj)
     lines = "\n".join([f"create: Node: B{i} | x" for i in range(300)])
@@ -155,6 +156,7 @@ def test_batch_no_limit_300_ops(proj: Path) -> None:
     assert r.get("succeeded", 0) >= 280
 
 
+@pytest.mark.slow
 def test_batch_no_limit_600_ops(proj: Path) -> None:
     sid = _sid(proj)
     lines = "\n".join([f"create: Node: C{i} | x" for i in range(600)])

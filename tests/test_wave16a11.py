@@ -102,6 +102,7 @@ def test_remove_node_in_memory(proj: Path) -> None:
 # --- Batch performance / limits -----------------------------------------------
 
 
+@pytest.mark.slow
 def test_batch_100_creates_under_10s(proj: Path) -> None:
     """Brief target <10s; allow headroom for slow laptops/Windows I/O."""
     sid = _sid(proj)
@@ -117,6 +118,7 @@ def test_batch_100_creates_under_10s(proj: Path) -> None:
     assert elapsed < 60.0, f"Too slow: {elapsed:.1f}s"
 
 
+@pytest.mark.slow
 def test_batch_large_op_list_succeeds(proj: Path) -> None:
     """Batch accepts 500+ ops; no external max error (Wave 16A13)."""
     sid = _sid(proj)
