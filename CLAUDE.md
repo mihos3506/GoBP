@@ -359,3 +359,9 @@ When CEO runs `claude` in D:\GoBP\:
 - 626 tests ran in ~22 min on this machine; plan time for full suite verification.
 
 ◈
+
+**Wave 16A16 — 2026-04-18**
+
+- **dec:d011 — Lessons = update over create (graph hygiene):** Before creating a new Lesson node, `suggest:` search for an existing node on the same topic. If found → `update:` its description with the new lesson, preserving still-valuable prior content. Only create a new node when the topic is genuinely new. This rule applies **only** to AI self-learning nodes (Lesson, Wave summary) — NOT to project knowledge nodes (Entity, Engine, Flow, Decision, etc.). Reason: one small lesson = one new node → metadata bloat; updating existing node = true knowledge accumulation.
+
+◈
