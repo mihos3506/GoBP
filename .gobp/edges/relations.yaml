@@ -3208,3 +3208,18 @@
 - from: wave_16a15_self_eval_reflection.meta.5f02fc51
   to: wave_16a15.meta.97628160
   type: relates_to
+- from: claude_md_self_ownership.meta.69334016
+  to: meta.session.2026-04-18.77b53f3b4
+  type: discovered_in
+- from: dec:d011
+  to: meta.session.2026-04-18.fb042c529
+  type: discovered_in
+- from: wave_16a16.meta.86790656
+  to: meta.session.2026-04-18.fb042c529
+  type: discovered_in
+- from: wave_16a16.meta.86790656
+  to: dec:d004
+  type: references
+- from: wave_16a16.meta.86790656
+  to: dec:d011
+  type: references

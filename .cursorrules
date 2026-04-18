@@ -26,7 +26,7 @@ For each task in Wave Brief (from Task 1 to Task N):
        → STOP, report issue, do not commit partial work
 
 When all tasks done:
-  - Run **full test suite once** if the last task did not already (R9-C).
+  - Run **full test suite once** if the last task did not already (R9-C): see **R9 (C)** below.
   Report full wave summary to CEO with:
     - Tasks completed with commit hashes
     - Full-suite result (pass count, baseline 626+ unless Brief added tests)
@@ -43,6 +43,8 @@ You do NOT stop between tasks for CEO approval unless blocked.
 
 ### R9 — Testing strategy (per task type)
 
+**Defaults (pytest config):** `pyproject.toml` sets `addopts = ["-m", "not slow"]` — a normal `pytest tests/ -q` run is the **fast suite** (skips `@pytest.mark.slow` tests: large batches, perf benchmarks). **Do not** use **pytest-xdist** (`-n auto`): it was removed (Wave 16A17) because it saturated CPU on dev machines.
+
 **A) Docs / data-only / GoBP MCP graph tasks** (e.g. `.cursorrules`, `docs/*.md`, `.gobp/` nodes/edges from capture, no Python package change):
 
 - **Do not** run `pytest`.
@@ -51,15 +53,19 @@ You do NOT stop between tasks for CEO approval unless blocked.
 **B) Python code tasks** (changes under `gobp/`, executable `scripts/` wired into product behavior, or `tests/` for the same feature):
 
 - Run **only** unit + integration tests for the **module(s) you touched**, e.g.  
-  `D:/GoBP/venv/Scripts/python.exe -m pytest tests/test_<module>.py -v --tb=short`
+  `D:/GoBP/venv/Scripts/python.exe -m pytest tests/test_<module>.py -v --tb=short`  
+  (inherits fast-suite defaults unless you override — see below.)
 - **Do not** run the full suite after every such task.
 
 **C) End of wave (final task of the wave):**
 
-- Run the **full suite once**:  
-  `D:/GoBP/venv/Scripts/python.exe -m pytest tests/ -q --tb=no`  
-  with `$env:GOBP_DB_URL` set as in ENVIRONMENT.
+- Run the **full suite once** (includes **slow** tests): with `$env:GOBP_DB_URL` set as in ENVIRONMENT, clear the default “not slow” filter using:
+  - `D:/GoBP/venv/Scripts/python.exe -m pytest tests/ --override-ini="addopts=" -q --tb=no`  
+  (Bash can use `pytest tests/ -m ''` instead; **PowerShell** often drops an empty `-m ""`, so prefer `--override-ini` on Windows.)  
+  **No** `-n auto` / no pytest-xdist.
 - Confirms no regression. Baseline is expected to stay **626+** unless the Brief intentionally adds tests.
+
+**Test data rule:** **Do not** rely on live MIHOS databases, checked-in MIHOS production exports, or proprietary MIHOS datasets in GoBP tests. Use **isolated** `tmp_path` / synthetic projects only (scale fixtures may build a graph in-memory or under `tmp_path`, but must not depend on external MIHOS data).
 
 If a task mixes **code + docs**, apply **(B)** for the code part and **(A)** verification for docs.
 
@@ -231,7 +237,7 @@ Python stdlib
 mcp
 pyyaml
 unidecode
-pytest, pytest-asyncio, pytest-xdist (dev only)
+pytest, pytest-asyncio (dev only)
 ```
 
 ---

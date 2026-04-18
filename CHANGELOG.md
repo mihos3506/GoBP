@@ -5,6 +5,22 @@ Format: [Wave N — Title] with date, what was added/changed/fixed.
 
 ---
 
+## [Wave 16A17] — Remove xdist + Test Organization — 2026-04-18
+
+### Changed
+
+- **pytest-xdist removed** — parallel workers used too much CPU on dev machines.
+- **Default suite** — `pytest tests/` uses the fast profile (skips `@pytest.mark.slow` via `addopts`).
+- **Full suite** — `pytest tests/ --override-ini="addopts="` (or `pytest tests/ -m ''` in bash) runs all tests including slow.
+- **`@pytest.mark.slow`** — batch 100+ node tests and `tests/test_performance.py` (benchmarks).
+- **`.cursorrules` R9** — testing strategy updated (no xdist; MIHOS data rule for tests).
+
+### Tests
+
+- **633** tests in full suite (serial; no `-n auto`).
+
+---
+
 ## [Wave 16A16] — Test Performance + Graph Hygiene + Hooks — 2026-04-18
 
 ### Changed
