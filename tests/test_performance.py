@@ -12,7 +12,6 @@ are intentionally omitted here — cover them in integration tests instead.
 from __future__ import annotations
 
 import asyncio
-import os
 import shutil
 import time
 from pathlib import Path
@@ -25,6 +24,8 @@ from gobp.mcp.dispatcher import dispatch
 from gobp.mcp.tools import read as tools_read
 from gobp.mcp.tools import write as tools_write
 from tests.fixtures.mihos_fixture import _populate_mihos_project
+
+pytestmark = pytest.mark.slow
 
 # Max latency targets (ms) aligned with docs/MCP_TOOLS.md §10.
 MAX_MS = {
@@ -105,20 +106,15 @@ def _load(root: Path) -> GraphIndex:
     return GraphIndex.load_from_disk(root)
 
 
-def _xdist_headroom() -> float:
-    """Extra slack for wall-clock ceilings when pytest-xdist shares CPU across workers."""
-    return 2.0 if os.environ.get("PYTEST_XDIST_WORKER") else 1.0
-
-
 def _assert_under_target(name: str, elapsed_ms: float) -> None:
-    limit = MAX_MS[name] * _xdist_headroom()
+    limit = MAX_MS[name]
     assert elapsed_ms < limit, (
         f"{name}: {elapsed_ms:.1f}ms > {limit:.1f}ms"
     )
 
 
 def _assert_dispatch(name: str, elapsed_ms: float) -> None:
-    limit = DISPATCH_MAX_MS[name] * _xdist_headroom()
+    limit = DISPATCH_MAX_MS[name]
     assert elapsed_ms < limit, f"{name}: {elapsed_ms:.1f}ms > {limit:.1f}ms"
 
 

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-import os
 import time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -115,13 +114,8 @@ def test_batch_100_creates_under_10s(proj: Path) -> None:
     r = asyncio.run(dispatch(f"batch session_id='{sid}' ops='{ops}'", index, proj))
     elapsed = time.time() - t0
 
-    # pytest-xdist shares CPU/disk; keep signal while avoiding flaky parallel runs.
-    xdist = bool(os.environ.get("PYTEST_XDIST_WORKER"))
-    min_succeeded = 40 if xdist else 50
-    max_sec = 120.0 if xdist else 60.0
-
-    assert r.get("succeeded", 0) >= min_succeeded, f"Too few succeeded: {r}"
-    assert elapsed < max_sec, f"Too slow: {elapsed:.1f}s"
+    assert r.get("succeeded", 0) >= 50, f"Too few succeeded: {r}"
+    assert elapsed < 60.0, f"Too slow: {elapsed:.1f}s"
 
 
 @pytest.mark.slow
