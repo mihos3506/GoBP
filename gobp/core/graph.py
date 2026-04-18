@@ -14,6 +14,7 @@ from typing import Any
 
 from gobp.core import db as _db
 from gobp.core.id_config import generate_external_id
+from gobp.core.indexes import AdjacencyIndex, InvertedIndex
 from gobp.core.loader import load_edge_file, load_node_file, load_schema
 from gobp.core.validator import validate_edge, validate_node
 
@@ -47,6 +48,8 @@ class GraphIndex:
       _edges_from     : node_id â†’ list[edge dict]
       _edges_to       : node_id â†’ list[edge dict]
       _edges_by_type  : edge_type â†’ list[edge dict]
+      _inverted       : keyword â†’ node ids (Wave 16A14)
+      _adjacency      : node â†’ incident edges (Wave 16A14)
     """
 
     def __init__(self) -> None:
@@ -64,6 +67,8 @@ class GraphIndex:
         self._legacy_id_map: dict[str, str] = {}
         self._new_nodes: dict[str, dict[str, Any]] = {}
         self._new_edges: list[dict[str, Any]] = []
+        self._inverted = InvertedIndex()
+        self._adjacency = AdjacencyIndex()
 
     @classmethod
     def load_from_disk(cls, gobp_root: Path) -> "GraphIndex":
@@ -108,6 +113,9 @@ class GraphIndex:
         data_dir = gobp_root / ".gobp"
         index._load_nodes(data_dir / "nodes")
         index._load_edges(data_dir / "edges")
+
+        index._inverted.build(list(index._nodes.values()))
+        index._adjacency.build(index._edges)
 
         # Build SQLite index if not exists
         try:
@@ -271,6 +279,8 @@ class GraphIndex:
             if not self._nodes_by_type_idx[ntype]:
                 del self._nodes_by_type_idx[ntype]
 
+        self._inverted.remove_node(node_id)
+
         self._edges = [
             e for e in self._edges
             if e.get("from") != node_id and e.get("to") != node_id
@@ -288,6 +298,7 @@ class GraphIndex:
                 self._edges_to_idx[to_id].append(edge)
             if edge_type:
                 self._edges_by_type_idx[edge_type].append(edge)
+        self._adjacency.build(self._edges)
         return True
 
     def compute_priority_score(self, node_id: str) -> int:
@@ -359,6 +370,7 @@ class GraphIndex:
         self._nodes[node_id] = data
         self._nodes_by_type_idx[node_type].append(data)
         self._new_nodes[node_id] = data
+        self._inverted.add_node(data)
         return node_id
 
     def add_edge_in_memory(self, from_id: str, to_id: str, edge_type: str) -> bool:
@@ -390,6 +402,7 @@ class GraphIndex:
             self._edges_to_idx[to_id].append(edge)
         if edge_type:
             self._edges_by_type_idx[edge_type].append(edge)
+        self._adjacency.add_edge(from_id, to_id, edge_type)
         return True
 
     def remove_node_in_memory(self, node_id: str) -> bool:
