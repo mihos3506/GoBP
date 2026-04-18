@@ -82,6 +82,14 @@ def _inject_protocol(result: Any) -> Any:
     return result
 
 
+def _merge_hook_params(node_type: str, params: dict[str, Any]) -> dict[str, Any]:
+    """Merge parser node_type into params for hooks (matches ``create:Type`` style queries)."""
+    merged = dict(params)
+    if node_type:
+        merged.setdefault("type", node_type)
+    return merged
+
+
 def _get_project_root() -> Path:
     """Determine project root from env var or cwd."""
     env_root = os.environ.get("GOBP_PROJECT_ROOT")
@@ -257,7 +265,7 @@ async def call_tool(
 
     from gobp.mcp.parser import parse_query
 
-    action, _, params = parse_query(query)
+    action, node_type, params = parse_query(query)
 
     if _READ_ONLY and action in _READ_ONLY_ACTIONS:
         result = _inject_protocol({
@@ -309,40 +317,61 @@ async def call_tool(
 
     start = _time.time()
     error = False
+    result: Any = {}
+    blocked = False
     try:
         from gobp.mcp.dispatcher import dispatch
+        from gobp.mcp.hooks import WRITE_ACTIONS as HOOK_WRITE_ACTIONS
+        from gobp.mcp.hooks import before_write, on_error
 
         _project_root = _get_project_root()
         _index = get_cached_index(_project_root)
+        hook_params = _merge_hook_params(node_type, params)
 
-        result = await dispatch(query, _index, _project_root)
-        _inject_protocol(result)
-        if not result.get("ok"):
-            error = True
+        if action in HOOK_WRITE_ACTIONS:
+            block = before_write(action, hook_params, _index)
+            if block:
+                result = _inject_protocol(block)
+                error = True
+                blocked = True
 
-        # Invalidate optional caches after mutations (SQLite / memory layers).
-        reload_recompute = (
-            action == "recompute"
-            and isinstance(result, dict)
-            and result.get("dry_run") is not True
-        )
-        graph_reload = action in WRITE_ACTIONS or reload_recompute
-        if graph_reload:
-            if action != "batch":
-                invalidate_cache()
-            try:
-                from gobp.core.cache import get_cache
+        if not blocked:
+            result = await dispatch(query, _index, _project_root)
+            _inject_protocol(result)
+            if not result.get("ok"):
+                error = True
 
-                get_cache().invalidate_all()
-            except Exception:
-                pass
+            # Invalidate optional caches after mutations (SQLite / memory layers).
+            reload_recompute = (
+                action == "recompute"
+                and isinstance(result, dict)
+                and result.get("dry_run") is not True
+            )
+            graph_reload = action in WRITE_ACTIONS or reload_recompute
+            if graph_reload:
+                if action != "batch":
+                    invalidate_cache()
+                try:
+                    from gobp.core.cache import get_cache
+
+                    get_cache().invalidate_all()
+                except Exception:
+                    pass
     except Exception as e:
         error = True
-        result = _inject_protocol({
-            "ok": False,
-            "error": str(e),
-            "hint": "Call gobp(query='overview:') to see available actions",
-        })
+        try:
+            from gobp.mcp.hooks import on_error
+
+            pr = _get_project_root()
+            idx = get_cached_index(pr)
+            hook_params = _merge_hook_params(node_type, params)
+            result = _inject_protocol(on_error(action, str(e), hook_params, idx))
+        except Exception:
+            result = _inject_protocol({
+                "ok": False,
+                "error": str(e),
+                "hint": "Call gobp(query='overview:') to see available actions",
+            })
     finally:
         elapsed = (_time.time() - start) * 1000
         _record_stat(action, elapsed, error, query[:100])
