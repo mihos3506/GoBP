@@ -10,7 +10,7 @@ import pytest
 from gobp.core.graph import GraphIndex
 from gobp.core.init import init_project
 from gobp.core.search import suggest_related
-from gobp.mcp.batch_parser import parse_batch_line, parse_batch_ops
+from gobp.mcp.batch_parser import parse_batch, parse_batch_line, parse_batch_ops
 from gobp.mcp.dispatcher import dispatch
 from gobp.mcp.parser import PROTOCOL_GUIDE, parse_query
 
@@ -169,6 +169,17 @@ def test_parse_batch_edge_add() -> None:
     assert p["kind"] == "edge_add"
     assert p["from_name"] == "FromNode"
     assert p["edge_type"] == "depends_on"
+
+
+def test_parse_batch_edge_colon_in_node_ids() -> None:
+    """Edge endpoints may contain ':' (e.g. doc:doc_01); delimiter is --type-->."""
+    ops = parse_batch("edge+: doc:doc_01 --references--> node:inv_01")
+    assert ops[0]["from_name"] == "doc:doc_01"
+    assert ops[0]["targets"] == ["node:inv_01"]
+    assert ops[0]["edge_type"] == "references"
+    star = parse_batch("edge*: hub:x --implements--> doc:a, node:b")
+    assert star[0]["from_name"] == "hub:x"
+    assert star[0]["targets"] == ["doc:a", "node:b"]
 
 
 def test_parse_batch_ops_multiline() -> None:

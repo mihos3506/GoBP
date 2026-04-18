@@ -17,7 +17,9 @@ from __future__ import annotations
 import re
 from typing import Any
 
-_EDGE_ARROW = re.compile(r"^(.+?)\s*--(\w+)-->\s*(.+)$", re.DOTALL)
+# From/to may contain ':' (e.g. doc:doc_01). Use explicit --edge_type--> delimiter;
+# edge keyword is [a-zA-Z_]+ (schema-style slug), not \w (avoids odd Unicode edge cases).
+_EDGE_ARROW = re.compile(r"^(.+?)\s*--([a-zA-Z_]+)-->\s*(.+)$", re.DOTALL)
 _ASSIGN = re.compile(r"(\w+)=('([^']*)'|\"([^\"]*)\"|(\S+))")
 _MERGE = re.compile(r"keep=(\S+)\s+absorb=(\S+)", re.I)
 _NEW_TYPE = re.compile(r"new_type=(\S+)", re.I)
