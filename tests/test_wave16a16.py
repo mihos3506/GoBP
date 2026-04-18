@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import asyncio
-import importlib.util
+from importlib import metadata
 from pathlib import Path
 
 import pytest
@@ -26,15 +26,18 @@ def _sid(proj: Path) -> str:
     return str(r["session_id"])
 
 
-def test_slow_marker_registered() -> None:
+def test_slow_marker_and_default_addopts() -> None:
     root = Path(__file__).resolve().parents[1]
     text = (root / "pyproject.toml").read_text(encoding="utf-8")
     assert "slow" in text
     assert "[tool.pytest.ini_options]" in text
+    assert "not slow" in text and "addopts" in text
 
 
-def test_xdist_installed() -> None:
-    assert importlib.util.find_spec("xdist") is not None
+def test_pytest_xdist_not_in_environment() -> None:
+    """Package removed from dev deps; leftover namespace modules may still exist."""
+    names = {d.metadata["Name"].lower() for d in metadata.distributions()}
+    assert "pytest-xdist" not in names
 
 
 def test_before_write_blocks_unknown_type(proj: Path) -> None:

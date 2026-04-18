@@ -31,13 +31,12 @@ dependencies = [
 dev = [
     "pytest>=7.0",
     "pytest-asyncio>=0.21",
-    "pytest-xdist>=3.0",
 ]
 
 [tool.pytest.ini_options]
-addopts = "-n auto"
+addopts = ["-m", "not slow"]
 markers = [
-    "slow: marks tests as slow (deselect with '-m not slow')",
+    "slow: marks tests as slow (batch 100+ nodes, > 5s, or perf benchmarks)",
 ]
 
 [project.scripts]
