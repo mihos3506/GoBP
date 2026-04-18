@@ -5,6 +5,29 @@ Format: [Wave N — Title] with date, what was added/changed/fixed.
 
 ---
 
+## [Wave 16A13] — Batch Fixes + Quick Capture + Auto Chunking — 2026-04-18
+
+### Fixed
+
+- **Batch newline parsing** — `parse_batch_ops` normalizes literal `\\n` / double-escaped sequences before splitting lines (MCP JSON transport).
+
+### Added
+
+- **`TYPE_DEFAULTS` + `_auto_fill_defaults()`** — Idea and TestCase get safe defaults when fields are missing; used in `node_upsert` and `_batch_build_create_node`.
+- **`quick:`** — `parse_quick()` + `quick_action()`; pipe-separated lines delegated to batch.
+- **`INTERNAL_CHUNK_SIZE` (200)** — large batch op lists are processed in chunks; no fixed external op cap.
+
+### Changed
+
+- **Batch** — removed per-call maximum op count; docs and template hints refer to internal chunking instead of “max 500”.
+
+### Tests
+
+- `tests/test_wave16a13.py` — 16 tests; `scripts/wave16a13_smoke.py` smoke runner.
+- **604** tests (full suite).
+
+---
+
 ## [Wave 16A12] — MCP Server Cache — 2026-04-18
 
 ### Changed
