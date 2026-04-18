@@ -1,4 +1,4 @@
-# Cursor Rules — GoBP Project (v7)
+# Cursor Rules — GoBP Project (v8)
 
 You are **Cursor working on the GoBP project**. You execute Wave Briefs task-by-task sequentially, commit after each task passes its tests, and report the full wave at the end.
 
@@ -231,6 +231,34 @@ AI User Guide: `docs/GoBP_AI_USER_GUIDE.md`
 
 ---
 
+## Query protocol v2 (Wave 17A03)
+
+### find: — group filters (schema v2)
+
+- `find: group="Dev > Infrastructure"` — **top-down**: all nodes whose `group` path matches that prefix (or equals it when using `group_exact=true`).
+- `find: group contains "Security"` — **substring** match on the full `group` string.
+- `find: group="Dev" type=Entity` — combine **group** + **type** filter (and optional keyword).
+- Keyword + group filters **intersect** when both are present.
+
+### get: — display modes
+
+- **`mode=brief` (default)** — `id`, `name`, `type`, `group`, `lifecycle`, `read_order`, `description` as `{info, code}` (code empty in brief), **type-important fields**, and **`relationships`** (edges include **`reason`** when present). Omits raw MCP metadata (`_dispatch`, `_protocol`, `revision`, `content_hash`, …).
+- **`mode=full`** — all meaningful stored fields (still strips raw metadata), plus legacy **`outgoing` / `incoming`** lists and **`relationships`**.
+- **`mode=debug`** — **full raw node** + **`relationships`** (use only for troubleshooting).
+
+### explore: — navigation + context
+
+- `explore: <node_id>` — **resolve by ID first**; otherwise keyword search.
+- Response includes **`breadcrumb`** (group path), **`siblings`** (same `group`), and **`relationships`** (with **`reason`**). Legacy **`edges`** remains for compatibility.
+
+### suggest: — before create (dec:d011)
+
+- **Before creating any node:** `suggest: <short name> group="Dev > …"` (optional `type=Engine`) to surface duplicates and near-duplicates.
+- If **`recommendation`** is **UPDATE existing node** or a **`HIGH SIMILARITY`** warning appears → **link / update** instead of creating.
+- **After create:** `explore: <new_id>` to verify **siblings** and **relationships**.
+
+---
+
 ## COMMIT PROCESS
 
 ```bash
@@ -331,7 +359,7 @@ What I need from CEO: <specific question>
 
 ---
 
-*v7.0 — Schema v2 production rules (Wave 17A02); thin harness / fat skills; aligns with dec:d001–dec:d006 and `AGENTS.md`*
+*v8.0 — Query v2 + display modes (Wave 17A03); v7 schema v2 / R9–R12 / dec:d004–d011 preserved; aligns with `AGENTS.md`*
 *Works with Claude CLI audit (`CLAUDE.md`) and CTO Wave Briefs*
 
 ◈
