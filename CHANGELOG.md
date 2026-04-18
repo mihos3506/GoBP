@@ -5,6 +5,36 @@ Format: [Wave N — Title] with date, what was added/changed/fixed.
 
 ---
 
+## [Wave 16A16] — Test Performance + Graph Hygiene + Hooks — 2026-04-18
+
+### Changed
+
+- **pytest-xdist** — parallel execution (`-n auto` default)
+  - Full suite: ~14 min → ~3 min target
+  - `@pytest.mark.slow` on batch heavy tests
+  - Fast dev suite: `pytest -m "not slow"` under 1 min
+
+- **`.cursorrules`** — dec:d011 graph hygiene rule added
+  - Lessons learned = update existing node over create new
+  - suggest: before creating Lesson nodes
+
+- **`CLAUDE.md`** — dec:d011 rule added (Claude CLI Task 4)
+
+### Added
+
+- **Hooks layer** — `gobp/mcp/hooks.py`
+  - `before_write()`: type validation + session check
+  - `on_error()`: actionable error suggestions
+  - "Node not found" → similar node suggestions
+  - AI detects errors at the earliest possible stage
+
+### Tests
+
+- `tests/test_wave16a16.py` — pytest config, xdist, hooks
+- **633+** tests (full suite with parallel execution)
+
+---
+
 ## [Wave 16A15] — Thin Harness + Fat Skills Setup — 2026-04-18
 
 ### Added
