@@ -6,7 +6,7 @@
 **Date:** 2026-04-19
 **For:** Cursor (sequential) + Claude CLI (audit)
 **Status:** READY FOR EXECUTION
-**Task count:** 6 tasks
+**Task count:** 7 tasks
 **Estimated effort:** 4-6 hours
 
 ---
@@ -498,7 +498,65 @@ Wave 17A02 Task 5: fix tests for schema v2 compatibility
 
 ---
 
-## TASK 6 — CHANGELOG + GoBP MCP + Full Suite verify
+## TASK 6 — Update .cursorrules for schema v2
+
+**Goal:** Cursor tự update `.cursorrules` với schema v2 rules. (dec:d003)
+
+**CTO requirements — PHẢI có:**
+```
+1. Schema v2 awareness:
+   "GoBP schema v2 — core_nodes_v2 promoted to production.
+    93+ node types với group breadcrumb path."
+
+2. Node creation rules:
+   - group field REQUIRED trên mọi node
+   - description PHẢI có .info (không empty)
+   - lifecycle thay status, read_order thay priority
+
+3. ErrorCase naming convention:
+   - Format: {DOMAIN}_{F|E|W|I}_{SEQ}
+   - VD: GPS_E_001, AUTH_F_001, EMBER_W_003
+
+4. Invariant rule:
+   - rule field REQUIRED (Boolean expression)
+   - KHÔNG dùng Invariant cho "KHÔNG được X" → dùng BusinessRule
+
+5. Lesson rules (dec:d011):
+   - suggest: trước khi tạo Lesson node mới
+   - Update existing node thay vì tạo mới
+   - Lesson sub-types: Rule/Skill/Dev/CTO/QA
+
+6. Validator v2:
+   - Dùng make_validator_v2() cho validation
+   - auto_fix() tự điền group, lifecycle, read_order
+```
+
+**KHÔNG được xóa:** Rules hiện tại trong .cursorrules còn giá trị.
+**Chỉ thêm** section mới: "Schema v2 Rules" sau section hiện tại.
+**Báo cáo** changes cho CEO trong wave report.
+
+**R9-A:** Không cần pytest. Verify: .cursorrules updated, content correct.
+
+**GoBP MCP:**
+```
+gobp(query="session:start actor='cursor' goal='Wave 17A02 Task 6: .cursorrules schema v2 update'")
+gobp(query="session:end ...")
+```
+
+**Commit:**
+```
+Wave 17A02 Task 6: .cursorrules — schema v2 rules added
+
+- group field required
+- description.info required
+- ErrorCase naming: GPS_E_001 format
+- Invariant rule required, BusinessRule for policies
+- Lesson sub-types: Rule/Skill/Dev/CTO/QA
+```
+
+---
+
+## TASK 7 — CHANGELOG + GoBP MCP + Full Suite verify
 
 **CHANGELOG:**
 ```markdown
@@ -542,22 +600,100 @@ Wave 17A02 Task 6: CHANGELOG + full suite — 653+ tests, schema v2 live
 
 ---
 
+## TASK 7 — Cursor tự update .cursorrules v7
+
+**Goal:** `.cursorrules` phản ánh đầy đủ schema v2, ErrorCase naming, cutover state.
+
+**CTO requirements — PHẢI có:**
+
+```
+1. Schema v2 section (thêm mới):
+   "GoBP Schema v2 — sau Wave 17A02"
+   - group REQUIRED trên mọi node create
+   - description PHẢI có .info (required) + .code (optional)
+   - lifecycle thay status: draft|specified|implemented|tested|deprecated
+   - read_order thay priority: foundational|important|reference|background
+   - 93+ valid types trong core_nodes.yaml
+   - Auto-fix: group tự infer từ type nếu không set
+
+2. ErrorCase naming convention (thêm mới):
+   "Format: {DOMAIN}_{SEVERITY}_{SEQ}"
+   - VD: GPS_E_001, AUTH_F_001, EMBER_W_003
+   - Severity: F=Fatal, E=Error, W=Warning, I=Info
+   - Trước khi tạo ErrorCase:
+     → find: domain=X group="Error > ErrorCase"
+     → Kiểm tra code pattern chưa tồn tại
+   - context.features/flows/engines PHẢI có
+     (AI gặp lỗi mới tìm được ErrorCase cũ)
+
+3. Import protocol update (update existing):
+   - Trước khi import errors từ doc:
+     → Đọc ErrorDomain liên quan trước
+     → find: group="Error" domain=X
+     → Tránh tạo duplicate ErrorCase
+
+4. Cutover note (thêm mới):
+   - core_nodes.yaml = v2 schema sau Wave 17A02
+   - Không dùng type names từ v1 cũ
+   - Schema v1 backup: core_nodes_v1.yaml
+
+5. GoBP MCP update obligation (dec:d004) — giữ nguyên từ v6
+6. Testing strategy R9 — giữ nguyên từ v6
+7. MIHOS data KHÔNG được dùng trong GoBP tests — giữ nguyên
+```
+
+**CTO requirements — KHÔNG được:**
+```
+- KHÔNG xóa rules từ v6
+- KHÔNG xóa dec:d004 obligation
+- KHÔNG xóa R9 testing strategy
+- KHÔNG xóa Lessons learned section
+- Chỉ ADD sections mới + UPDATE sections liên quan
+```
+
+**Cursor tự viết nội dung** — CTO chỉ đặt requirements.
+Báo cáo changes cho CEO (diff rõ ràng: thêm gì, sửa gì).
+
+**R9-A:** Không cần pytest. Verify: `.cursorrules` updated đúng.
+
+**GoBP MCP:**
+```
+gobp(query="session:start actor='cursor' goal='Wave 17A02 Task 7 — .cursorrules v7'")
+# suggest: trước khi tạo Lesson node (dec:d011)
+gobp(query="session:end ...")
+```
+
+**Commit:**
+```
+Wave 17A02 Task 7: .cursorrules v7 — schema v2 + ErrorCase naming + cutover
+
+- Schema v2 section: group/lifecycle/read_order/description.info
+- ErrorCase naming: {DOMAIN}_{FEWI}_{SEQ} convention
+- Import protocol: check ErrorDomain trước khi import errors
+- Cutover note: core_nodes.yaml = v2 after Wave 17A02
+- All v6 rules preserved
+```
+
+---
+
 # CEO DISPATCH
 
 ## Cursor
 ```
 Read gobp/schema/core_nodes_v2.yaml TRƯỚC.
+Read .cursorrules v6 (current).
 Read waves/wave_17a02_brief.md.
 Read GoBP MCP: gobp(query="find:Decision mode=summary")
 
 $env:GOBP_DB_URL = "postgresql://postgres:Hieu%408283%40@localhost/gobp"
 
-Execute Tasks 1-6.
-R9-B for Tasks 1-4, R9-C for Tasks 5-6.
+Execute Tasks 1-7.
+R9-B for Tasks 1-5, R9-A for Task 7, R9-C for Task 6.
 
 CRITICAL RULES:
   Task 4 (cutover): BACKUP trước khi rename
   Task 5: fix tests 1 batch, re-run, repeat
+  Task 7: tự viết .cursorrules, báo cáo changes rõ
   STOP nếu không fix được sau 3 retries — báo CEO
 
 GoBP MCP sau mỗi task (dec:d004).
@@ -572,6 +708,8 @@ Verify:
   - core_nodes.yaml = v2 schema (93+ types)
   - core_nodes_v1.yaml: backup exists
   - load_schema() works với v2
+  - .cursorrules v7: schema v2 section, ErrorCase naming,
+    import protocol update, cutover note — all v6 rules intact
   - 653+ tests passing
 
 GoBP MCP session capture. Không cần Lesson node.
@@ -587,7 +725,8 @@ git push origin main
 
 ---
 
-*Wave 17A02 Brief v1.0 — 2026-04-19*
+*Wave 17A02 Brief v1.1 — 2026-04-19*
 *References: dec:d004, dec:d006, dec:d011*
 *Part of: Wave 17A Series (7 waves)*
+*Task 7 added: .cursorrules v7*
 ◈
