@@ -5,6 +5,19 @@ Format: [Wave N — Title] with date, what was added/changed/fixed.
 
 ---
 
+## [Docs] — GoBP AI User Guide refresh — 2026-04-18
+
+### Changed
+
+- **`docs/GoBP_AI_USER_GUIDE.md`** — aligned with current MCP behavior:
+  - Batch ops: internal chunking (200 ops); removed obsolete “max 50” client cap.
+  - **Rule 6 / 13:** prefer `batch` / `quick:`; **Lesson** nodes follow **dec:d011** (suggest → update over duplicate).
+  - **Hooks:** pre-write checks; errors may include **`suggestion`**.
+  - Added **`quick:`**, extra actions table (`version:`, `validate:`, `get_batch:`, …), pointers to **`docs/MCP_TOOLS.md`** and **`docs/SCHEMA.md`**.
+  - Appendix: `_protocol` + `_dispatch`; shortened TestKind/TestCase table (detail in SCHEMA §2.8–2.9).
+
+---
+
 ## [Wave 16A17] — Remove xdist + Test Organization — 2026-04-18
 
 ### Changed
