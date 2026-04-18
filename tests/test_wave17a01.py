@@ -205,3 +205,36 @@ def test_core_nodes_v2_packaged() -> None:
 def test_core_edges_v2_packaged() -> None:
     p = package_schema_dir() / "core_edges_v2.yaml"
     assert p.exists(), "core_edges_v2.yaml must ship with gobp/schema"
+
+
+def test_errorcase_code_pattern_valid(schema: SchemaV2) -> None:
+    node = {
+        "id": "x",
+        "name": "GPS lost",
+        "type": "ErrorCase",
+        "group": "Error > ErrorCase",
+        "description": {"info": "i"},
+        "code": "GPS_E_001",
+        "trigger": "t",
+        "severity": "error",
+        "handling": "h",
+        "fix": "f",
+    }
+    assert schema.validate_node(node) == []
+
+
+def test_errorcase_code_pattern_invalid(schema: SchemaV2) -> None:
+    node = {
+        "id": "x",
+        "name": "Bad code",
+        "type": "ErrorCase",
+        "group": "Error > ErrorCase",
+        "description": {"info": "i"},
+        "code": "bad-code",
+        "trigger": "t",
+        "severity": "error",
+        "handling": "h",
+        "fix": "f",
+    }
+    errs = schema.validate_node(node)
+    assert any("pattern" in e for e in errs)

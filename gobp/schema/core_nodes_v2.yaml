@@ -263,11 +263,28 @@ node_types:
     group: Error > ErrorCase
     read_order: reference
     required:
-      code: str
+      code:
+        type: str
+        pattern: '^[A-Z]+_[FEWI]_[0-9]{3}$'
       trigger: str
       severity: str
       handling: str
       fix: str
+    optional:
+      context:
+        type: dict
+        fields:
+          domains: list[str]
+          features: list[str]
+          flows: list[str]
+          engines: list[str]
+          functions: list[str]
+          modules: list[str]
+          entities: list[str]
+          screens: list[str]
+      keywords: list[str]
+      error_messages: list[str]
+      stack_patterns: list[str]
   TestSuite:
     group: Test > TestSuite
     read_order: reference

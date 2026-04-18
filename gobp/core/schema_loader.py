@@ -9,6 +9,7 @@ See ``waves/wave_17a01_brief.md`` Task 5.
 
 from __future__ import annotations
 
+import re
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
@@ -82,10 +83,20 @@ class SchemaV2:
 
         req = type_def.get("required")
         if isinstance(req, dict):
-            for field in req:
+            for field, spec in req.items():
                 if field in _SCHEMA_SKIP_REQUIRED:
                     continue
-                if not node.get(field):
+                if isinstance(spec, dict) and spec.get("type") == "str":
+                    val = node.get(field)
+                    if val is None or (isinstance(val, str) and not val.strip()):
+                        errors.append(f"{node_type} requires: {field}")
+                        continue
+                    pat = spec.get("pattern")
+                    if pat and isinstance(val, str) and not re.match(pat, val):
+                        errors.append(
+                            f"{field}: value '{val}' does not match pattern {pat}"
+                        )
+                elif not node.get(field):
                     errors.append(f"{node_type} requires: {field}")
         return errors
 
