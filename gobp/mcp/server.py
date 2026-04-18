@@ -84,6 +84,40 @@ def _load_index(project_root: Path) -> GraphIndex:
     return index
 
 
+# Module-level GraphIndex cache (one MCP server process)
+_cached_index: GraphIndex | None = None
+_cache_loaded_at: float = 0.0
+_cache_project_root: Path | None = None
+
+
+def get_cached_index(project_root: Path) -> GraphIndex:
+    """Return cached :class:`GraphIndex`, loading from disk only on miss or project change."""
+    global _cached_index, _cache_loaded_at, _cache_project_root
+    root = project_root.resolve()
+    if _cached_index is None or _cache_project_root != root:
+        _cached_index = _load_index(root)
+        _cache_loaded_at = _time.time()
+        _cache_project_root = root
+    return _cached_index
+
+
+def invalidate_cache() -> None:
+    """Clear cached index so the next :func:`get_cached_index` reloads from disk."""
+    global _cached_index
+    _cached_index = None
+
+
+def update_cache(index: GraphIndex, project_root: Path | None = None) -> None:
+    """Replace the cache with an updated in-memory index (e.g. after batch flush)."""
+    global _cached_index, _cache_loaded_at, _cache_project_root
+    _cached_index = index
+    _cache_loaded_at = _time.time()
+    if project_root is not None:
+        _cache_project_root = project_root.resolve()
+    elif getattr(index, "_gobp_root", None):
+        _cache_project_root = Path(index._gobp_root).resolve()
+
+
 # Global server instance and index (loaded on startup)
 server: Server = Server("gobp")
 _index: GraphIndex | None = None
@@ -260,11 +294,8 @@ async def call_tool(
     try:
         from gobp.mcp.dispatcher import dispatch
 
-        # Reload graph from disk before every query. The MCP stdio server stays
-        # alive across many tool calls; without this, in-memory _index misses
-        # nodes written by the previous call (e.g. session:start then create:).
         _project_root = _get_project_root()
-        _index = _load_index(_project_root)
+        _index = get_cached_index(_project_root)
 
         result = await dispatch(query, _index, _project_root)
         _inject_protocol(result)
@@ -323,7 +354,7 @@ async def main() -> None:
     )
 
     _project_root = _get_project_root()
-    _index = _load_index(_project_root)
+    _index = get_cached_index(_project_root)
 
     async with stdio_server() as (read_stream, write_stream):
         await server.run(
