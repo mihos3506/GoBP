@@ -5,6 +5,24 @@ Format: [Wave N — Title] with date, what was added/changed/fixed.
 
 ---
 
+## [Wave 16A15] — Thin Harness + Fat Skills Setup — 2026-04-18
+
+### Added
+
+- **`docs/IMPORT_CHECKLIST.md`** — AI-facing import protocol checklist (template → plan → CEO review → batch), derived from Decision `dec:d002`.
+
+### Changed
+
+- **`.cursorrules` (v6)** — Cursor-authored standing rules: role per agent model, **R9** split into doc/data vs code vs end-of-wave full suite, **R10** GoBP MCP session capture, import protocol (**dec:d002**), graph linkage (**dec:d006**), sequential tasks / one commit per task.
+- **`docs/GoBP_AI_USER_GUIDE.md`** — Rules 11–12, link to import checklist, Wave 16A14 indexing note.
+- **GoBP MCP graph** — Wave nodes for history **Wave 0–16A14** (plus Wave 16A15); architecture decisions **`dec:d008`–`dec:d010`** backfilled with `discovered_in` sessions; **MIHOS** drill adds **`enforces`** edges from MCP Runtime Engine to three core Invariants (import protocol validation on real data).
+
+### Tests
+
+- **626+** tests (full suite; no new Python feature tests in this wave).
+
+---
+
 ## [Wave 16A14] — Read Performance Indexes + Cycle Validation — 2026-04-18
 
 ### Added

@@ -3199,3 +3199,12 @@
 - from: mcp_runtime_engine.ops.45160705
   to: session_required_for_write.core.10045440
   type: enforces
+- from: wave_16a15.meta.97628160
+  to: dec:d006
+  type: relates_to
+- from: wave_16a15_self_eval_reflection.meta.5f02fc51
+  to: meta.session.2026-04-18.2e213a70
+  type: discovered_in
+- from: wave_16a15_self_eval_reflection.meta.5f02fc51
+  to: wave_16a15.meta.97628160
+  type: relates_to

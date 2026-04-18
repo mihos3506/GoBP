@@ -13,23 +13,23 @@ For each task in Wave Brief (from Task 1 to Task N):
   1. Read task spec
   2. Search the codebase for existing patterns before adding files/APIs (explorer / grep)
   3. Implement per spec
-  4. Run self-test (pytest or manual verification) when the task changes **code**
-  5. **R9:** Run full `tests/` suite when the task changes **code** under `gobp/` or `tests/` (or anything that can affect runtime). **Skip** full pytest for **documentation-only** tasks (e.g. `.cursorrules`, `docs/*.md`) — they do not change executable structure.
-  6. Update GoBP MCP per R10 (session capture — non-optional)
-  7. Decision:
-     - All tests pass AND acceptance criteria met
+  4. **Verify per task type (R9):** see *Testing strategy* below — do **not** run full `pytest tests/` on every task.
+  5. Update GoBP MCP per R10 (session capture — non-optional)
+  6. Decision:
+     - Acceptance criteria met (including the right tests / verification for that task type)
        → commit using Brief's commit message
        → proceed to next task
      - Test fails but fixable
-       → fix code, retry tests (max 3 retries)
+       → fix code, retry targeted tests (max 3 retries)
        → if still fail after 3 retries, STOP
      - Cannot proceed (ambiguous spec, missing dep, genuine blocker)
        → STOP, report issue, do not commit partial work
 
 When all tasks done:
+  - Run **full test suite once** if the last task did not already (R9-C).
   Report full wave summary to CEO with:
     - Tasks completed with commit hashes
-    - Tests passing count
+    - Full-suite result (pass count, baseline 626+ unless Brief added tests)
     - Files created/modified
     - Documentation / GoBP MCP changes (R11)
     - Any warnings or notes
@@ -41,15 +41,27 @@ You do NOT stop between tasks for CEO approval unless blocked.
 
 ## CRITICAL RULES
 
-### R9 — Regression safety
-After any commit that changes **code**, all existing tests must still pass. Current baseline: **626+** tests.
+### R9 — Testing strategy (per task type)
 
-```powershell
-$env:GOBP_DB_URL = "postgresql://postgres:Hieu%408283%40@localhost/gobp"
-D:/GoBP/venv/Scripts/python.exe -m pytest tests/ -q --tb=no
-```
+**A) Docs / data-only / GoBP MCP graph tasks** (e.g. `.cursorrules`, `docs/*.md`, `.gobp/` nodes/edges from capture, no Python package change):
 
-Doc-only commits skip the command above (no impact on imports/tests).
+- **Do not** run `pytest`.
+- **Verify:** files exist, content matches spec, and (when applicable) an MCP read / `GraphIndex.load_from_disk` sanity check or `find:` / `explore:` confirms new data.
+
+**B) Python code tasks** (changes under `gobp/`, executable `scripts/` wired into product behavior, or `tests/` for the same feature):
+
+- Run **only** unit + integration tests for the **module(s) you touched**, e.g.  
+  `D:/GoBP/venv/Scripts/python.exe -m pytest tests/test_<module>.py -v --tb=short`
+- **Do not** run the full suite after every such task.
+
+**C) End of wave (final task of the wave):**
+
+- Run the **full suite once**:  
+  `D:/GoBP/venv/Scripts/python.exe -m pytest tests/ -q --tb=no`  
+  with `$env:GOBP_DB_URL` set as in ENVIRONMENT.
+- Confirms no regression. Baseline is expected to stay **626+** unless the Brief intentionally adds tests.
+
+If a task mixes **code + docs**, apply **(B)** for the code part and **(A)** verification for docs.
 
 ### R10 — GoBP MCP update (immutable obligation, Decision dec:d004)
 After **each task** (and after the wave): record work in the **GoBP project graph** — not optional.
