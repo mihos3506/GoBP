@@ -291,7 +291,7 @@ QUERY_RULES: dict[str, Any] = {
         "3. template_batch: — when creating multiple nodes of same type.",
         "4. suggest: — BEFORE creating any new node. Check reusable nodes.",
         "5. explore: — instead of find+get+related. Use compact=true for quick check.",
-        "6. batch — for ALL write operations. Never single create:/update:/edge:.",
+        "6. batch / quick — for ALL write operations; large op lists are auto-chunked internally (no fixed client limit).",
         "7. find/get — default mode=summary. Only mode=full when debugging.",
         "8. After getting IDs — keep only id+name in next prompt. No full JSON.",
         "9. 1 session = 1 goal. session:end when done.",
@@ -346,7 +346,7 @@ PROTOCOL_GUIDE = {
         "suggest: Payment Flow": "Keyword overlap — surfaces existing engines/entities to reuse",
         "suggest: auth login": "Finds related nodes from short context text",
         "batch session_id='x' ops='create: Engine: A | desc\\nedge+: A --implements--> B'": (
-            "Unified batch: create/update/delete/retype/merge/edge ops (max 500 ops per call)"
+            "Unified batch: create/update/delete/retype/merge/edge ops (internally chunked)"
         ),
         "quick: session_id='x' ops='Idea Name | category | wave | description'": (
             "Quick capture: one line per node, pipe-separated; auto-chunked like batch"

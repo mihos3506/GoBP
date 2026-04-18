@@ -117,15 +117,16 @@ def test_batch_100_creates_under_10s(proj: Path) -> None:
     assert elapsed < 60.0, f"Too slow: {elapsed:.1f}s"
 
 
-def test_batch_limit_500(proj: Path) -> None:
+def test_batch_large_op_list_succeeds(proj: Path) -> None:
+    """Batch accepts 500+ ops; no external max error (Wave 16A13)."""
     sid = _sid(proj)
     lines = [f"create: Node: N{i} | Node {i}" for i in range(501)]
     ops = "\n".join(lines)
 
     index = GraphIndex.load_from_disk(proj)
     r = asyncio.run(dispatch(f"batch session_id='{sid}' ops='{ops}'", index, proj))
-    assert not r.get("ok")
-    assert "Maximum" in str(r.get("error", ""))
+    assert r.get("ok")
+    assert r.get("succeeded", 0) >= 500
 
 
 def test_batch_creates_then_edges_same_call(proj: Path) -> None:
@@ -149,4 +150,4 @@ def test_batch_limit_documented() -> None:
     batch_entries = [k for k in actions if "batch" in k.lower()]
     assert batch_entries
     joined = " ".join(str(actions[k]) for k in batch_entries).lower()
-    assert "500" in joined
+    assert "chunk" in joined or "internal" in joined or "unified batch" in joined

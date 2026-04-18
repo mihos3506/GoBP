@@ -638,7 +638,7 @@ def session_log(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> 
     }
 
 
-MAX_BATCH_OPS = 500
+INTERNAL_CHUNK_SIZE = 200
 
 
 def _batch_build_create_node(
@@ -876,7 +876,7 @@ def quick_action(index: GraphIndex, project_root: Path, args: dict[str, Any]) ->
 
 
 def batch_action(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> dict[str, Any]:
-    """Execute up to ``MAX_BATCH_OPS`` structured mutations from one ``ops`` block."""
+    """Execute structured batch mutations; large op lists are processed in chunks."""
     from gobp.mcp.batch_parser import parse_batch_ops
 
     session_id = str(args.get("session_id", "")).strip()
@@ -896,15 +896,14 @@ def batch_action(index: GraphIndex, project_root: Path, args: dict[str, Any]) ->
             "errors": parse_errors,
             "warnings": [],
         }
-    if len(ops) > MAX_BATCH_OPS:
+    if not ops:
         return {
             "ok": False,
-            "error": f"Maximum {MAX_BATCH_OPS} ops per batch",
             "summary": "",
-            "total_ops": len(ops),
+            "total_ops": 0,
             "succeeded": 0,
             "skipped": [],
-            "errors": [],
+            "errors": ["No operations parsed"],
             "warnings": [],
         }
 
@@ -916,208 +915,211 @@ def batch_action(index: GraphIndex, project_root: Path, args: dict[str, Any]) ->
     nodes_schema = load_schema(package_schema_dir() / "core_nodes.yaml")
     edges_schema = load_schema(package_schema_dir() / "core_edges.yaml")
 
-    working_index = GraphIndex.load_from_disk(project_root)
+    for chunk_start in range(0, len(ops), INTERNAL_CHUNK_SIZE):
+        chunk = ops[chunk_start : chunk_start + INTERNAL_CHUNK_SIZE]
+        working_index = GraphIndex.load_from_disk(project_root)
 
-    for op in ops:
-        kind = str(op.get("kind", ""))
-        tally[kind][1] += 1
-        if kind not in ("create", "edge_add"):
-            if working_index.has_pending_writes():
-                working_index.flush_pending_writes(project_root)
-            working_index = GraphIndex.load_from_disk(project_root)
-        idx = working_index
-        try:
-            if kind == "create":
-                nt = str(op.get("node_type", ""))
-                name = str(op.get("name", ""))
-                sim = find_similar_nodes(idx, name, nt, threshold=80)
-                if sim:
-                    skipped.append(
-                        {
-                            "op": "create",
-                            "reason": f"duplicate of {sim[0].get('id')}",
-                            "name": name,
-                        }
-                    )
-                    continue
-                node_dict, build_err = _batch_build_create_node(
-                    idx, project_root, op, session_id
-                )
-                if build_err:
-                    errors.append(f"create {name!r}: {build_err}")
-                    continue
-                try:
-                    nid = idx.add_node_in_memory(node_dict)
-                    idx.add_edge_in_memory(nid, session_id, "discovered_in")
-                except ValueError as exc:
-                    errors.append(f"create {name!r}: {exc}")
-                    continue
-                tally[kind][0] += 1
-
-            elif kind in ("update", "replace"):
-                nid = str(op.get("node_id", ""))
-                existing = idx.get_node(nid)
-                if not existing:
-                    errors.append(f"{kind} missing node {nid}")
-                    continue
-                node = dict(existing)
-                for fk, fv in (op.get("fields") or {}).items():
-                    node[str(fk)] = fv
-                node["updated"] = datetime.now(timezone.utc).isoformat()
-                update_node(project_root, node, nodes_schema, actor="batch_action")
-                tally[kind][0] += 1
+        for op in chunk:
+            kind = str(op.get("kind", ""))
+            tally[kind][1] += 1
+            if kind not in ("create", "edge_add"):
+                if working_index.has_pending_writes():
+                    working_index.flush_pending_writes(project_root)
                 working_index = GraphIndex.load_from_disk(project_root)
-                if kind == "replace":
-                    warnings.append(
-                        {
-                            "op": "replace",
-                            "note": "replace: uses same partial merge path as update in this build",
-                            "node_id": nid,
-                        }
-                    )
-
-            elif kind == "delete":
-                nid = str(op.get("node_id", ""))
-                res = delete_node_action(
-                    idx, project_root, {"id": nid, "query": nid, "session_id": session_id}
-                )
-                if not res.get("ok"):
-                    errors.append(f"delete {nid!r}: {res.get('error', res)}")
-                    continue
-                tally[kind][0] += 1
-                working_index = GraphIndex.load_from_disk(project_root)
-
-            elif kind == "retype":
-                res = retype_node_action(
-                    idx,
-                    project_root,
-                    {
-                        "id": op.get("node_id"),
-                        "new_type": op.get("new_type"),
-                        "session_id": session_id,
-                    },
-                )
-                if not res.get("ok"):
-                    errors.append(f"retype: {res.get('error', res)}")
-                    continue
-                tally[kind][0] += 1
-                working_index = GraphIndex.load_from_disk(project_root)
-
-            elif kind == "merge":
-                res = merge_nodes_action(
-                    idx,
-                    project_root,
-                    str(op.get("keep", "")),
-                    str(op.get("absorb", "")),
-                    session_id,
-                )
-                if not res.get("ok"):
-                    errors.append(f"merge: {res.get('error', res)}")
-                    continue
-                tally[kind][0] += 1
-                for w in res.get("warnings", []) or []:
-                    warnings.append(w)
-                working_index = GraphIndex.load_from_disk(project_root)
-
-            elif kind == "edge_add":
-                fid = _resolve_node_ref(idx, str(op.get("from_name", "")))
-                tid = _resolve_node_ref(idx, str(op.get("targets", [""])[0]))
-                et = str(op.get("edge_type", "relates_to"))
-                if not fid or not tid:
-                    errors.append(f"edge+: unresolved endpoint(s) in {op.get('raw')!r}")
-                    continue
-                try:
-                    added = idx.add_edge_in_memory(fid, tid, et)
-                except ValueError as exc:
-                    errors.append(f"edge+: {exc}")
-                    continue
-                if not added:
-                    skipped.append(
-                        {
-                            "op": "edge+",
-                            "reason": "duplicate edge",
-                            "from": fid,
-                            "to": tid,
-                            "type": et,
-                        }
-                    )
-                else:
-                    tally[kind][0] += 1
-
-            elif kind == "edge_remove":
-                fid = _resolve_node_ref(idx, str(op.get("from_name", "")))
-                tid = _resolve_node_ref(idx, str(op.get("targets", [""])[0]))
-                et = str(op.get("edge_type", "relates_to"))
-                if not fid or not tid:
-                    errors.append(f"edge-: unresolved endpoint(s) in {op.get('raw')!r}")
-                    continue
-                removed = remove_edge_from_disk(project_root, fid, tid, et, actor="batch_action")
-                if removed == 0:
-                    warnings.append(
-                        {"op": "edge-", "note": "edge not found", "from": fid, "to": tid, "type": et}
-                    )
-                tally[kind][0] += 1
-                working_index = GraphIndex.load_from_disk(project_root)
-
-            elif kind == "edge_ret_type":
-                fid = _resolve_node_ref(idx, str(op.get("from_name", "")))
-                tid = _resolve_node_ref(idx, str(op.get("targets", [""])[0]))
-                old_t = str(op.get("edge_type", "relates_to"))
-                new_t = str(op.get("new_edge_type") or "").strip()
-                if not fid or not tid or not new_t:
-                    errors.append(f"edge~: missing data in {op.get('raw')!r}")
-                    continue
-                remove_edge_from_disk(project_root, fid, tid, old_t, actor="batch_action")
-                create_edge(
-                    project_root,
-                    {"from": fid, "to": tid, "type": new_t},
-                    edges_schema,
-                    actor="batch_action",
-                )
-                tally[kind][0] += 1
-                working_index = GraphIndex.load_from_disk(project_root)
-
-            elif kind == "edge_replace_all":
-                fid = _resolve_node_ref(idx, str(op.get("from_name", "")))
-                et = str(op.get("edge_type", "relates_to"))
-                if not fid:
-                    errors.append(f"edge*: unresolved from in {op.get('raw')!r}")
-                    continue
-                for e in list(idx.get_edges_from(fid)):
-                    if str(e.get("type", "")) == et:
-                        remove_edge_from_disk(
-                            project_root,
-                            fid,
-                            str(e.get("to", "")),
-                            et,
-                            actor="batch_action",
+            idx = working_index
+            try:
+                if kind == "create":
+                    nt = str(op.get("node_type", ""))
+                    name = str(op.get("name", ""))
+                    sim = find_similar_nodes(idx, name, nt, threshold=80)
+                    if sim:
+                        skipped.append(
+                            {
+                                "op": "create",
+                                "reason": f"duplicate of {sim[0].get('id')}",
+                                "name": name,
+                            }
                         )
-                for tgt in op.get("targets") or []:
-                    tid = _resolve_node_ref(idx, str(tgt))
-                    if not tid:
-                        errors.append(f"edge*: unresolved target {tgt!r}")
                         continue
+                    node_dict, build_err = _batch_build_create_node(
+                        idx, project_root, op, session_id
+                    )
+                    if build_err:
+                        errors.append(f"create {name!r}: {build_err}")
+                        continue
+                    try:
+                        nid = idx.add_node_in_memory(node_dict)
+                        idx.add_edge_in_memory(nid, session_id, "discovered_in")
+                    except ValueError as exc:
+                        errors.append(f"create {name!r}: {exc}")
+                        continue
+                    tally[kind][0] += 1
+    
+                elif kind in ("update", "replace"):
+                    nid = str(op.get("node_id", ""))
+                    existing = idx.get_node(nid)
+                    if not existing:
+                        errors.append(f"{kind} missing node {nid}")
+                        continue
+                    node = dict(existing)
+                    for fk, fv in (op.get("fields") or {}).items():
+                        node[str(fk)] = fv
+                    node["updated"] = datetime.now(timezone.utc).isoformat()
+                    update_node(project_root, node, nodes_schema, actor="batch_action")
+                    tally[kind][0] += 1
+                    working_index = GraphIndex.load_from_disk(project_root)
+                    if kind == "replace":
+                        warnings.append(
+                            {
+                                "op": "replace",
+                                "note": "replace: uses same partial merge path as update in this build",
+                                "node_id": nid,
+                            }
+                        )
+    
+                elif kind == "delete":
+                    nid = str(op.get("node_id", ""))
+                    res = delete_node_action(
+                        idx, project_root, {"id": nid, "query": nid, "session_id": session_id}
+                    )
+                    if not res.get("ok"):
+                        errors.append(f"delete {nid!r}: {res.get('error', res)}")
+                        continue
+                    tally[kind][0] += 1
+                    working_index = GraphIndex.load_from_disk(project_root)
+    
+                elif kind == "retype":
+                    res = retype_node_action(
+                        idx,
+                        project_root,
+                        {
+                            "id": op.get("node_id"),
+                            "new_type": op.get("new_type"),
+                            "session_id": session_id,
+                        },
+                    )
+                    if not res.get("ok"):
+                        errors.append(f"retype: {res.get('error', res)}")
+                        continue
+                    tally[kind][0] += 1
+                    working_index = GraphIndex.load_from_disk(project_root)
+    
+                elif kind == "merge":
+                    res = merge_nodes_action(
+                        idx,
+                        project_root,
+                        str(op.get("keep", "")),
+                        str(op.get("absorb", "")),
+                        session_id,
+                    )
+                    if not res.get("ok"):
+                        errors.append(f"merge: {res.get('error', res)}")
+                        continue
+                    tally[kind][0] += 1
+                    for w in res.get("warnings", []) or []:
+                        warnings.append(w)
+                    working_index = GraphIndex.load_from_disk(project_root)
+    
+                elif kind == "edge_add":
+                    fid = _resolve_node_ref(idx, str(op.get("from_name", "")))
+                    tid = _resolve_node_ref(idx, str(op.get("targets", [""])[0]))
+                    et = str(op.get("edge_type", "relates_to"))
+                    if not fid or not tid:
+                        errors.append(f"edge+: unresolved endpoint(s) in {op.get('raw')!r}")
+                        continue
+                    try:
+                        added = idx.add_edge_in_memory(fid, tid, et)
+                    except ValueError as exc:
+                        errors.append(f"edge+: {exc}")
+                        continue
+                    if not added:
+                        skipped.append(
+                            {
+                                "op": "edge+",
+                                "reason": "duplicate edge",
+                                "from": fid,
+                                "to": tid,
+                                "type": et,
+                            }
+                        )
+                    else:
+                        tally[kind][0] += 1
+    
+                elif kind == "edge_remove":
+                    fid = _resolve_node_ref(idx, str(op.get("from_name", "")))
+                    tid = _resolve_node_ref(idx, str(op.get("targets", [""])[0]))
+                    et = str(op.get("edge_type", "relates_to"))
+                    if not fid or not tid:
+                        errors.append(f"edge-: unresolved endpoint(s) in {op.get('raw')!r}")
+                        continue
+                    removed = remove_edge_from_disk(project_root, fid, tid, et, actor="batch_action")
+                    if removed == 0:
+                        warnings.append(
+                            {"op": "edge-", "note": "edge not found", "from": fid, "to": tid, "type": et}
+                        )
+                    tally[kind][0] += 1
+                    working_index = GraphIndex.load_from_disk(project_root)
+    
+                elif kind == "edge_ret_type":
+                    fid = _resolve_node_ref(idx, str(op.get("from_name", "")))
+                    tid = _resolve_node_ref(idx, str(op.get("targets", [""])[0]))
+                    old_t = str(op.get("edge_type", "relates_to"))
+                    new_t = str(op.get("new_edge_type") or "").strip()
+                    if not fid or not tid or not new_t:
+                        errors.append(f"edge~: missing data in {op.get('raw')!r}")
+                        continue
+                    remove_edge_from_disk(project_root, fid, tid, old_t, actor="batch_action")
                     create_edge(
                         project_root,
-                        {"from": fid, "to": tid, "type": et},
+                        {"from": fid, "to": tid, "type": new_t},
                         edges_schema,
                         actor="batch_action",
                     )
-                tally[kind][0] += 1
-                working_index = GraphIndex.load_from_disk(project_root)
-
-            else:
-                errors.append(f"unsupported op kind {kind!r}")
-        except Exception as exc:
-            errors.append(f"{kind}: {exc}")
-
-    if working_index.has_pending_writes():
-        working_index.flush_pending_writes(project_root)
+                    tally[kind][0] += 1
+                    working_index = GraphIndex.load_from_disk(project_root)
+    
+                elif kind == "edge_replace_all":
+                    fid = _resolve_node_ref(idx, str(op.get("from_name", "")))
+                    et = str(op.get("edge_type", "relates_to"))
+                    if not fid:
+                        errors.append(f"edge*: unresolved from in {op.get('raw')!r}")
+                        continue
+                    for e in list(idx.get_edges_from(fid)):
+                        if str(e.get("type", "")) == et:
+                            remove_edge_from_disk(
+                                project_root,
+                                fid,
+                                str(e.get("to", "")),
+                                et,
+                                actor="batch_action",
+                            )
+                    for tgt in op.get("targets") or []:
+                        tid = _resolve_node_ref(idx, str(tgt))
+                        if not tid:
+                            errors.append(f"edge*: unresolved target {tgt!r}")
+                            continue
+                        create_edge(
+                            project_root,
+                            {"from": fid, "to": tid, "type": et},
+                            edges_schema,
+                            actor="batch_action",
+                        )
+                    tally[kind][0] += 1
+                    working_index = GraphIndex.load_from_disk(project_root)
+    
+                else:
+                    errors.append(f"unsupported op kind {kind!r}")
+            except Exception as exc:
+                errors.append(f"{kind}: {exc}")
+    
+        if working_index.has_pending_writes():
+            working_index.flush_pending_writes(project_root)
 
     try:
         from gobp.mcp.server import update_cache
 
-        update_cache(working_index, project_root)
+        final_index = GraphIndex.load_from_disk(project_root)
+        update_cache(final_index, project_root)
     except ImportError:
         pass
 
