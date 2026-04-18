@@ -1,0 +1,303 @@
+schema_version: '2.0'
+version: '2.0'
+schema_name: gobp_core_v2
+node_types:
+  Spec:
+    group: Document > Spec
+    read_order: important
+  Decision:
+    group: Document > Decision
+    read_order: foundational
+    required:
+      what: str
+      why: str
+  Concept:
+    group: Document > Concept
+    read_order: important
+    required:
+      definition: str
+      usage_guide: str
+  Idea:
+    group: Document > Idea
+    read_order: background
+  LessonRule:
+    group: Document > Lesson > Rule
+    read_order: foundational
+  LessonSkill:
+    group: Document > Lesson > Skill
+    read_order: important
+  LessonDev:
+    group: Document > Lesson > Dev
+    read_order: reference
+  LessonCTO:
+    group: Document > Lesson > CTO
+    read_order: reference
+  LessonQA:
+    group: Document > Lesson > QA
+    read_order: reference
+  Entity:
+    group: Dev > Domain > Entity
+    read_order: foundational
+  ValueObject:
+    group: Dev > Domain > ValueObject
+    read_order: important
+  DomainEvent:
+    group: Dev > Domain > DomainEvent
+    read_order: important
+  Aggregate:
+    group: Dev > Domain > Aggregate
+    read_order: important
+  Flow:
+    group: Dev > Application > Flow
+    read_order: important
+  Feature:
+    group: Dev > Application > Feature
+    read_order: important
+  Command:
+    group: Dev > Application > Command
+    read_order: reference
+  UseCase:
+    group: Dev > Application > UseCase
+    read_order: reference
+  DTO:
+    group: Dev > Application > DTO
+    read_order: background
+  Engine:
+    group: Dev > Infrastructure > Engine
+    read_order: foundational
+  Repository:
+    group: Dev > Infrastructure > Repository
+    read_order: reference
+  APIContract:
+    group: Dev > Infrastructure > API > APIContract
+    read_order: important
+  APIEndpoint:
+    group: Dev > Infrastructure > API > APIEndpoint
+    read_order: reference
+  APIRequest:
+    group: Dev > Infrastructure > API > APIRequest
+    read_order: reference
+  APIResponse:
+    group: Dev > Infrastructure > API > APIResponse
+    read_order: reference
+  APIMiddleware:
+    group: Dev > Infrastructure > API > APIMiddleware
+    read_order: reference
+  Webhook:
+    group: Dev > Infrastructure > API > Webhook
+    read_order: background
+  AuthFlow:
+    group: Dev > Infrastructure > Security > AuthFlow
+    read_order: foundational
+  AuthZ:
+    group: Dev > Infrastructure > Security > AuthZ
+    read_order: foundational
+  Permission:
+    group: Dev > Infrastructure > Security > Permission
+    read_order: important
+  Policy:
+    group: Dev > Infrastructure > Security > Policy
+    read_order: important
+  Token:
+    group: Dev > Infrastructure > Security > Token
+    read_order: important
+  Encryption:
+    group: Dev > Infrastructure > Security > Encryption
+    read_order: important
+  Secret:
+    group: Dev > Infrastructure > Security > Secret
+    read_order: important
+  SecurityAudit:
+    group: Dev > Infrastructure > Security > Audit
+    read_order: reference
+  ThreatModel:
+    group: Dev > Infrastructure > Security > ThreatModel
+    read_order: important
+  Vulnerability:
+    group: Dev > Infrastructure > Security > Vulnerability
+    read_order: important
+  DBSchema:
+    group: Dev > Infrastructure > Database > Schema
+    read_order: important
+  Migration:
+    group: Dev > Infrastructure > Database > Migration
+    read_order: reference
+  DBIndex:
+    group: Dev > Infrastructure > Database > Index
+    read_order: background
+  NamedQuery:
+    group: Dev > Infrastructure > Database > Query
+    read_order: reference
+  Seed:
+    group: Dev > Infrastructure > Database > Seed
+    read_order: background
+  EventBus:
+    group: Dev > Infrastructure > Messaging > EventBus
+    read_order: important
+  Queue:
+    group: Dev > Infrastructure > Messaging > Queue
+    read_order: reference
+  Topic:
+    group: Dev > Infrastructure > Messaging > Topic
+    read_order: reference
+  Worker:
+    group: Dev > Infrastructure > Messaging > Worker
+    read_order: reference
+  Metric:
+    group: Dev > Infrastructure > Observability > Metric
+    read_order: reference
+  LogSpec:
+    group: Dev > Infrastructure > Observability > Log
+    read_order: reference
+  TraceSpec:
+    group: Dev > Infrastructure > Observability > Trace
+    read_order: reference
+  Alert:
+    group: Dev > Infrastructure > Observability > Alert
+    read_order: reference
+  CacheStrategy:
+    group: Dev > Infrastructure > Cache > CacheStrategy
+    read_order: reference
+  FileStorage:
+    group: Dev > Infrastructure > Storage > FileStorage
+    read_order: background
+  CDN:
+    group: Dev > Infrastructure > Storage > CDN
+    read_order: background
+  EnvConfig:
+    group: Dev > Infrastructure > Config > EnvConfig
+    read_order: reference
+  FeatureFlag:
+    group: Dev > Infrastructure > Config > FeatureFlag
+    read_order: reference
+  Screen:
+    group: Dev > Frontend > Screen
+    read_order: reference
+  Component:
+    group: Dev > Frontend > Component
+    read_order: reference
+  Layout:
+    group: Dev > Frontend > Layout
+    read_order: background
+  Theme:
+    group: Dev > Frontend > Theme
+    read_order: background
+  Animation:
+    group: Dev > Frontend > Animation
+    read_order: background
+  UIState:
+    group: Dev > Frontend > State
+    read_order: reference
+  Interface:
+    group: Dev > Code > Interface
+    read_order: important
+  AbstractClass:
+    group: Dev > Code > AbstractClass
+    read_order: reference
+  Class:
+    group: Dev > Code > Class
+    read_order: reference
+  Mixin:
+    group: Dev > Code > Mixin
+    read_order: background
+  CodeEnum:
+    group: Dev > Code > Enum
+    read_order: reference
+  TypeAlias:
+    group: Dev > Code > TypeAlias
+    read_order: background
+  Generic:
+    group: Dev > Code > Generic
+    read_order: reference
+  Function:
+    group: Dev > Code > Function
+    read_order: reference
+  Method:
+    group: Dev > Code > Method
+    read_order: background
+  Constructor:
+    group: Dev > Code > Constructor
+    read_order: background
+  Extension:
+    group: Dev > Code > Extension
+    read_order: background
+  Field:
+    group: Dev > Code > Field
+    read_order: background
+  Variable:
+    group: Dev > Code > Variable
+    read_order: background
+  Constant:
+    group: Dev > Code > Constant
+    read_order: reference
+  Parameter:
+    group: Dev > Code > Parameter
+    read_order: background
+  Module:
+    group: Dev > Code > Module
+    read_order: reference
+  Invariant:
+    group: Constraint > Invariant
+    read_order: foundational
+    required:
+      rule: str
+      scope: str
+      enforcement: str
+      violation_action: str
+  Precondition:
+    group: Constraint > Precondition
+    read_order: important
+  Postcondition:
+    group: Constraint > Postcondition
+    read_order: important
+  BusinessRule:
+    group: Constraint > BusinessRule
+    read_order: important
+  ErrorDomain:
+    group: Error > ErrorDomain
+    read_order: important
+    required:
+      domain: str
+      fix_guide: str
+  ErrorCase:
+    group: Error > ErrorCase
+    read_order: reference
+    required:
+      code: str
+      trigger: str
+      severity: str
+      handling: str
+      fix: str
+  TestSuite:
+    group: Test > TestSuite
+    read_order: reference
+  TestKind:
+    group: Test > TestKind
+    read_order: reference
+  TestCase:
+    group: Test > TestCase
+    read_order: background
+  Session:
+    group: Meta > Session
+    read_order: background
+  Wave:
+    group: Meta > Wave
+    read_order: background
+  Task:
+    group: Meta > Task
+    read_order: background
+  Document:
+    group: Document > Spec
+    read_order: important
+  Lesson:
+    group: Document > Lesson > Dev
+    read_order: reference
+  Node:
+    group: Meta > Graph > Node
+    read_order: reference
+  CtoDevHandoff:
+    group: Meta > Handoff > CTO
+    read_order: reference
+  QaCodeDevHandoff:
+    group: Meta > Handoff > QA
+    read_order: reference

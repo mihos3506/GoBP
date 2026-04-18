@@ -54,6 +54,36 @@ TYPE_DEFAULTS: dict[str, dict[str, Any]] = {
     },
 }
 
+# Inferred from ``core_nodes_v2.yaml`` (group, lifecycle, read_order). Applied after
+# TYPE_DEFAULTS; :func:`gobp.core.validator.validate_node` still uses v1 schema for writes.
+_TYPE_DEFAULTS_V2_CACHE: dict[str, dict[str, Any]] | None = None
+
+
+def _build_type_defaults_v2() -> dict[str, dict[str, Any]]:
+    from gobp.core.schema_loader import load_schema_v2
+
+    try:
+        sv2 = load_schema_v2(package_schema_dir())
+    except Exception:
+        return {}
+    out: dict[str, dict[str, Any]] = {}
+    for tname in sv2.node_types:
+        g = sv2.get_group(tname)
+        ro = sv2.get_default_read_order(tname)
+        out[tname] = {
+            "group": lambda n, _g=g: _g,
+            "lifecycle": "draft",
+            "read_order": lambda n, _r=ro: _r,
+        }
+    return out
+
+
+def _type_defaults_v2() -> dict[str, dict[str, Any]]:
+    global _TYPE_DEFAULTS_V2_CACHE
+    if _TYPE_DEFAULTS_V2_CACHE is None:
+        _TYPE_DEFAULTS_V2_CACHE = _build_type_defaults_v2()
+    return _TYPE_DEFAULTS_V2_CACHE
+
 
 def _normalize_document_content_hash(node: dict[str, Any]) -> None:
     """Normalize ``content_hash`` for Document nodes before schema validation.
@@ -84,6 +114,11 @@ def _auto_fill_defaults(node: dict[str, Any], node_type: str) -> None:
     """Fill missing required schema fields with safe defaults (mutates ``node``)."""
     defaults = TYPE_DEFAULTS.get(node_type, {})
     for field, default in defaults.items():
+        cur = node.get(field)
+        if cur is not None and str(cur).strip() != "":
+            continue
+        node[field] = default(node) if callable(default) else default
+    for field, default in _type_defaults_v2().get(node_type, {}).items():
         cur = node.get(field)
         if cur is not None and str(cur).strip() != "":
             continue

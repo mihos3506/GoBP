@@ -1,0 +1,39 @@
+# GoBP Core Edge Types v2 — reason field on every edge (optional, default "")
+# Reference: docs/GOBP_SCHEMA_REDESIGN_v2.1.md, waves/wave_17a01_brief.md Task 2
+# Validator v1 still uses core_edges.yaml until cutover.
+
+schema_version: "2.0"
+version: "2.0"
+schema_name: "gobp_core_edges_v2"
+
+edge_types:
+  specified_in:
+    description: "Node được đặc tả trong Document"
+  references:
+    description: "Node tham chiếu đến node khác"
+  implements:
+    description: "Node implement spec/interface"
+  depends_on:
+    description: "Node phụ thuộc vào node khác"
+  relates_to:
+    description: "Mối liên hệ chung"
+  enforces:
+    description: "Constraint áp dụng cho node"
+  validated_by:
+    description: "Node được validate bởi Engine/TestCase"
+  covers:
+    description: "TestCase cover node"
+  belongs_to:
+    description: "Node thuộc về group/suite"
+  of_kind:
+    description: "TestCase thuộc TestKind"
+  supersedes:
+    description: "Node mới thay thế node cũ"
+  discovered_in:
+    description: "Node được tạo trong Session"
+  affects:
+    description: "Node ảnh hưởng đến node khác"
+  triggers:
+    description: "Node trigger node khác"
+  produces:
+    description: "Node produce output node"

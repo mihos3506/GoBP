@@ -19,12 +19,20 @@ _SCHEMA_SKIP_REQUIRED = frozenset({"what", "why", "definition", "usage_guide"})
 
 
 class SchemaV2:
-    """Load ``core_nodes.yaml`` / ``core_edges.yaml`` with ``node_types`` taxonomy."""
+    """Load ``core_nodes_v2.yaml`` / ``core_edges_v2.yaml`` (taxonomy v2).
+
+    Legacy :func:`gobp.core.loader.load_schema` continues to use
+    ``core_nodes.yaml`` / ``core_edges.yaml`` for validator v1 until cutover.
+    """
 
     def __init__(self, schema_dir: Path) -> None:
-        nodes_path = schema_dir / "core_nodes.yaml"
-        edges_path = schema_dir / "core_edges.yaml"
-        self._nodes: dict[str, Any] = yaml.safe_load(nodes_path.read_text(encoding="utf-8")) or {}
+        nodes_path = schema_dir / "core_nodes_v2.yaml"
+        edges_path = schema_dir / "core_edges_v2.yaml"
+        if not nodes_path.exists():
+            raise FileNotFoundError(
+                f"Schema v2 not found: {nodes_path} (expected packaged core_nodes_v2.yaml)"
+            )
+        self._nodes = yaml.safe_load(nodes_path.read_text(encoding="utf-8")) or {}
         self._edges: dict[str, Any] = {}
         if edges_path.exists():
             self._edges = yaml.safe_load(edges_path.read_text(encoding="utf-8")) or {}
@@ -86,3 +94,8 @@ class SchemaV2:
 def load_schema_v2(schema_dir: Path) -> SchemaV2:
     """Cached :class:`SchemaV2` for a schema directory."""
     return SchemaV2(schema_dir)
+
+
+def clear_schema_v2_cache() -> None:
+    """Clear :func:`load_schema_v2` cache (tests / reload after schema edits)."""
+    load_schema_v2.cache_clear()

@@ -1,4 +1,4 @@
-"""Tests for Wave 17A01: schema v2 taxonomy, ID generator v2, file format, SchemaV2."""
+"""Tests for Wave 17A01: schema v2 files, ID generator v2, file format, SchemaV2."""
 
 from __future__ import annotations
 
@@ -21,58 +21,15 @@ from gobp.core.id_generator import (
     generate_id,
     infer_group_from_type,
 )
-from gobp.core.schema_loader import SchemaV2
-
-
-def _write_minimal_v2_schema(schema_dir: Path) -> None:
-    """Build a 65+ type taxonomy for SchemaV2 (matches brief scale; not full production YAML)."""
-    pairs: list[tuple[str, str]] = []
-    # Overrides for tests that assert exact groups
-    pairs.append(("Entity", "Dev > Domain > Entity"))
-    pairs.append(("AuthFlow", "Dev > Infrastructure > Security > AuthFlow"))
-    for i in range(63):
-        pairs.append((f"ZPlaceholder{i:02d}", f"Dev > Placeholder > G{i % 7}"))
-    assert len(pairs) >= 65
-
-    node_types: dict[str, object] = {}
-    for name, group in pairs:
-        node_types[name] = {"group": group, "read_order": "reference"}
-
-    node_types["Invariant"] = {
-        "group": "Constraint > Invariant",
-        "read_order": "foundational",
-        "required": {
-            "rule": "str",
-            "scope": "str",
-            "enforcement": "str",
-            "violation_action": "str",
-        },
-    }
-
-    raw = {
-        "schema_version": "2.0",
-        "version": "2.0",
-        "node_types": node_types,
-    }
-    schema_dir.mkdir(parents=True, exist_ok=True)
-    (schema_dir / "core_nodes.yaml").write_text(
-        yaml.dump(raw, allow_unicode=True, sort_keys=False),
-        encoding="utf-8",
-    )
-    (schema_dir / "core_edges.yaml").write_text(
-        yaml.dump(
-            {"schema_version": "2.0", "edge_types": {"relates_to": {}}},
-            allow_unicode=True,
-        ),
-        encoding="utf-8",
-    )
+from gobp.core.loader import package_schema_dir
+from gobp.core.schema_loader import SchemaV2, clear_schema_v2_cache, load_schema_v2
 
 
 @pytest.fixture
-def schema(tmp_path: Path) -> SchemaV2:
-    d = tmp_path / "schema"
-    _write_minimal_v2_schema(d)
-    return SchemaV2(d)
+def schema() -> SchemaV2:
+    """Live taxonomy from ``gobp/schema/core_nodes_v2.yaml`` (packaged)."""
+    clear_schema_v2_cache()
+    return load_schema_v2(package_schema_dir())
 
 
 # --- ID generator (6) ---------------------------------------------------------
@@ -178,7 +135,7 @@ def test_append_edge_dedup(tmp_path: Path) -> None:
     assert len(edges) == 1
 
 
-# --- SchemaV2 (7) -------------------------------------------------------------
+# --- SchemaV2 on packaged core_nodes_v2.yaml (7) ------------------------------
 
 
 def test_schema_loads(schema: SchemaV2) -> None:
@@ -238,3 +195,13 @@ def test_infer_group_from_type(schema: SchemaV2) -> None:
         }
     }
     assert infer_group_from_type("Entity", raw) == "Dev > Domain > Entity"
+
+
+def test_core_nodes_v2_packaged() -> None:
+    p = package_schema_dir() / "core_nodes_v2.yaml"
+    assert p.exists(), "core_nodes_v2.yaml must ship with gobp/schema"
+
+
+def test_core_edges_v2_packaged() -> None:
+    p = package_schema_dir() / "core_edges_v2.yaml"
+    assert p.exists(), "core_edges_v2.yaml must ship with gobp/schema"
