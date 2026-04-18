@@ -3190,3 +3190,12 @@
 - from: dec:d010
   to: meta.session.2026-04-18.4b0a36c08
   type: discovered_in
+- from: mcp_runtime_engine.ops.45160705
+  to: write_guardrails_required.core.14239744
+  type: enforces
+- from: mcp_runtime_engine.ops.45160705
+  to: discovery_before_creation.core.14239745
+  type: enforces
+- from: mcp_runtime_engine.ops.45160705
+  to: session_required_for_write.core.10045440
+  type: enforces
