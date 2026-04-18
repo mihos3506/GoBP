@@ -6,6 +6,7 @@ All write tools require an active session_id.
 
 from __future__ import annotations
 
+import re
 from collections import defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
@@ -41,7 +42,42 @@ TYPE_DEFAULTS: dict[str, dict[str, Any]] = {
         "when": "TBD",
         "then": "TBD",
     },
+    "Document": {
+        "registered_at": lambda n: datetime.now(timezone.utc).isoformat(),
+        "last_verified": lambda n: datetime.now(timezone.utc).isoformat(),
+        "content_hash": lambda n: "sha256:pending",
+        "source_path": lambda n: f"docs/{str(n.get('name', '')).lower().replace(' ', '-')}.md",
+    },
+    "Concept": {
+        "definition": lambda n: str(n.get("description", "")),
+        "usage_guide": lambda n: "Usage guide — update after import",
+    },
 }
+
+
+def _normalize_document_content_hash(node: dict[str, Any]) -> None:
+    """Normalize ``content_hash`` for Document nodes before schema validation.
+
+    - Accepts ``sha256:<64 hex>`` (unchanged aside from lowercasing hex).
+    - Accepts a bare 64-character hex string and prepends ``sha256:``.
+    - Maps placeholder ``sha256:pending`` to a valid schema hash (64 zero digits).
+    """
+    if node.get("type") != "Document":
+        return
+    ch = node.get("content_hash")
+    if not isinstance(ch, str):
+        return
+    s = ch.strip()
+    if s == "sha256:pending":
+        node["content_hash"] = "sha256:" + "0" * 64
+        return
+    if re.fullmatch(r"[a-fA-F0-9]{64}", s):
+        node["content_hash"] = "sha256:" + s.lower()
+        return
+    if s.startswith("sha256:") and len(s) == 71:
+        rest = s[7:]
+        if re.fullmatch(r"[a-fA-F0-9]{64}", rest):
+            node["content_hash"] = "sha256:" + rest.lower()
 
 
 def _auto_fill_defaults(node: dict[str, Any], node_type: str) -> None:
@@ -181,6 +217,7 @@ def node_upsert(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> 
             )
 
     _auto_fill_defaults(node, node_type)
+    _normalize_document_content_hash(node)
 
     try:
         nodes_schema = load_schema(package_schema_dir() / "core_nodes.yaml")
@@ -712,6 +749,7 @@ def _batch_build_create_node(
             )
 
     _auto_fill_defaults(node, node_type)
+    _normalize_document_content_hash(node)
 
     nodes_schema = load_schema(package_schema_dir() / "core_nodes.yaml")
     result = validate_node(node, nodes_schema)
