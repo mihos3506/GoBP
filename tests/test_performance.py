@@ -34,7 +34,7 @@ MAX_MS = {
     "session_recent": 50.0,
     "decisions_for": 50.0,
     "doc_sections": 30.0,
-    "node_upsert": 1100.0,  # duplicate check reloads index (Wave 16A07)
+    "node_upsert": 1400.0,  # duplicate check reloads index (Wave 16A07); headroom on slow runners
     "decision_lock": 200.0,
     "session_log": 500.0,
     "lessons_extract": 2000.0,

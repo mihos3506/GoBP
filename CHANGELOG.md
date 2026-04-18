@@ -5,6 +5,28 @@ Format: [Wave N — Title] with date, what was added/changed/fixed.
 
 ---
 
+## [Wave 16A14] — Read Performance Indexes + Cycle Validation — 2026-04-18
+
+### Added
+
+- **`gobp/core/indexes.py`** — `InvertedIndex` (keyword → node ids, AND then OR search) and `AdjacencyIndex` (outgoing/incoming edge lists, `exclude_types`, write-time updates).
+- **`gobp/core/graph_algorithms.py`** — `detect_cycles()` (DFS WHITE/GRAY/BLACK on `depends_on` / `supersedes` by default).
+- **`scripts/wave16a14_bench.py`** — median ms for `find` / `explore` / `suggest` / `validate` on a 500-node / 400-edge in-memory graph.
+
+### Changed
+
+- **`GraphIndex`** — builds `_inverted` + `_adjacency` at load; updates on `add_node_in_memory`, `add_edge_in_memory`, `remove_node` / `remove_node_in_memory`.
+- **`search_nodes` / `suggest_related`** — use inverted index when present, full scan fallback.
+- **`find` / `explore` / `node_related`** — use inverted/adjacency with fallback; `explore` skips `discovered_in` via adjacency.
+- **`validate`** — appends cycle warnings when `scope` is `all` or `edges`.
+
+### Tests
+
+- `tests/test_wave16a14.py` — 21 tests (inverted, adjacency, GraphIndex, read paths, cycles).
+- **626+** tests (full suite).
+
+---
+
 ## [Wave 16A13] — Batch Fixes + Quick Capture + Auto Chunking — 2026-04-18
 
 ### Fixed
