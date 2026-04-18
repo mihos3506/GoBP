@@ -49,6 +49,13 @@ def test_batch_parse_double_escaped() -> None:
     assert len(ops) >= 2
 
 
+def test_parse_batch_raises_on_any_bad_line() -> None:
+    """parse_batch is strict: any invalid line must not return partial ops."""
+    bad = "create: Engine: OK | fine\nnot_a_valid_op_prefix: x"
+    with pytest.raises(ValueError, match="batch parse failed"):
+        parse_batch(bad)
+
+
 # --- Auto-fill ----------------------------------------------------------------
 
 

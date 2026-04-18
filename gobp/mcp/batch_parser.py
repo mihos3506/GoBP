@@ -211,8 +211,12 @@ def parse_quick(raw: str) -> list[dict[str, Any]]:
 def parse_batch(raw: str) -> list[dict[str, Any]]:
     """Parse batch ops text; same newline rules as :func:`parse_batch_ops`.
 
-    Returns successfully parsed ops (invalid lines are skipped; see ``errors``
-    from :func:`parse_batch_ops` for details).
+    Unlike :func:`parse_batch_ops`, this fails the whole parse if **any** line
+    is invalid — no silent partial results. Use :func:`parse_batch_ops` when
+    you need per-line success and error lists.
     """
-    ops, _errors = parse_batch_ops(raw)
+    ops, errors = parse_batch_ops(raw)
+    if errors:
+        detail = "; ".join(errors)
+        raise ValueError(f"batch parse failed ({len(errors)} line(s)): {detail}")
     return ops
