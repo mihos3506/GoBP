@@ -1,13 +1,13 @@
-# WAVE 17A01 BRIEF — SCHEMA CORE REDESIGN
+# WAVE 17A01 BRIEF — SCHEMA + FILE FORMAT REWRITE
 
 **Wave:** 17A01
-**Title:** Node types, group field, description standard, fields redesign
+**Title:** core_nodes.yaml v2, core_edges.yaml v2, ID format, file format
 **Author:** CTO Chat
 **Date:** 2026-04-19
 **For:** Cursor (sequential) + Claude CLI (audit)
 **Status:** READY FOR EXECUTION
-**Task count:** 6 tasks
-**Estimated effort:** 4-6 hours
+**Task count:** 7 tasks
+**Estimated effort:** 3-4 hours
 
 ---
 
@@ -17,27 +17,29 @@
 |---|---|
 | `dec:d004` | GoBP update obligation |
 | `dec:d006` | Brief reference nodes |
-| `dec:d011` | Graph hygiene — update over create |
+| `dec:d011` | Graph hygiene |
 
-**NEW NODES sẽ tạo:**
-- Wave: Wave 17A01
-
-**SCHEMA REDESIGN DOC:** `docs/GOBP_SCHEMA_REDESIGN_v2.1.md`
+**REQUIRED READING trước khi bắt đầu:**
+- `docs/GOBP_SCHEMA_REDESIGN_v2.1.md` ← SPEC CHÍNH
+- `docs/wave_17a_series_plan.md` ← SERIES CONTEXT
+- `gobp/schema/core_nodes.yaml` ← CURRENT (sẽ rewrite)
+- `gobp/schema/core_edges.yaml` ← CURRENT (sẽ rewrite)
 
 ---
 
 ## CONTEXT
 
-GoBP schema v1 được build từ brainstorm — không dựa trên chuẩn phần mềm.
-Wave 17A01 là bước đầu của 5-wave schema redesign:
+GoBP v2 rewrite — Option B (giữ infra skeleton, rewrite core).
+Wave 17A01 là foundation: schema + file format đúng.
+Không đụng query engine (Wave 17A02+).
 
+**Mục tiêu:**
 ```
-17A01: Schema core (wave này)
-  → node types, group field, description, lifecycle/read_order
-17A02: Edge reason field + display modes
-17A03: Validation rules + hooks update
-17A04: Docs + agents self-update
-17A05: MIHOS clean import với schema mới
+1. core_nodes.yaml v2 — 65 types, group field, lifecycle, read_order
+2. core_edges.yaml v2 — reason field
+3. ID generator v2 — group-embedded human-readable
+4. File serializer v2 — YAML với group, description.info/code
+5. Schema loader v2 — load + validate schema v2
 ```
 
 ---
@@ -47,10 +49,13 @@ Wave 17A01 là bước đầu của 5-wave schema redesign:
 R1-R12 (.cursorrules v6).
 
 **Testing:**
-- Tasks 1-4 (schema YAML + migration): R9-B module tests
-- Task 5 (docs): R9-A
-- Task 6 (cuối wave): R9-C full suite
-  `pytest tests/ --override-ini="addopts=" -q`
+- Tasks 1-6: R9-B (module tests only)
+- Task 7: R9-C full suite
+
+**QUAN TRỌNG:**
+- Wave này KHÔNG rewrite GraphIndex hay query engine
+- Chỉ: schema YAML + Python serialization layer
+- Existing 633 tests PHẢI vẫn pass
 
 ---
 
@@ -61,20 +66,8 @@ cd D:\GoBP
 git status
 $env:GOBP_DB_URL = "postgresql://postgres:Hieu%408283%40@localhost/gobp"
 D:/GoBP/venv/Scripts/python.exe -m pytest tests/ -q --tb=no
-# Expected: 633 tests (fast suite, slow excluded)
+# Expected: 591 tests (fast suite)
 ```
-
----
-
-## REQUIRED READING
-
-| # | File | Why |
-|---|---|---|
-| 1 | `docs/GOBP_SCHEMA_REDESIGN_v2.1.md` | Full taxonomy spec |
-| 2 | `gobp/schema/core_nodes.yaml` | Current schema |
-| 3 | `gobp/schema/core_edges.yaml` | Current edges |
-| 4 | `gobp/mcp/tools/write.py` | TYPE_DEFAULTS |
-| 5 | GoBP MCP `dec:d004`, `dec:d011` | Decisions |
 
 ---
 
@@ -82,388 +75,608 @@ D:/GoBP/venv/Scripts/python.exe -m pytest tests/ -q --tb=no
 
 ---
 
-## TASK 1 — Thêm `group` field vào schema
-
-**Goal:** Mỗi node type có `group` breadcrumb path.
+## TASK 1 — Rewrite `core_nodes.yaml` v2
 
 **File:** `gobp/schema/core_nodes.yaml`
 
-Thêm `group` field vào base node spec:
-```yaml
-group:
-  type: str
-  required: false
-  description: "Breadcrumb path — VD: Dev > Infrastructure > Security"
-  default: ""
-```
+Rewrite hoàn toàn theo spec `docs/GOBP_SCHEMA_REDESIGN_v2.1.md`.
 
-Thêm group default cho mỗi node type hiện có:
+**Structure:**
 ```yaml
-Document:   group: "Document > Spec"
-Decision:   group: "Document > Decision"
-Concept:    group: "Document > Concept"
-Idea:       group: "Document > Idea"
-Session:    group: "Meta > Session"
-Wave:       group: "Meta > Wave"
-Task:       group: "Meta > Task"
-Lesson:     group: "Document > Lesson"
-# ... tất cả types còn lại
+version: "2.0"
+
+base:
+  id:         {type: str, required: true, pattern: "^[a-z0-9._-]+$"}
+  name:       {type: str, required: true}
+  type:       {type: str, required: true}
+  group:      {type: str, required: true, description: "Breadcrumb path"}
+  lifecycle:  {type: enum, values: [draft,specified,implemented,tested,deprecated], default: draft}
+  read_order: {type: enum, values: [foundational,important,reference,background], default: reference}
+  description:
+    type: dict
+    required: true
+    fields:
+      info: {type: str, required: true}
+      code: {type: str, required: false, default: ""}
+  tags:       {type: list[str], default: []}
+  created_at: {type: timestamp}
+  session_id: {type: str}
+
+node_types:
+  # Document group (5 types + 5 Lesson sub-types)
+  Spec:        {group: "Document > Spec",           read_order: important}
+  Decision:    {group: "Document > Decision",        read_order: foundational, required: {what: str, why: str}}
+  Concept:     {group: "Document > Concept",         read_order: important, required: {definition: str, usage_guide: str}}
+  Idea:        {group: "Document > Idea",            read_order: background}
+  LessonRule:  {group: "Document > Lesson > Rule",   read_order: foundational}
+  LessonSkill: {group: "Document > Lesson > Skill",  read_order: important}
+  LessonDev:   {group: "Document > Lesson > Dev",    read_order: reference}
+  LessonCTO:   {group: "Document > Lesson > CTO",    read_order: reference}
+  LessonQA:    {group: "Document > Lesson > QA",     read_order: reference}
+
+  # Dev > Domain (4 types)
+  Entity:      {group: "Dev > Domain > Entity",      read_order: foundational}
+  ValueObject: {group: "Dev > Domain > ValueObject", read_order: important}
+  DomainEvent: {group: "Dev > Domain > DomainEvent", read_order: important}
+  Aggregate:   {group: "Dev > Domain > Aggregate",   read_order: important}
+
+  # Dev > Application (5 types)
+  Flow:        {group: "Dev > Application > Flow",    read_order: important}
+  Feature:     {group: "Dev > Application > Feature", read_order: important}
+  Command:     {group: "Dev > Application > Command", read_order: reference}
+  UseCase:     {group: "Dev > Application > UseCase", read_order: reference}
+  DTO:         {group: "Dev > Application > DTO",     read_order: background}
+
+  # Dev > Infrastructure > Engine/Repository
+  Engine:      {group: "Dev > Infrastructure > Engine",     read_order: foundational}
+  Repository:  {group: "Dev > Infrastructure > Repository", read_order: reference}
+
+  # Dev > Infrastructure > API (6 types)
+  APIContract:  {group: "Dev > Infrastructure > API > APIContract",  read_order: important}
+  APIEndpoint:  {group: "Dev > Infrastructure > API > APIEndpoint",  read_order: reference}
+  APIRequest:   {group: "Dev > Infrastructure > API > APIRequest",   read_order: reference}
+  APIResponse:  {group: "Dev > Infrastructure > API > APIResponse",  read_order: reference}
+  APIMiddleware:{group: "Dev > Infrastructure > API > APIMiddleware", read_order: reference}
+  Webhook:      {group: "Dev > Infrastructure > API > Webhook",      read_order: background}
+
+  # Dev > Infrastructure > Security (10 types)
+  AuthFlow:      {group: "Dev > Infrastructure > Security > AuthFlow",      read_order: foundational}
+  AuthZ:         {group: "Dev > Infrastructure > Security > AuthZ",         read_order: foundational}
+  Permission:    {group: "Dev > Infrastructure > Security > Permission",    read_order: important}
+  Policy:        {group: "Dev > Infrastructure > Security > Policy",        read_order: important}
+  Token:         {group: "Dev > Infrastructure > Security > Token",         read_order: important}
+  Encryption:    {group: "Dev > Infrastructure > Security > Encryption",    read_order: important}
+  Secret:        {group: "Dev > Infrastructure > Security > Secret",        read_order: important}
+  SecurityAudit: {group: "Dev > Infrastructure > Security > Audit",         read_order: reference}
+  ThreatModel:   {group: "Dev > Infrastructure > Security > ThreatModel",   read_order: important}
+  Vulnerability: {group: "Dev > Infrastructure > Security > Vulnerability", read_order: important}
+
+  # Dev > Infrastructure > Database (5 types)
+  DBSchema:   {group: "Dev > Infrastructure > Database > Schema",    read_order: important}
+  Migration:  {group: "Dev > Infrastructure > Database > Migration", read_order: reference}
+  DBIndex:    {group: "Dev > Infrastructure > Database > Index",     read_order: background}
+  NamedQuery: {group: "Dev > Infrastructure > Database > Query",     read_order: reference}
+  Seed:       {group: "Dev > Infrastructure > Database > Seed",      read_order: background}
+
+  # Dev > Infrastructure > Messaging (4 types)
+  EventBus: {group: "Dev > Infrastructure > Messaging > EventBus", read_order: important}
+  Queue:    {group: "Dev > Infrastructure > Messaging > Queue",    read_order: reference}
+  Topic:    {group: "Dev > Infrastructure > Messaging > Topic",    read_order: reference}
+  Worker:   {group: "Dev > Infrastructure > Messaging > Worker",   read_order: reference}
+
+  # Dev > Infrastructure > Observability (4 types)
+  Metric:    {group: "Dev > Infrastructure > Observability > Metric", read_order: reference}
+  LogSpec:   {group: "Dev > Infrastructure > Observability > Log",    read_order: reference}
+  TraceSpec: {group: "Dev > Infrastructure > Observability > Trace",  read_order: reference}
+  Alert:     {group: "Dev > Infrastructure > Observability > Alert",  read_order: reference}
+
+  # Dev > Infrastructure > Cache/Storage/Config
+  CacheStrategy: {group: "Dev > Infrastructure > Cache > CacheStrategy", read_order: reference}
+  FileStorage:   {group: "Dev > Infrastructure > Storage > FileStorage", read_order: background}
+  CDN:           {group: "Dev > Infrastructure > Storage > CDN",         read_order: background}
+  EnvConfig:     {group: "Dev > Infrastructure > Config > EnvConfig",    read_order: reference}
+  FeatureFlag:   {group: "Dev > Infrastructure > Config > FeatureFlag",  read_order: reference}
+
+  # Dev > Frontend (6 types)
+  Screen:    {group: "Dev > Frontend > Screen",    read_order: reference}
+  Component: {group: "Dev > Frontend > Component", read_order: reference}
+  Layout:    {group: "Dev > Frontend > Layout",    read_order: background}
+  Theme:     {group: "Dev > Frontend > Theme",     read_order: background}
+  Animation: {group: "Dev > Frontend > Animation", read_order: background}
+  UIState:   {group: "Dev > Frontend > State",     read_order: reference}
+
+  # Dev > Code (16 types)
+  Interface:    {group: "Dev > Code > Interface",    read_order: important}
+  AbstractClass:{group: "Dev > Code > AbstractClass",read_order: reference}
+  Class:        {group: "Dev > Code > Class",        read_order: reference}
+  Mixin:        {group: "Dev > Code > Mixin",        read_order: background}
+  CodeEnum:     {group: "Dev > Code > Enum",         read_order: reference}
+  TypeAlias:    {group: "Dev > Code > TypeAlias",    read_order: background}
+  Generic:      {group: "Dev > Code > Generic",      read_order: reference}
+  Function:     {group: "Dev > Code > Function",     read_order: reference}
+  Method:       {group: "Dev > Code > Method",       read_order: background}
+  Constructor:  {group: "Dev > Code > Constructor",  read_order: background}
+  Extension:    {group: "Dev > Code > Extension",    read_order: background}
+  Field:        {group: "Dev > Code > Field",        read_order: background}
+  Variable:     {group: "Dev > Code > Variable",     read_order: background}
+  Constant:     {group: "Dev > Code > Constant",     read_order: reference}
+  Parameter:    {group: "Dev > Code > Parameter",    read_order: background}
+  Module:       {group: "Dev > Code > Module",       read_order: reference}
+
+  # Constraint group (4 types)
+  Invariant:
+    group: "Constraint > Invariant"
+    read_order: foundational
+    required:
+      rule:             {type: str, description: "Boolean expression"}
+      scope:            {type: enum, values: [class, object, system]}
+      enforcement:      {type: enum, values: [hard, soft]}
+      violation_action: {type: enum, values: [reject, devalue, flag, log]}
+    optional:
+      spec_source: {type: str}
+
+  Precondition:  {group: "Constraint > Precondition",  read_order: important}
+  Postcondition: {group: "Constraint > Postcondition", read_order: important}
+  BusinessRule:  {group: "Constraint > BusinessRule",  read_order: important}
+
+  # Error group (2 types)
+  ErrorDomain:
+    group: "Error > ErrorDomain"
+    read_order: important
+    required:
+      domain:    {type: enum, values: [auth,gps,ember,trust,privacy,network,storage,sync]}
+      fix_guide: {type: str}
+    optional:
+      affects: {type: list[node_ref]}
+
+  ErrorCase:
+    group: "Error > ErrorCase"
+    read_order: reference
+    required:
+      code:     {type: str}
+      trigger:  {type: str}
+      severity: {type: enum, values: [fatal, error, warning, info]}
+      handling: {type: str}
+      fix:      {type: str}
+    optional:
+      domain:         {type: node_ref}
+      user_message:   {type: str}
+      dev_note:       {type: str}
+      recovery:       {type: str}
+      affects:        {type: list[node_ref]}
+      related_errors: {type: list[node_ref]}
+      fixes:          {type: list[dict], description: "Append-only fix history"}
+
+  # Test group (3 types)
+  TestSuite: {group: "Test > TestSuite", read_order: reference}
+  TestKind:  {group: "Test > TestKind",  read_order: reference}
+  TestCase:  {group: "Test > TestCase",  read_order: background}
+
+  # Meta group (3 types)
+  Session: {group: "Meta > Session", read_order: background}
+  Wave:    {group: "Meta > Wave",    read_order: background}
+  Task:    {group: "Meta > Task",    read_order: background}
+
+  # Legacy compat
+  Document: {group: "Document > Spec", read_order: important}
+  Lesson:   {group: "Document > Lesson > Dev", read_order: reference}
 ```
 
 **Commit:**
 ```
-Wave 17A01 Task 1: add group/breadcrumb field to schema
+Wave 17A01 Task 1: rewrite core_nodes.yaml v2
 
-- group field: breadcrumb path showing full hierarchy
-- Default groups set for all existing node types
-- VD: AuthFlow → "Dev > Infrastructure > Security > AuthFlow"
+- 65+ node types across 6 groups
+- group field: breadcrumb path for all types
+- lifecycle replaces status, read_order replaces priority
+- description: info (required) + code (optional)
+- Invariant: rule+scope+enforcement+violation_action required
+- ErrorCase: fix history structure
 ```
 
 ---
 
-## TASK 2 — Thêm node types mới từ taxonomy v2.1
+## TASK 2 — Rewrite `core_edges.yaml` v2
 
-**Goal:** Add tất cả node types mới vào `core_nodes.yaml`.
+**File:** `gobp/schema/core_edges.yaml`
 
-**NEW TYPES cần thêm** (theo GOBP_SCHEMA_REDESIGN_v2.1.md):
-
-```
-Document group:   Idea (nếu chưa có)
-                  Lesson.Rule, Lesson.Skill, Lesson.Dev,
-                  Lesson.CTO, Lesson.QA
-
-Dev > Domain:     Entity, ValueObject, DomainEvent, Aggregate
-
-Dev > Application: Flow, Feature, Command, UseCase, DTO
-
-Dev > Infrastructure:
-  Engine, Repository (nếu chưa có)
-  API: APIContract, APIEndpoint, APIRequest, APIResponse,
-       APIMiddleware, Webhook
-  Security: AuthFlow, AuthZ, Permission, Policy, Token,
-            Encryption, Secret, Audit, ThreatModel, Vulnerability
-  Database: Schema, Migration, Index, Query, Seed
-  Messaging: EventBus, Queue, Topic, Worker
-  Observability: Metric, Log, Trace, Alert
-  Cache: CacheStrategy
-  Storage: FileStorage, CDN
-  Config: EnvConfig, FeatureFlag
-
-Dev > Frontend: Screen, Component, Layout, Theme, Animation, State
-Dev > Code: Interface, AbstractClass, Class, Mixin, Enum,
-            TypeAlias, Generic, Function, Method, Constructor,
-            Extension, Field, Variable, Constant, Parameter, Module
-
-Constraint: Invariant (update), Precondition, Postcondition, BusinessRule
-
-Error: ErrorDomain, ErrorCase
-
-Test: TestSuite, TestKind, TestCase
-```
-
-**RULE quan trọng:**
-- Trước khi thêm type mới → kiểm tra type đã có chưa
-- Nếu đã có → update group field, không tạo duplicate
-- Invariant đã có → chỉ update, thêm required fields
-
-**Commit:**
-```
-Wave 17A01 Task 2: add new node types from taxonomy v2.1
-
-- 60+ new node types added across 6 groups
-- Each type has group breadcrumb path
-- Existing types updated with group field
-```
-
----
-
-## TASK 3 — Description standard: info + code fields
-
-**Goal:** Description thành 2 phần: info (required) + code (optional).
-
-**File:** `gobp/schema/core_nodes.yaml`
-
-Update base description field:
 ```yaml
-description:
-  type: dict
-  required: true
-  fields:
-    info:
-      type: str
-      required: true
-      description: "Full description — no length limit"
-    code:
-      type: str
-      required: false
-      default: ""
-      description: "Code examples, pseudo-code, SQL — optional"
-```
+version: "2.0"
 
-**File:** `gobp/mcp/tools/write.py` — TYPE_DEFAULTS
+base:
+  from:       {type: str, required: true}
+  to:         {type: str, required: true}
+  type:       {type: str, required: true}
+  reason:     {type: str, required: false, default: ""}
+  created_at: {type: timestamp}
 
-Update auto-fill để handle description dict:
-```python
-# Nếu AI pass description as string → auto-wrap:
-if isinstance(description, str):
-    description = {"info": description, "code": ""}
-```
-
-**File:** `gobp/mcp/tools/read.py`
-
-Update `get:` để display description đúng:
-```python
-# mode=brief: chỉ show description.info
-# mode=full: show cả info + code
-```
-
-**Tests:**
-```python
-# test: create node với description string → auto-wrap
-# test: create node với description dict → store correctly
-# test: get mode=brief → shows info only
+edge_types:
+  specified_in:  {description: "Node được đặc tả trong Document"}
+  references:    {description: "Node tham chiếu đến node khác"}
+  implements:    {description: "Node implement spec/interface"}
+  depends_on:    {description: "Node phụ thuộc vào node khác"}
+  relates_to:    {description: "Mối liên hệ chung"}
+  enforces:      {description: "Constraint áp dụng cho node"}
+  validated_by:  {description: "Node được validate bởi Engine/TestCase"}
+  covers:        {description: "TestCase cover node"}
+  belongs_to:    {description: "Node thuộc về group/suite"}
+  of_kind:       {description: "TestCase thuộc TestKind"}
+  supersedes:    {description: "Node mới thay thế node cũ"}
+  discovered_in: {description: "Node được tạo trong Session"}
+  affects:       {description: "Node ảnh hưởng đến node khác"}
+  triggers:      {description: "Node trigger node khác"}
+  produces:      {description: "Node produce output node"}
 ```
 
 **Commit:**
 ```
-Wave 17A01 Task 3: description split into info + code fields
-
-- description.info: required, full description
-- description.code: optional, code examples
-- Auto-wrap string description to {info: str, code: ""}
-- get: mode=brief shows info only
+Wave 17A01 Task 2: rewrite core_edges.yaml v2 — reason field added
 ```
 
 ---
 
-## TASK 4 — Replace status → lifecycle, priority → read_order
+## TASK 3 — ID Generator v2
 
-**Goal:** Đổi tên fields để có nghĩa rõ ràng hơn.
+**File:** `gobp/core/id_generator.py`
 
-**File:** `gobp/schema/core_nodes.yaml`
-
-```yaml
-# Thay status:
-lifecycle:
-  type: enum
-  values: [draft, specified, implemented, tested, deprecated]
-  default: draft
-
-# Thay priority:
-read_order:
-  type: enum
-  values: [foundational, important, reference, background]
-  default: reference
-  description: "AI reading priority: foundational=read first always"
-```
-
-**File:** `gobp/mcp/tools/write.py`
-
-Migration logic:
 ```python
-# Backward compat: nếu AI pass status/priority → map sang mới
-STATUS_MAP = {
-    "ACTIVE": "specified",
-    "STALE": "deprecated",
-    "DEPRECATED": "deprecated",
+"""GoBP ID Generator v2.
+Format: {group_slug}.{name_slug}.{8hex}
+"""
+import hashlib, re, time
+from typing import Optional
+
+_ABBREV = {
+    'infrastructure': 'infra', 'application': 'app',
+    'document': 'doc', 'constraint': 'const',
+    'frontend': 'fe', 'security': 'sec',
+    'database': 'db', 'messaging': 'msg',
+    'observability': 'obs',
 }
-PRIORITY_MAP = {
-    "critical": "foundational",
-    "high": "important",
-    "medium": "reference",
-    "low": "background",
-}
-```
 
-**File:** `gobp/mcp/tools/read.py`
+def _slugify(text: str) -> str:
+    try:
+        from unidecode import unidecode
+        text = unidecode(text)
+    except ImportError:
+        pass
+    text = text.lower().strip()
+    text = re.sub(r'[^\w\s]', '', text)
+    text = re.sub(r'[\s_]+', '_', text)
+    return text[:30]
 
-Update display — dùng lifecycle + read_order, không dùng status/priority.
+def _group_to_slug(group: str) -> str:
+    parts = [p.strip().lower() for p in group.split('>')]
+    slugs = [_ABBREV.get(p, _slugify(p)) for p in parts]
+    return '.'.join(s for s in slugs if s)
 
-**Tests:**
-```python
-# test: create với status="ACTIVE" → stored as lifecycle="specified"
-# test: create với priority="critical" → stored as read_order="foundational"
-# test: get node → shows lifecycle + read_order, không shows status/priority
-```
+def generate_id(name: str, group: str) -> str:
+    group_slug = _group_to_slug(group)
+    name_slug = _slugify(name)
+    content = f"{group}:{name}:{time.time_ns()}"
+    hex_suffix = hashlib.md5(content.encode()).hexdigest()[:8]
+    return f"{group_slug}.{name_slug}.{hex_suffix}"
 
-**Commit:**
-```
-Wave 17A01 Task 4: status→lifecycle, priority→read_order
-
-- lifecycle: draft|specified|implemented|tested|deprecated
-- read_order: foundational|important|reference|background
-- Backward compat: old values auto-mapped to new
-```
-
----
-
-## TASK 5 — Update Invariant: required fields
-
-**Goal:** Invariant phải có rule + scope + enforcement + violation_action.
-
-**File:** `gobp/schema/core_nodes.yaml`
-
-```yaml
-Invariant:
-  group: "Constraint > Invariant"
-  required:
-    name: ...
-    rule:
-      type: str
-      description: "Boolean expression — VD: balance >= 0"
-    scope:
-      type: enum
-      values: [class, object, system]
-    enforcement:
-      type: enum
-      values: [hard, soft]
-    violation_action:
-      type: enum
-      values: [reject, devalue, flag, log]
-  optional:
-    spec_source:
-      type: str
-      description: "DOC-XX section Y"
-    description: ...
-```
-
-**File:** `gobp/mcp/hooks.py`
-
-Update before_write hook:
-```python
-# Invariant without rule → block with suggestion
-if node_type == "Invariant" and not params.get("rule"):
-    return {
-        "ok": False,
-        "error": "Invariant requires 'rule' field",
-        "suggestion": "rule must be a Boolean expression, e.g.: 'balance >= 0'"
-    }
-```
-
-**Tests:**
-```python
-# test: create Invariant without rule → rejected
-# test: create Invariant with rule → accepted
-# test: create Invariant with "KHÔNG được X" as rule → accepted
-#       (validation của meaning là CEO responsibility, không phải GoBP)
+def infer_group_from_type(node_type: str, schema: dict) -> str:
+    return schema.get('node_types', {}).get(node_type, {}).get('group', '')
 ```
 
 **Commit:**
 ```
-Wave 17A01 Task 5: Invariant required fields + hook validation
-
-- rule, scope, enforcement, violation_action = required
-- before_write hook blocks Invariant without rule
-- Suggestion: "rule must be Boolean expression"
+Wave 17A01 Task 3: ID generator v2 — group-embedded IDs
 ```
 
 ---
 
-## TASK 6 — ErrorCase schema + fix history + full suite
+## TASK 4 — File Format v2
 
-**Goal:** ErrorCase có đủ fields theo spec v2.1.
+**File:** `gobp/core/file_format.py`
 
-**File:** `gobp/schema/core_nodes.yaml`
+```python
+"""GoBP file format v2 — YAML node/edge serialization."""
+from pathlib import Path
+from typing import Any
+import yaml
+from datetime import datetime, timezone
 
-```yaml
-ErrorCase:
-  group: "Error > ErrorCase"
-  required:
-    name: ...
-    code:
-      type: str
-      description: "Error code — VD: AUTH_001, GPS_003"
-    trigger:
-      type: str
-      description: "Conditions that cause this error"
-    severity:
-      type: enum
-      values: [fatal, error, warning, info]
-    handling:
-      type: str
-      description: "How system responds"
-    fix:
-      type: str
-      description: "How to fix this error"
-  optional:
-    domain:        type: node_ref  # → ErrorDomain
-    user_message:  type: str
-    dev_note:      type: str
-    recovery:      type: str
-    affects:       type: list[node_ref]
-    related_errors: type: list[node_ref]
-    fixes:         # append-only history
-      type: list[dict]
-      fields:
-        type:             enum [runtime, dev_code]
-        fixed_at:         timestamp
-        fixed_by:         str
-        symptom:          str
-        root_cause:       str
-        fix_description:  str
-        code:             str  # code change
-        files_changed:    list[dict]
-        test_result:      str  # dev_code only
-        verified_by:      str
+FIELD_ORDER = ['id','name','type','group','lifecycle','read_order',
+               'description','tags','created_at','session_id']
 
-ErrorDomain:
-  group: "Error > ErrorDomain"
-  required:
-    name: ...
-    domain:
-      type: enum
-      values: [auth, gps, ember, trust, privacy, network, storage, sync]
-    fix_guide:
-      type: str
-      description: "General debug guide for this error domain"
-  optional:
-    description: ...
-    affects: type: list[node_ref]
+def auto_fill_description(desc: Any) -> dict:
+    if isinstance(desc, str):
+        return {"info": desc, "code": ""}
+    if isinstance(desc, dict):
+        return {"info": desc.get('info', desc.get('description', '')),
+                "code": desc.get('code', "")}
+    return {"info": "", "code": ""}
+
+def serialize_node(node: dict) -> str:
+    ordered = {f: node[f] for f in FIELD_ORDER if f in node}
+    ordered.update({k: v for k, v in node.items() if k not in ordered})
+    return yaml.dump(ordered, allow_unicode=True,
+                     default_flow_style=False, sort_keys=False)
+
+def deserialize_node(content: str) -> dict:
+    return yaml.safe_load(content) or {}
+
+def node_file_path(root: Path, node_id: str) -> Path:
+    return root / '.gobp' / 'nodes' / f'{node_id}.yaml'
+
+def write_node(root: Path, node: dict) -> None:
+    path = node_file_path(root, node['id'])
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(serialize_node(node), encoding='utf-8')
+
+def read_node(root: Path, node_id: str) -> dict | None:
+    path = node_file_path(root, node_id)
+    if not path.exists():
+        return None
+    return deserialize_node(path.read_text(encoding='utf-8'))
+
+def append_edge(root: Path, edge: dict) -> None:
+    path = root / '.gobp' / 'edges' / 'relations.yaml'
+    path.parent.mkdir(parents=True, exist_ok=True)
+    edges = yaml.safe_load(path.read_text(encoding='utf-8')) if path.exists() else []
+    edges = edges or []
+    # Dedup
+    for e in edges:
+        if e['from']==edge['from'] and e['to']==edge['to'] and e['type']==edge['type']:
+            return
+    edge.setdefault('reason', '')
+    edge.setdefault('created_at', datetime.now(timezone.utc).isoformat())
+    edges.append(edge)
+    path.write_text(yaml.dump(edges, allow_unicode=True,
+                              default_flow_style=False), encoding='utf-8')
 ```
 
-**CHANGELOG entry:**
+**Commit:**
+```
+Wave 17A01 Task 4: file format v2 — description.info/code, reason on edges
+```
+
+---
+
+## TASK 5 — Schema Loader v2
+
+**File:** `gobp/core/schema_loader.py`
+
+```python
+"""Schema loader v2."""
+from pathlib import Path
+import yaml
+from functools import lru_cache
+
+class SchemaV2:
+    def __init__(self, schema_dir: Path):
+        self._nodes = yaml.safe_load((schema_dir/'core_nodes.yaml').read_text()) or {}
+        self._edges = yaml.safe_load((schema_dir/'core_edges.yaml').read_text()) or {}
+
+    @property
+    def node_types(self) -> dict:
+        return self._nodes.get('node_types', {})
+
+    def get_group(self, node_type: str) -> str:
+        return self.node_types.get(node_type, {}).get('group', '')
+
+    def get_default_read_order(self, node_type: str) -> str:
+        return self.node_types.get(node_type, {}).get('read_order', 'reference')
+
+    def is_valid_type(self, node_type: str) -> bool:
+        return node_type in self.node_types
+
+    def validate_node(self, node: dict) -> list[str]:
+        errors = []
+        for f in ['id', 'name', 'type', 'group']:
+            if not node.get(f):
+                errors.append(f"Missing required: {f}")
+        desc = node.get('description', {})
+        if isinstance(desc, dict) and not desc.get('info'):
+            errors.append("description.info is required")
+        node_type = node.get('type', '')
+        for field in self.node_types.get(node_type, {}).get('required', {}):
+            if field not in ('what','why','definition','usage_guide') and not node.get(field):
+                errors.append(f"{node_type} requires: {field}")
+        return errors
+
+@lru_cache(maxsize=4)
+def load_schema(schema_dir: Path) -> SchemaV2:
+    return SchemaV2(schema_dir)
+```
+
+**Commit:**
+```
+Wave 17A01 Task 5: schema loader v2 with validation
+```
+
+---
+
+## TASK 6 — Tests
+
+**File:** `tests/test_wave17a01.py` — 20 tests
+
+```python
+"""Tests for Wave 17A01: schema v2, ID generator, file format, schema loader."""
+import pytest
+from pathlib import Path
+from gobp.core.id_generator import generate_id, _group_to_slug, infer_group_from_type
+from gobp.core.file_format import (auto_fill_description, serialize_node,
+                                    deserialize_node, write_node, read_node, append_edge)
+from gobp.core.schema_loader import SchemaV2
+
+# ID Generator tests (6)
+def test_generate_id_entity():
+    id_ = generate_id("Traveller", "Dev > Domain > Entity")
+    assert id_.startswith("dev.domain.entity.traveller.")
+    assert len(id_.split('.')[-1]) == 8
+
+def test_generate_id_security():
+    id_ = generate_id("OTP Flow", "Dev > Infrastructure > Security > AuthFlow")
+    assert "infra" in id_ or "sec" in id_
+
+def test_generate_id_uniqueness():
+    import time
+    id1 = generate_id("Test", "Dev > Domain > Entity")
+    time.sleep(0.001)
+    id2 = generate_id("Test", "Dev > Domain > Entity")
+    assert id1 != id2  # different time_ns
+
+def test_group_to_slug_abbreviation():
+    slug = _group_to_slug("Dev > Infrastructure > Security")
+    assert "infra" in slug
+    assert "sec" in slug
+
+def test_generate_id_doc():
+    id_ = generate_id("DOC-01 Soul", "Document > Spec")
+    assert id_.startswith("doc.spec.")
+
+def test_generate_id_constraint():
+    id_ = generate_id("Balance Non-Negative", "Constraint > Invariant")
+    assert id_.startswith("const.invariant.")
+
+# File Format tests (7)
+def test_auto_fill_description_string():
+    result = auto_fill_description("Test description")
+    assert result == {"info": "Test description", "code": ""}
+
+def test_auto_fill_description_dict():
+    result = auto_fill_description({"info": "Test", "code": "x = 1"})
+    assert result["info"] == "Test"
+    assert result["code"] == "x = 1"
+
+def test_auto_fill_description_empty():
+    result = auto_fill_description({})
+    assert result["info"] == ""
+    assert result["code"] == ""
+
+def test_serialize_deserialize_node(tmp_path):
+    node = {"id": "dev.domain.entity.test.a1b2c3d4", "name": "Test",
+            "type": "Entity", "group": "Dev > Domain > Entity",
+            "lifecycle": "draft", "read_order": "foundational",
+            "description": {"info": "Test entity", "code": ""}}
+    yaml_str = serialize_node(node)
+    result = deserialize_node(yaml_str)
+    assert result["name"] == "Test"
+    assert result["description"]["info"] == "Test entity"
+
+def test_write_read_node(tmp_path):
+    node = {"id": "dev.domain.entity.test.a1b2c3d4", "name": "Test",
+            "type": "Entity", "group": "Dev > Domain > Entity",
+            "description": {"info": "Test", "code": ""}}
+    write_node(tmp_path, node)
+    result = read_node(tmp_path, "dev.domain.entity.test.a1b2c3d4")
+    assert result is not None
+    assert result["name"] == "Test"
+
+def test_append_edge_with_reason(tmp_path):
+    edge = {"from": "node_a", "to": "node_b", "type": "references",
+            "reason": "Test reason"}
+    append_edge(tmp_path, edge)
+    import yaml
+    edges = yaml.safe_load((tmp_path/'.gobp'/'edges'/'relations.yaml').read_text())
+    assert len(edges) == 1
+    assert edges[0]["reason"] == "Test reason"
+
+def test_append_edge_dedup(tmp_path):
+    edge = {"from": "node_a", "to": "node_b", "type": "references"}
+    append_edge(tmp_path, edge)
+    append_edge(tmp_path, edge)  # duplicate
+    import yaml
+    edges = yaml.safe_load((tmp_path/'.gobp'/'edges'/'relations.yaml').read_text())
+    assert len(edges) == 1
+
+# Schema Loader tests (7)
+@pytest.fixture
+def schema(tmp_path):
+    import shutil
+    schema_src = Path("gobp/schema")
+    schema_dst = tmp_path / "schema"
+    shutil.copytree(schema_src, schema_dst)
+    return SchemaV2(schema_dst)
+
+def test_schema_loads(schema):
+    assert len(schema.node_types) >= 60
+
+def test_all_types_have_group(schema):
+    for type_name, type_def in schema.node_types.items():
+        assert 'group' in type_def, f"{type_name} missing group field"
+
+def test_get_group_entity(schema):
+    assert schema.get_group("Entity") == "Dev > Domain > Entity"
+
+def test_get_group_authflow(schema):
+    assert "Security" in schema.get_group("AuthFlow")
+
+def test_validate_node_missing_group(schema):
+    node = {"id": "x", "name": "Test", "type": "Entity",
+            "description": {"info": "Test"}}
+    errors = schema.validate_node(node)
+    assert any("group" in e for e in errors)
+
+def test_validate_node_missing_description_info(schema):
+    node = {"id": "x", "name": "Test", "type": "Entity",
+            "group": "Dev > Domain > Entity",
+            "description": {"code": "x = 1"}}
+    errors = schema.validate_node(node)
+    assert any("description.info" in e for e in errors)
+
+def test_validate_invariant_missing_rule(schema):
+    node = {"id": "x", "name": "Test", "type": "Invariant",
+            "group": "Constraint > Invariant",
+            "description": {"info": "Test"},
+            "scope": "class", "enforcement": "hard",
+            "violation_action": "reject"}
+    errors = schema.validate_node(node)
+    assert any("rule" in e for e in errors)
+```
+
+**Commit:**
+```
+Wave 17A01 Task 6: 20 tests for schema v2 components
+```
+
+---
+
+## TASK 7 — CHANGELOG + GoBP MCP + Full Suite
+
+**CHANGELOG:**
 ```markdown
-## [Wave 17A01] — Schema Core Redesign — 2026-04-19
+## [Wave 17A01] — Schema + File Format Rewrite — 2026-04-19
 
-### Changed
-- group field: breadcrumb path for all node types
-- description: split into info (required) + code (optional)
-- status → lifecycle (draft|specified|implemented|tested|deprecated)
-- priority → read_order (foundational|important|reference|background)
-- Invariant: rule+scope+enforcement+violation_action = required
+### Rewritten
+- core_nodes.yaml v2: 65+ node types, group breadcrumb
+- core_edges.yaml v2: reason field on all edges
+- gobp/core/id_generator.py: group-embedded IDs
+- gobp/core/file_format.py: description.info/code handling
+- gobp/core/schema_loader.py: SchemaV2 validation
 
-### Added
-- 60+ new node types across 6 groups (Document/Dev/Constraint/Error/Test/Meta)
-- ErrorCase: fix history (append-only, type: runtime|dev_code)
-- ErrorDomain: fix_guide field
-- before_write hook: blocks Invariant without rule
+### Schema changes
+- group: "Dev > Infrastructure > Security" breadcrumb (REQUIRED)
+- lifecycle replaces status
+- read_order replaces priority
+- description = {info: required, code: optional}
+- Invariant: rule+scope+enforcement+violation_action required
+- ErrorCase: fix history (append-only, runtime|dev_code)
+- BusinessRule: new type for soft rules
 
-### Total: 640+ tests
+### Tests: 653+ (633 baseline + 20 new)
 ```
 
 **Full suite:**
 ```powershell
 $env:GOBP_DB_URL = "postgresql://postgres:Hieu%408283%40@localhost/gobp"
 D:/GoBP/venv/Scripts/python.exe -m pytest tests/ --override-ini="addopts=" -q --tb=no
-# Expected: 633+ tests
+# Expected: 653+ tests
 ```
 
 **GoBP MCP:**
 ```
-gobp(query="session:start actor='cursor' goal='Wave 17A01 end'")
-# Update Wave 17A01 node
-gobp(query="session:end ...")
+gobp(query="session:start actor='cursor' goal='Wave 17A01 complete'")
+gobp(query="session:end outcome='Schema v2 complete: 65 types, group field, lifecycle, read_order, description.info/code, ID generator, file format, schema loader. 653+ tests.'")
 ```
 
 **Commit:**
 ```
-Wave 17A01 Task 6: ErrorCase schema + fix history + CHANGELOG + full suite
-
-- ErrorCase: all required fields per spec v2.1
-- fixes[]: append-only fix history (runtime + dev_code types)
-- ErrorDomain: fix_guide field
-- CHANGELOG: Wave 17A01 entry
-- Full suite: 633+ tests passing
+Wave 17A01 Task 7: CHANGELOG + full suite — 653+ tests passing
 ```
 
 ---
@@ -472,45 +685,45 @@ Wave 17A01 Task 6: ErrorCase schema + fix history + CHANGELOG + full suite
 
 ## Cursor
 ```
-Read docs/GOBP_SCHEMA_REDESIGN_v2.1.md FIRST — đây là spec chính.
-Read .cursorrules v6 + waves/wave_17a01_brief.md.
+Read docs/GOBP_SCHEMA_REDESIGN_v2.1.md TRƯỚC.
+Read docs/wave_17a_series_plan.md.
+Read waves/wave_17a01_brief.md.
 Read GoBP MCP: gobp(query="find:Decision mode=summary")
 
 $env:GOBP_DB_URL = "postgresql://postgres:Hieu%408283%40@localhost/gobp"
 
-Execute Tasks 1-6 sequentially.
-R9-B for code tasks, R9-A for docs, R9-C at Task 6.
+Execute Tasks 1-7.
+Testing: R9-B Tasks 1-6, R9-C Task 7.
 
-KEY RULES:
-- Trước khi thêm type mới → check existing types
-- description string → auto-wrap to {info, code}
-- Invariant without rule → blocked by hook
-- ErrorCase fixes → append-only list
-- group field = breadcrumb path (REQUIRED)
+QUAN TRỌNG:
+  Không đụng GraphIndex hay query engine (Wave 17A02)
+  633 baseline tests PHẢI pass
+  group field = breadcrumb path REQUIRED trên mọi type
+  description phải có .info và .code
 
-GoBP MCP update sau mỗi task (dec:d004).
-Lesson nodes: suggest: trước khi tạo (dec:d011).
+GoBP MCP sau mỗi task (dec:d004).
+Lesson: suggest: trước khi tạo (dec:d011).
 ```
 
 ## Claude CLI
 ```
-Audit Wave 17A01 sau khi Cursor complete.
+Audit Wave 17A01.
 Verify:
-  - group field present trên node types
-  - description.info required
-  - lifecycle + read_order thay status/priority
-  - Invariant rule required + hook blocks
-  - ErrorCase fix history structure
+  - core_nodes.yaml: 65+ types, all have group
+  - core_edges.yaml: reason field
+  - id_generator.py: format correct
+  - file_format.py: description handling
+  - schema_loader.py: validation
+  - 653+ tests passing
 
-Full suite: 633+ tests.
-GoBP MCP session capture (dec:d004). Không cần Lesson node.
+GoBP MCP session capture. Không cần Lesson node.
 ```
 
 ## Push
 ```powershell
 cd D:\GoBP
-git add waves/wave_17a01_brief.md docs/GOBP_SCHEMA_REDESIGN_v2.1.md
-git commit -m "Add Wave 17A01 Brief + Schema Redesign v2.1 doc"
+git add waves/wave_17a01_brief.md docs/GOBP_SCHEMA_REDESIGN_v2.1.md docs/wave_17a_series_plan.md
+git commit -m "Add Wave 17A01 Brief + Schema Redesign v2.1 + Series Plan"
 git push origin main
 ```
 
@@ -518,5 +731,5 @@ git push origin main
 
 *Wave 17A01 Brief v1.0 — 2026-04-19*
 *References: dec:d004, dec:d006, dec:d011*
-*Schema doc: docs/GOBP_SCHEMA_REDESIGN_v2.1.md*
+*Part of: Wave 17A Series (7 waves)*
 ◈

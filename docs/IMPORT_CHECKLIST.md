@@ -51,8 +51,11 @@
 
 ## Suggested batch shape (example)
 
+Một `batch` có thể chứa **nhiều** dòng `create:` **khác type** (Engine, Flow, Decision, …) + `edge+:` — không bắt buộc mỗi lần chỉ một loại node. Xem `docs/GoBP_AI_USER_GUIDE.md` (mục *Template + batch đa loại*).
+
 ```text
 batch session_id='…' ops='
+  create: …
   create: …
   edge+: A --relates_to--> B
   …
