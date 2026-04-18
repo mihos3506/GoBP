@@ -187,6 +187,9 @@ async def dispatch(
                 args["include_sessions"] = params["include_sessions"]
             if "compact" in params:
                 args["compact"] = params["compact"]
+            for _gk in ("group", "group_exact", "group_contains"):
+                if _gk in params:
+                    args[_gk] = params[_gk]
             result = tools_read.find(index, project_root, args)
 
         elif action in ("get", "context"):

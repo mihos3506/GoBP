@@ -317,6 +317,158 @@ def _find_match_label(node: dict[str, Any], query_str: str, query_norm: str, sco
     return "substring"
 
 
+_READ_ORDER_RANK: dict[str, int] = {
+    "foundational": 0,
+    "important": 1,
+    "reference": 2,
+    "background": 3,
+}
+
+_RAW_META_FIELDS: frozenset[str] = frozenset(
+    {"_dispatch", "_protocol", "revision", "content_hash"}
+)
+
+
+def _parse_find_inline_params(query_str: str) -> dict[str, Any]:
+    """Extract group / type tokens from find: query string (Wave 17A03)."""
+    out: dict[str, Any] = {"keyword": query_str}
+    if not query_str.strip():
+        out["keyword"] = ""
+        return out
+    s = query_str
+    m = re.search(r'group\s*=\s*["\']([^"\']+)["\']', s, re.I)
+    if m:
+        out["group"] = m.group(1).strip()
+        s = re.sub(r'group\s*=\s*["\'][^"\']+["\']', " ", s, flags=re.I)
+    m2 = re.search(r"group\s+contains\s+[\"']([^\"']+)[\"']", s, re.I)
+    if m2:
+        out["group_contains"] = m2.group(1).strip()
+        s = re.sub(r"group\s+contains\s+[\"'][^\"']+[\"']", " ", s, flags=re.I)
+    tm = re.search(r"(?<![\w])type=(\w+)", s)
+    if tm:
+        out["type_inline"] = tm.group(1)
+        s = re.sub(r"(?<![\w])type=\w+", " ", s)
+    out["keyword"] = " ".join(s.split()).strip()
+    return out
+
+
+def _get_info_from_node(node: dict[str, Any]) -> str:
+    """Return description.info or plain string description."""
+    desc = node.get("description", "")
+    if isinstance(desc, dict):
+        return str(desc.get("info", "") or "")
+    if isinstance(desc, str):
+        return desc
+    return ""
+
+
+def _description_preview(node: dict[str, Any], max_chars: int = 200) -> str:
+    return _truncate(_get_info_from_node(node), max_chars)
+
+
+def _build_breadcrumb(group: str) -> list[dict[str, str]]:
+    """Navigable segments from schema v2 ``group`` path."""
+    if not group or not str(group).strip():
+        return []
+    parts = [p.strip() for p in str(group).split(">") if p.strip()]
+    crumbs: list[dict[str, str]] = []
+    for i in range(len(parts)):
+        path = " > ".join(parts[: i + 1])
+        crumbs.append({"label": parts[i], "path": path})
+    return crumbs
+
+
+def _get_relationships(index: GraphIndex, node_id: str) -> list[dict[str, Any]]:
+    """Edges with ``reason`` and peer group/name (Wave 17A03)."""
+    out: list[dict[str, Any]] = []
+    for edge in index.get_edges_from(node_id):
+        target_id = str(edge.get("to", "") or "")
+        target = index.get_node(target_id)
+        out.append(
+            {
+                "target_id": target_id,
+                "target_name": target.get("name", "") if target else "",
+                "target_group": str(target.get("group", "") or "") if target else "",
+                "type": str(edge.get("type", "") or ""),
+                "reason": str(edge.get("reason", "") or ""),
+                "direction": "outgoing",
+            }
+        )
+    for edge in index.get_edges_to(node_id):
+        source_id = str(edge.get("from", "") or "")
+        source = index.get_node(source_id)
+        out.append(
+            {
+                "source_id": source_id,
+                "source_name": source.get("name", "") if source else "",
+                "source_group": str(source.get("group", "") or "") if source else "",
+                "type": str(edge.get("type", "") or ""),
+                "reason": str(edge.get("reason", "") or ""),
+                "direction": "incoming",
+            }
+        )
+    return out
+
+
+def _get_type_important_fields(node: dict[str, Any]) -> dict[str, Any]:
+    """Type-specific fields for get/context brief mode."""
+    node_type = str(node.get("type", "") or "")
+    result: dict[str, Any] = {}
+    if node_type == "Invariant":
+        for f in ("rule", "scope", "enforcement", "violation_action"):
+            if node.get(f) is not None:
+                result[f] = node[f]
+    elif node_type == "ErrorCase":
+        for f in ("code", "severity", "trigger"):
+            if node.get(f) is not None:
+                result[f] = node[f]
+    elif node_type == "Decision":
+        for f in ("what", "why"):
+            if node.get(f):
+                result[f] = _truncate(str(node[f]), 200)
+    elif node_type == "Concept":
+        if node.get("definition"):
+            result["definition"] = _truncate(str(node["definition"]), 300)
+    return result
+
+
+def _node_for_context_brief(node: dict[str, Any]) -> dict[str, Any]:
+    """Slim node payload for get/context mode=brief (Wave 17A03)."""
+    desc_info = _get_info_from_node(node)
+    out: dict[str, Any] = {
+        "id": node.get("id"),
+        "name": node.get("name"),
+        "type": node.get("type"),
+        "group": str(node.get("group", "") or ""),
+        "lifecycle": str(node.get("lifecycle", "draft") or "draft"),
+        "read_order": str(node.get("read_order", "reference") or "reference"),
+        "description": {"info": desc_info, "code": ""},
+    }
+    out.update(_get_type_important_fields(node))
+    return out
+
+
+def _normalize_description_for_full(node: dict[str, Any]) -> dict[str, str]:
+    """description as {info, code} for full mode."""
+    raw = node.get("description")
+    if isinstance(raw, dict):
+        return {
+            "info": str(raw.get("info", "") or ""),
+            "code": str(raw.get("code", "") or ""),
+        }
+    if isinstance(raw, str):
+        return {"info": raw, "code": ""}
+    return {"info": "", "code": ""}
+
+
+def _match_score_float(query: str, node: dict[str, Any]) -> float:
+    """0.0–1.0 similarity from search_score."""
+    qn = normalize_text(query.strip())
+    if not qn:
+        return 0.0
+    return min(1.0, float(search_score(qn, node)) / 100.0)
+
+
 def find(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> dict[str, Any]:
     """Search nodes by keyword with cursor-based pagination.
 
@@ -334,7 +486,13 @@ def find(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> dict[st
     query_str = str(args.get("query", "") or "")
     if "query" not in args:
         return {"ok": False, "error": "Missing required field: query"}
-    type_filter = args.get("type_filter") or args.get("type")
+    inline = _parse_find_inline_params(query_str)
+    query_str = str(inline.get("keyword") or "")
+    if args.get("group") is None and inline.get("group"):
+        args = {**args, "group": inline["group"]}
+    if args.get("group_contains") is None and inline.get("group_contains"):
+        args = {**args, "group_contains": inline["group_contains"]}
+    type_filter = args.get("type_filter") or args.get("type") or inline.get("type_inline")
     page_size = min(int(args.get("page_size", args.get("limit", 20))), 100)
     cursor_raw = args.get("cursor")
     if cursor_raw is not None and str(cursor_raw).strip() != "":
@@ -352,27 +510,55 @@ def find(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> dict[st
     include_sessions = explicit_session_filter or include_sessions_param
     exclude_types: list[str] = [] if include_sessions else ["Session"]
 
+    group_ids: set[str] | None = None
+    group_meta: str | None = None
+    if args.get("group"):
+        exact = _truthy(args.get("group_exact"))
+        group_ids = set(index.find_by_group(str(args["group"]).strip(), exact=exact))
+        group_meta = str(args["group"]).strip()
+    elif args.get("group_contains"):
+        needle = str(args["group_contains"]).lower()
+        group_ids = set()
+        for node in index.all_nodes():
+            nid = node.get("id")
+            if nid and needle in str(node.get("group", "")).lower():
+                group_ids.add(str(nid))
+        group_meta = f'contains "{args["group_contains"]}"'
+
     candidates: list[dict[str, Any]] = []
     seen_ids: set[str] = set()
 
-    if not query_str.strip():
-        # Empty query: list all matching nodes (legacy), with optional session exclusion.
-        for node in index.all_nodes():
-            if type_filter and node.get("type") != type_filter:
-                continue
-            if node.get("type", "") in exclude_types:
-                continue
+    def _passes_base_filters(node: dict[str, Any]) -> bool:
+        nid = str(node.get("id", "") or "")
+        if group_ids is not None and nid not in group_ids:
+            return False
+        if type_filter and node.get("type") != type_filter:
+            return False
+        if node.get("type", "") in exclude_types:
+            return False
+        return True
 
+    if not query_str.strip():
+        # Empty keyword: list all (legacy) or group-filtered nodes.
+        for node in index.all_nodes():
+            if not _passes_base_filters(node):
+                continue
             node_id = node.get("id", "")
             if node_id in seen_ids:
                 continue
-
             seen_ids.add(node_id)
             enriched = dict(node)
             enriched["match"] = "substring"
             enriched["_score"] = 0
             candidates.append(enriched)
 
+        candidates.sort(
+            key=lambda n: (
+                _READ_ORDER_RANK.get(str(n.get("read_order", "reference")), 2),
+                str(n.get("name", "")),
+                str(n.get("id", "")),
+            ),
+        )
         reverse = direction == "desc"
         candidates.sort(
             key=lambda n: (
@@ -403,9 +589,7 @@ def find(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> dict[st
             nodes_to_score = list(index.all_nodes())
 
         for node in nodes_to_score:
-            if type_filter and node.get("type") != type_filter:
-                continue
-            if node.get("type", "") in exclude_types:
+            if not _passes_base_filters(node):
                 continue
             node_id = node.get("id", "")
             if not node_id:
@@ -424,9 +608,7 @@ def find(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> dict[st
                 node_id = str(node.get("id", "") or "")
                 if not node_id or node_id in scored_map:
                     continue
-                if type_filter and node.get("type") != type_filter:
-                    continue
-                if node.get("type", "") in exclude_types:
+                if not _passes_base_filters(node):
                     continue
                 base = search_score(query_norm, node)
                 if base == 0 and _legacy_substring_hit(query_lower, node):
@@ -449,7 +631,6 @@ def find(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> dict[st
             enriched["_score"] = score
             candidates.append(enriched)
 
-        # Stable sort: (match, score) primary; preserve prior order for sort_field ties, then id.
         candidates.sort(
             key=lambda n: (
                 str(n.get(sort_field, n.get("id", ""))),
@@ -463,6 +644,13 @@ def find(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> dict[st
                 -int(n.get("_score", 0)),
             ),
         )
+        if group_ids is not None:
+            candidates.sort(
+                key=lambda n: (
+                    _READ_ORDER_RANK.get(str(n.get("read_order", "reference")), 2),
+                    str(n.get("name", "")),
+                ),
+            )
 
     # Apply cursor (keyset pagination)
     total_estimate = len(candidates)
@@ -496,14 +684,17 @@ def find(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> dict[st
             entry["_score"] = n.get("_score", 0)
             matches.append(entry)
     else:
-        # Backward compatible default payload.
+        # Backward compatible default payload + v2 group fields.
         matches = [
             {
                 "id": n.get("id"),
                 "type": n.get("type"),
                 "name": n.get("name", ""),
+                "group": n.get("group", ""),
+                "read_order": n.get("read_order", "reference"),
                 "status": n.get("status", ""),
                 "priority": n.get("priority", "medium"),
+                "description_preview": _description_preview(n),
                 "match": n.get("match", "substring"),
                 "_score": n.get("_score", 0),
             }
@@ -516,7 +707,7 @@ def find(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> dict[st
             for m in matches
         ]
 
-    return {
+    out: dict[str, Any] = {
         "ok": True,
         "matches": matches,
         "count": len(matches),
@@ -527,7 +718,8 @@ def find(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> dict[st
         "sessions_excluded": bool(exclude_types),
         "hint": (
             "Use include_sessions=true to include Session nodes. "
-            "Use type_filter for exact type match."
+            "Use type_filter for exact type match. "
+            'Use group="Dev > Infra" or group_contains="Security" for schema v2 groups.'
         ),
         "page_info": {
             "next_cursor": next_cursor,
@@ -537,6 +729,9 @@ def find(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> dict[st
             "page_size": page_size,
         },
     }
+    if group_meta is not None:
+        out["group_filter"] = group_meta
+    return out
 
 
 def signature(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> dict[str, Any]:
@@ -581,12 +776,12 @@ def context(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> dict
     Args:
         node_id: str (required)
         depth: int (optional, default 1) - hop depth, v1 max 2
-        brief: if true, return a smaller node payload and cap edges per direction
-            (default cap 30 each; override with edge_limit, max 200).
-        edge_limit: max edges per direction when brief is true.
+        mode: summary | brief | full | debug (default brief; Wave 17A03)
+        brief: legacy alias; explicit true/false still maps to brief/full when mode omitted.
+        edge_limit: max edges per direction when building legacy outgoing/incoming (full mode).
 
     Returns:
-        Full node, edges, decisions, references (or slimmed when brief).
+        Node payload and edges per mode; brief uses relationships with reason.
     """
     del project_root
     node_id = args.get("node_id")
@@ -610,23 +805,33 @@ def context(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> dict
             "edge_count": ec,
         }
 
-    mode = str(args.get("mode", "")).lower()
+    mode = str(args.get("mode", "") or "").strip().lower()
     if not mode:
-        mode = "brief" if _truthy(args.get("brief")) else "full"
-    if mode not in {"summary", "brief", "full"}:
-        mode = "full"
+        if str(args.get("brief", "")).lower() == "false":
+            mode = "full"
+        elif _truthy(args.get("brief")):
+            mode = "brief"
+        else:
+            mode = "brief"
+    if mode not in {"summary", "brief", "full", "debug"}:
+        mode = "brief"
 
-    brief = mode == "brief"
-    if brief:
+    use_full_edges = mode == "full"
+    if mode == "brief":
         edge_limit = int(args.get("edge_limit", 30))
         edge_limit = max(1, min(edge_limit, 200))
+    elif use_full_edges:
+        edge_limit = int(args.get("edge_limit", 10_000))
+        edge_limit = max(1, min(edge_limit, 10_000))
     else:
         edge_limit = None
 
-    # Outgoing edges
     outgoing_raw = index.get_edges_from(node_id)
+    incoming_raw = index.get_edges_to(node_id)
+    relationships = _get_relationships(index, str(node_id))
+
     out_slice = outgoing_raw if edge_limit is None else outgoing_raw[:edge_limit]
-    outgoing = []
+    outgoing: list[dict[str, Any]] = []
     for edge in out_slice:
         to_node = index.get_node(edge.get("to", ""))
         outgoing.append(
@@ -638,10 +843,8 @@ def context(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> dict
             }
         )
 
-    # Incoming edges
-    incoming_raw = index.get_edges_to(node_id)
     in_slice = incoming_raw if edge_limit is None else incoming_raw[:edge_limit]
-    incoming = []
+    incoming: list[dict[str, Any]] = []
     for edge in in_slice:
         from_node = index.get_node(edge.get("from", ""))
         incoming.append(
@@ -653,11 +856,9 @@ def context(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> dict
             }
         )
 
-    # Applicable decisions: via 'implements' edges + topic match
     decisions: list[dict[str, Any]] = []
     seen_decision_ids: set[str] = set()
-
-    # Decisions via edges
+    brief_mode = mode == "brief"
     for edge in outgoing_raw:
         target = index.get_node(edge.get("to", ""))
         if target and target.get("type") == "Decision":
@@ -665,7 +866,7 @@ def context(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> dict
             if dec_id not in seen_decision_ids:
                 what_txt = target.get("what", "")
                 why_txt = target.get("why", "")
-                if brief:
+                if brief_mode:
                     what_txt = _truncate(str(what_txt), 240)
                     why_txt = _truncate(str(why_txt), 240)
                 decisions.append(
@@ -678,9 +879,8 @@ def context(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> dict
                 )
                 seen_decision_ids.add(dec_id)
 
-    # References (via 'references' edges to Document nodes)
-    references = []
-    ref_cap = 15 if brief else None
+    references: list[dict[str, Any]] = []
+    ref_cap = 15 if brief_mode else None
     for edge in outgoing_raw:
         if edge.get("type") != "references":
             continue
@@ -696,23 +896,6 @@ def context(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> dict
             if ref_cap is not None and len(references) >= ref_cap:
                 break
 
-    node_out: dict[str, Any] = dict(node)
-    if brief:
-        slim: dict[str, Any] = {}
-        for k in (
-            "id", "type", "name", "status", "priority", "topic", "subject",
-            "group", "session_id", "dedupe_key", "maturity", "confidence",
-        ):
-            if k in node and node[k] not in (None, ""):
-                slim[k] = node[k]
-        for tk in (
-            "description", "definition", "goal", "what", "why",
-            "raw_quote", "interpretation", "handoff_notes", "outcome",
-        ):
-            if tk in node and node[tk]:
-                slim[tk] = _truncate(str(node[tk]), 400)
-        node_out = slim
-
     if mode == "summary":
         return {
             "ok": True,
@@ -723,35 +906,55 @@ def context(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> dict
     if mode == "brief":
         return {
             "ok": True,
-            "node": _node_brief(node, index),
+            "node": _node_for_context_brief(node),
             "mode": mode,
             "brief": True,
+            "relationships": relationships,
             "edge_count": len(outgoing_raw) + len(incoming_raw),
             "outgoing_total": len(outgoing_raw),
             "incoming_total": len(incoming_raw),
             "outgoing_truncated": len(outgoing_raw) > len(outgoing),
             "incoming_truncated": len(incoming_raw) > len(incoming),
+            "hint": (
+                "Default mode=brief: use mode=full for legacy outgoing/incoming lists "
+                "or mode=debug for raw storage fields."
+            ),
         }
+
+    if mode == "debug":
+        out_dbg: dict[str, Any] = {
+            "ok": True,
+            "mode": "debug",
+            "node": dict(node),
+            "relationships": relationships,
+            "outgoing_total": len(outgoing_raw),
+            "incoming_total": len(incoming_raw),
+        }
+        return out_dbg
+
+    # full
+    node_out: dict[str, Any] = {}
+    for k, v in node.items():
+        if k in _RAW_META_FIELDS:
+            continue
+        node_out[k] = v
+    node_out["description"] = _normalize_description_for_full(node)
 
     out: dict[str, Any] = {
         "ok": True,
         "node": node_out,
         "outgoing": outgoing,
         "incoming": incoming,
+        "relationships": relationships,
         "decisions": decisions,
-        "invariants": [],  # Extension schemas; empty in core v1
+        "invariants": [],
         "references": references,
-        "mode": mode,
+        "mode": "full",
     }
-    if brief:
-        out["brief"] = True
-        out["outgoing_total"] = len(outgoing_raw)
-        out["incoming_total"] = len(incoming_raw)
-        out["outgoing_truncated"] = len(outgoing_raw) > len(outgoing)
-        out["incoming_truncated"] = len(incoming_raw) > len(incoming)
-        out["hint"] = (
-            "Slim context: omit brief= or use brief=false for full node body and all edges."
-        )
+    out["outgoing_total"] = len(outgoing_raw)
+    out["incoming_total"] = len(incoming_raw)
+    out["outgoing_truncated"] = len(outgoing_raw) > len(outgoing)
+    out["incoming_truncated"] = len(incoming_raw) > len(incoming)
     return out
 
 
@@ -1523,6 +1726,26 @@ def template_batch_action(index: GraphIndex, project_root: Path, args: dict[str,
     }
 
 
+def _sibling_entries(index: GraphIndex, node_id: str, limit: int = 10) -> list[dict[str, Any]]:
+    """Peers in the same schema v2 group (excluding self)."""
+    sids = index.find_siblings(node_id)[:limit]
+    rows: list[dict[str, Any]] = []
+    for sid in sids:
+        sn = index.get_node(sid)
+        if not sn:
+            continue
+        rows.append(
+            {
+                "id": sid,
+                "name": sn.get("name", ""),
+                "type": sn.get("type", ""),
+                "read_order": sn.get("read_order", "reference"),
+                "description_preview": _description_preview(sn),
+            }
+        )
+    return rows
+
+
 def explore_action(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> dict[str, Any]:
     """Return best-matching node plus edges and close matches (explore: keyword)."""
     del project_root
@@ -1530,15 +1753,20 @@ def explore_action(index: GraphIndex, project_root: Path, args: dict[str, Any]) 
     if not query:
         return {"ok": False, "error": "Query required"}
 
-    results = search_nodes(index, query, exclude_types=["Session"], limit=10)
-    if not results:
-        return {
-            "ok": False,
-            "error": f"No nodes found for: {query}",
-            "hint": "Try different keywords or use find: for broader search",
-        }
-
-    best_score, best_node = results[0]
+    results: list[tuple[int, dict[str, Any]]] = []
+    direct = index.get_node(query)
+    if direct:
+        best_score = 100
+        best_node = direct
+    else:
+        results = search_nodes(index, query, exclude_types=["Session"], limit=10)
+        if not results:
+            return {
+                "ok": False,
+                "error": f"No nodes found for: {query}",
+                "hint": "Try different keywords or use find: for broader search",
+            }
+        best_score, best_node = results[0]
     node_id = str(best_node.get("id", ""))
 
     edges_out: list[dict[str, Any]] = []
@@ -1614,22 +1842,29 @@ def explore_action(index: GraphIndex, project_root: Path, args: dict[str, Any]) 
     all_edges = edges_out + edges_in
     also_found: list[dict[str, Any]] = []
     adj_ct = getattr(index, "_adjacency", None)
-    for score, node in results[1:6]:
-        nid = str(node.get("id", ""))
-        if adj_ct is not None:
-            ec = adj_ct.edge_count(nid)
-        else:
-            ec = len(index.get_edges_from(nid)) + len(index.get_edges_to(nid))
-        note = "potential duplicate" if score >= 80 else "related"
-        also_found.append(
-            {
-                "id": node.get("id"),
-                "type": node.get("type", ""),
-                "name": node.get("name", ""),
-                "edge_count": ec,
-                "note": note,
-            }
-        )
+    if results:
+        for score, node in results[1:6]:
+            nid = str(node.get("id", ""))
+            if adj_ct is not None:
+                ec = adj_ct.edge_count(nid)
+            else:
+                ec = len(index.get_edges_from(nid)) + len(index.get_edges_to(nid))
+            note = "potential duplicate" if score >= 80 else "related"
+            also_found.append(
+                {
+                    "id": node.get("id"),
+                    "type": node.get("type", ""),
+                    "name": node.get("name", ""),
+                    "edge_count": ec,
+                    "note": note,
+                }
+            )
+
+    group_path = str(best_node.get("group", "") or "")
+    breadcrumb = _build_breadcrumb(group_path)
+    sibling_ids = index.find_siblings(node_id)
+    siblings = _sibling_entries(index, node_id)
+    relationships = _get_relationships(index, node_id)
 
     if _truthy(args.get("compact")):
         edge_lines: list[str] = []
@@ -1652,26 +1887,28 @@ def explore_action(index: GraphIndex, project_root: Path, args: dict[str, Any]) 
                 "name": best_node.get("name", ""),
                 "type": best_node.get("type", ""),
             },
+            "breadcrumb": [c["label"] for c in breadcrumb],
             "edges": edge_lines,
             "edge_count": len(all_edges),
             "also_found": also_lines,
         }
 
+    node_payload: dict[str, Any] = {**_node_for_context_brief(best_node), "match_score": best_score}
+
     return {
         "ok": True,
-        "node": {
-            "id": node_id,
-            "type": best_node.get("type", ""),
-            "name": best_node.get("name", ""),
-            "description": best_node.get("description", ""),
-            "priority": best_node.get("priority", ""),
-            "match_score": best_score,
-        },
+        "node": node_payload,
+        "breadcrumb": breadcrumb,
+        "group": group_path,
+        "siblings": siblings,
+        "siblings_count": len(sibling_ids),
+        "relationships": relationships,
         "edges": all_edges,
         "edge_count": len(all_edges),
         "also_found": also_found,
         "hint": (
-            "Use retype: or delete: to clean duplicates. Use edge: or batch ops to add relationships."
+            "Use retype: or delete: to clean duplicates. Use edge: or batch ops to add relationships. "
+            "Call suggest: before create (dec:d011); relationships include edge reason when present."
         ),
     }
 
@@ -1679,22 +1916,87 @@ def explore_action(index: GraphIndex, project_root: Path, args: dict[str, Any]) 
 def suggest_action(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> dict[str, Any]:
     """Suggest reusable nodes from a short natural-language context."""
     del project_root
-    context = str(args.get("query", "")).strip()
-    if not context:
+    qtext = str(args.get("query", "")).strip()
+    if not qtext:
         return {
             "ok": False,
             "error": "Context required. Example: suggest: Payment Flow",
         }
 
-    lim = int(args.get("limit", 10))
-    suggestions = suggest_related(index, context, limit=lim)
+    group_filter = str(args.get("group", "") or "").strip()
+    type_filter = str(args.get("type", "") or args.get("node_type", "") or "").strip()
+    lim = max(1, min(int(args.get("limit", 10)), 50))
 
-    return {
+    candidates: dict[str, dict[str, Any]] = {}
+    for _sc, node in search_nodes(
+        index,
+        qtext,
+        type_filter=type_filter or None,
+        exclude_types=["Session", "Document"],
+        limit=max(lim * 5, 20),
+    ):
+        nid = str(node.get("id", "") or "")
+        if nid:
+            candidates[nid] = node
+    for row in suggest_related(
+        index, qtext, exclude_types=["Session", "Document"], limit=max(lim * 3, 15)
+    ):
+        nid = str(row.get("id", "") or "")
+        if nid and nid not in candidates:
+            n = index.get_node(nid)
+            if n:
+                candidates[nid] = n
+
+    rows: list[dict[str, Any]] = []
+    for node in candidates.values():
+        match_score = _match_score_float(qtext, node)
+        g = str(node.get("group", "") or "")
+        same_group = bool(group_filter and g.startswith(group_filter))
+        same_type = bool(type_filter and str(node.get("type", "") or "") == type_filter)
+        warning = ""
+        if match_score > 0.8 and (same_group or same_type):
+            warning = "HIGH SIMILARITY — consider updating instead of creating"
+        rel = "high" if match_score >= 0.6 else "medium" if match_score >= 0.3 else "low"
+        preview = _truncate(_get_info_from_node(node), 100)
+        rows.append(
+            {
+                "id": node.get("id"),
+                "type": str(node.get("type", "") or ""),
+                "name": str(node.get("name", "") or ""),
+                "group": g,
+                "match_score": round(match_score, 4),
+                "same_group": same_group,
+                "same_type": same_type,
+                "description_preview": preview,
+                "warning": warning,
+                "why": warning or f"match_score={match_score:.2f}",
+                "relevance": rel,
+            }
+        )
+
+    rows.sort(
+        key=lambda r: (
+            -int(r["same_group"] and r["same_type"]),
+            -int(r["same_group"]),
+            -int(r["same_type"]),
+            -float(r["match_score"]),
+        )
+    )
+    top = rows[:lim]
+    rec = "UPDATE existing node" if top and float(top[0]["match_score"]) > 0.8 else "CREATE new node"
+    out: dict[str, Any] = {
         "ok": True,
-        "context": context,
-        "suggestions": suggestions,
-        "count": len(suggestions),
-        "hint": "Consider linking to these nodes with edge: or batch ops instead of creating new ones.",
+        "context": qtext,
+        "suggestions": top,
+        "count": len(top),
+        "recommendation": rec,
+        "hint": (
+            "Call suggest: with group=\"...\" before create (dec:d011). "
+            "Prefer edge: / batch link when recommendation is UPDATE."
+        ),
     }
+    if group_filter:
+        out["group_filter"] = group_filter
+    return out
 
 
