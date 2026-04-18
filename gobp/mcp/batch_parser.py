@@ -158,9 +158,11 @@ def parse_batch_ops(ops_text: str) -> tuple[list[dict[str, Any]], list[str]]:
     Returns:
         Tuple of (parsed_ops, errors) where each error is a human-readable string.
     """
+    # Literal ``\\n`` / ``\n`` from MCP JSON often arrives as backslash+n; normalize first.
+    text = ops_text.replace("\\\\n", "\n").replace("\\n", "\n")
     parsed: list[dict[str, Any]] = []
     errors: list[str] = []
-    for line in ops_text.splitlines():
+    for line in text.splitlines():
         item = parse_batch_line(line)
         if item.get("kind") == "noop":
             continue
@@ -169,3 +171,13 @@ def parse_batch_ops(ops_text: str) -> tuple[list[dict[str, Any]], list[str]]:
             continue
         parsed.append(item)
     return parsed, errors
+
+
+def parse_batch(raw: str) -> list[dict[str, Any]]:
+    """Parse batch ops text; same newline rules as :func:`parse_batch_ops`.
+
+    Returns successfully parsed ops (invalid lines are skipped; see ``errors``
+    from :func:`parse_batch_ops` for details).
+    """
+    ops, _errors = parse_batch_ops(raw)
+    return ops
