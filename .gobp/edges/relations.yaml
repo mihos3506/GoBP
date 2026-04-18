@@ -3181,3 +3181,12 @@
 - from: wave_16a14.meta.84868168
   to: dec:d006
   type: relates_to
+- from: dec:d008
+  to: meta.session.2026-04-18.4b0a36c08
+  type: discovered_in
+- from: dec:d009
+  to: meta.session.2026-04-18.4b0a36c08
+  type: discovered_in
+- from: dec:d010
+  to: meta.session.2026-04-18.4b0a36c08
+  type: discovered_in
