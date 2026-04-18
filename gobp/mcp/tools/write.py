@@ -25,6 +25,35 @@ from gobp.core.mutator import (
 from gobp.core.validator import validate_node
 
 
+# Defaults for types with many required fields — quick capture / minimal batch lines.
+TYPE_DEFAULTS: dict[str, dict[str, Any]] = {
+    "Idea": {
+        "raw_quote": lambda n: (
+            str(n.get("description") or n.get("name") or "captured via quick entry")
+        ),
+        "interpretation": lambda n: str(n.get("description") or n.get("name") or ""),
+        "subject": lambda n: str(n.get("subject") or n.get("category") or "general"),
+        "maturity": "RAW",
+        "confidence": "low",
+    },
+    "TestCase": {
+        "given": "TBD",
+        "when": "TBD",
+        "then": "TBD",
+    },
+}
+
+
+def _auto_fill_defaults(node: dict[str, Any], node_type: str) -> None:
+    """Fill missing required schema fields with safe defaults (mutates ``node``)."""
+    defaults = TYPE_DEFAULTS.get(node_type, {})
+    for field, default in defaults.items():
+        cur = node.get(field)
+        if cur is not None and str(cur).strip() != "":
+            continue
+        node[field] = default(node) if callable(default) else default
+
+
 # (type_name, id_prefix_full, slice_index) — for auto-numbered node types.
 # slice_index is the position in the full prefix where the numeric suffix begins.
 _AUTO_ID_CONFIG: dict[str, tuple[str, int]] = {
@@ -150,6 +179,8 @@ def node_upsert(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> 
             node["description"] = (
                 f'Project-local TestKind "{name}". Edit description and template as needed.'
             )
+
+    _auto_fill_defaults(node, node_type)
 
     try:
         nodes_schema = load_schema(package_schema_dir() / "core_nodes.yaml")
@@ -679,6 +710,8 @@ def _batch_build_create_node(
             node["description"] = (
                 f'Project-local TestKind "{name}". Edit description and template as needed.'
             )
+
+    _auto_fill_defaults(node, node_type)
 
     nodes_schema = load_schema(package_schema_dir() / "core_nodes.yaml")
     result = validate_node(node, nodes_schema)
