@@ -5,6 +5,26 @@ Format: [Wave N — Title] with date, what was added/changed/fixed.
 
 ---
 
+## [Wave 17A03] — Query Engine — 2026-04-19
+
+### Added
+
+- **`find:`** — `group="..."` top-down group filter; `group contains "..."` substring filter; combined with `type=` and keyword search; `group_filter` in response; **`find_by_group(..., exact=True)`** now returns only nodes whose `group` equals the path (prefix index no longer over-matches).
+- **`explore:`** — resolve **node ID** first; **`breadcrumb`**, **`siblings`**, **`relationships`** (edges include **`reason`** when present).
+- **`get:` / `context()`** — **`mode=brief`** (default), **`full`**, **`debug`**; brief shows **`description.info`** and **`relationships`**; full/debug per Wave 17A03.
+- **`suggest:`** — group-aware ordering, **`match_score`**, **`HIGH SIMILARITY`** warning, **`recommendation`** (UPDATE vs CREATE); merges **`suggest_related`** overlap with **`search_nodes`** hits.
+
+### Changed
+
+- **`GraphIndex`**: `_group_index` prefix map; **`find_by_group`**, **`find_siblings`**, **`get_group_tree`**.
+- **`.cursorrules` v8** — Query protocol v2 + display modes + suggest/explore workflow (v7 rules retained).
+
+### Tests
+
+- **`tests/test_wave17a03.py`** — 20 tests (group index, find, explore, get modes, suggest).
+
+---
+
 ## [Wave 17A02] — Validator bridge + schema v2 cutover — 2026-04-19
 
 ### Added

@@ -266,13 +266,17 @@ def test_context_not_found(index: GraphIndex, populated_root: Path) -> None:
 
 
 def test_context_includes_outgoing_and_incoming(index: GraphIndex, populated_root: Path) -> None:
-    out = tools_read.context(index, populated_root, {"node_id": "node:feature_login"})
+    out = tools_read.context(
+        index, populated_root, {"node_id": "node:feature_login", "mode": "full"},
+    )
     assert out["ok"] is True
     assert len(out["outgoing"]) >= 2
 
 
 def test_context_includes_references_and_invariants(index: GraphIndex, populated_root: Path) -> None:
-    out = tools_read.context(index, populated_root, {"node_id": "node:feature_login"})
+    out = tools_read.context(
+        index, populated_root, {"node_id": "node:feature_login", "mode": "full"},
+    )
     assert out["invariants"] == []
     assert len(out["references"]) == 1
 
