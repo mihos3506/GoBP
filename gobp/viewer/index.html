@@ -866,6 +866,30 @@ function descParts(node) {
   return { info: String(d || ''), code: '' };
 }
 
+function filterRelationshipEdges(edges) {
+  return edges.filter((edge) => {
+    const edgeType = (edge.type || edge.relationship || '').toUpperCase();
+    if (edgeType === 'DISCOVERED_IN') return false;
+    return true;
+  });
+}
+
+function renderReasonHtml(reason) {
+  const r = reason != null ? String(reason).trim() : '';
+  if (!r || r === '(empty)') return '';
+  return `<div class="edge-reason" style="font-size:9px;color:var(--text-dim);margin-top:2px">${esc(r)}</div>`;
+}
+
+const HIDDEN_DETAIL_FIELDS = new Set([
+  'lifecycle', 'read_order', 'priority',
+  'session_id', 'content_hash', '_dispatch', '_protocol',
+  'revision', 'fts_content',
+]);
+
+function shouldShowRawField(fieldName) {
+  return !HIDDEN_DETAIL_FIELDS.has(String(fieldName).toLowerCase());
+}
+
 function showDetail(node) {
   const mcpPanel = document.getElementById('mcp-panel');
   if (mcpPanel) mcpPanel.style.display = 'none';
@@ -877,7 +901,7 @@ function showDetail(node) {
 
   const out = [];
   const inc = [];
-  edges.forEach((e) => {
+  filterRelationshipEdges(edges).forEach((e) => {
     const f = e.from || e.source;
     const t = e.to || e.target;
     const reason = e.reason != null ? String(e.reason) : '';
@@ -954,13 +978,6 @@ function showDetail(node) {
     html += `<div class="node-id" style="margin-bottom:6px">${esc(node.id)}</div>`;
     html += `<div class="v2-type">${esc(nt)}</div>`;
     html += `<div class="v2-title">${esc(node.name || '')}</div>`;
-    const life = node.lifecycle || '';
-    const ro = node.read_order || node.priority || '';
-    html += `<div class="v2-meta">`;
-    if (life) html += `lifecycle: ${esc(life)}`;
-    if (life && ro) html += ' · ';
-    if (ro) html += `read_order: ${esc(String(ro))}`;
-    html += `</div>`;
     const dp = descParts(node);
     if (dp.info || dp.code) {
       html += `<div class="v2-section"><div class="v2-h">DESCRIPTION</div><div class="v2-desc-info">${esc(dp.info)}</div>`;
@@ -981,7 +998,7 @@ function showDetail(node) {
       const nm = nodesById[r.id]?.name || r.id;
       html += `<div class="v2-rel"><span class="v2-rel-verb">${esc(r.dir)} ${esc(r.type)}</span> `;
       html += `<span class="rel-target" style="cursor:pointer;color:var(--text)" data-id="${escAttr(r.id)}">${esc(nm)}</span>`;
-      html += `<div style="font-size:9px;color:var(--text-fade);margin-top:2px">reason: ${esc(r.reason || '(empty)')}</div></div>`;
+      html += renderReasonHtml(r.reason);
     });
     html += `</div>`;
   }
@@ -992,7 +1009,9 @@ function showDetail(node) {
     'code', 'severity', 'trigger', 'handling', 'fix', 'user_message', 'dev_note', 'context', 'fix_history',
     'rule', 'scope', 'enforcement', 'enforced_by',
   ]);
-  const raw = Object.entries(node).filter(([k]) => !skip.has(k) && node[k] != null);
+  const raw = Object.entries(node).filter(
+    ([k]) => !skip.has(k) && shouldShowRawField(k) && node[k] != null,
+  );
   if (raw.length) {
     html += `<details class="relations" style="margin-top:12px"><summary style="cursor:pointer;color:var(--amber-soft);font-size:11px;">Debug: raw fields (${raw.length})</summary>`;
     raw.forEach(([k, v]) => {
