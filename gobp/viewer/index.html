@@ -100,6 +100,48 @@
   .v2-rel-verb { color: var(--amber-soft); text-transform: uppercase; font-size: 9px; letter-spacing: 0.08em; }
   .v2-raw { font-size: 9px; background: rgba(0,0,0,0.25); padding: 8px; max-height: 180px; overflow: auto; white-space: pre-wrap; }
   .v2-k { font-size: 9px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--text-fade); margin-right: 6px; }
+
+  .detail-section { margin: 14px 0 0; padding-top: 10px; border-top: 1px solid var(--border); }
+  .detail-section-title { font-size: 11px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; color: #8b949e; margin-bottom: 6px; }
+  .edge-item {
+    padding: 8px 0;
+    border-bottom: 1px solid #21262d;
+  }
+  .edge-item:last-child { border-bottom: none; }
+  .edge-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .edge-direction {
+    font-size: 12px;
+    color: #636d83;
+    width: 16px;
+    flex-shrink: 0;
+  }
+  .edge-node-name {
+    font-size: 13px;
+    color: #c9b99a;
+    cursor: pointer;
+    text-decoration: none;
+  }
+  .edge-node-name:hover {
+    color: #f0883e;
+    text-decoration: underline;
+  }
+  .detail-section .edge-reason {
+    font-size: 12px;
+    color: #6e7681;
+    margin-top: 3px;
+    margin-left: 22px;
+    font-style: italic;
+    line-height: 1.4;
+  }
+  .no-edges {
+    font-size: 12px;
+    color: #636d83;
+    font-style: italic;
+  }
   #group-filters .gf-tree { font-size: 13px; margin-left: 0; }
   .group-item {
     display: flex;
@@ -941,6 +983,36 @@ function renderReasonHtml(reason) {
   return `<div class="edge-reason" style="font-size:9px;color:var(--text-dim);margin-top:2px">${esc(r)}</div>`;
 }
 
+/** EDGES section: direction, neighbor name, optional reason. */
+function renderEdges(edgeRows) {
+  if (!edgeRows || edgeRows.length === 0) {
+    return `
+    <div class="detail-section">
+      <div class="detail-section-title">EDGES</div>
+      <div class="no-edges">No connections</div>
+    </div>`;
+  }
+  const edgeItems = edgeRows.map((edge) => {
+    const direction = edge.direction || '→';
+    const oid = edge.other_id || '';
+    const otherName = edge.other_name || 'Unknown';
+    const reason = edge.reason != null ? String(edge.reason).trim() : '';
+    return `
+        <div class="edge-item">
+            <div class="edge-header">
+                <span class="edge-direction">${direction}</span>
+                <span class="edge-node-name" data-edge-nav="${escAttr(oid)}">${esc(otherName)}</span>
+            </div>
+            ${reason ? `<div class="edge-reason">${esc(reason)}</div>` : ''}
+        </div>`;
+  }).join('');
+  return `
+    <div class="detail-section">
+      <div class="detail-section-title">EDGES (${edgeRows.length})</div>
+      ${edgeItems}
+    </div>`;
+}
+
 const HIDDEN_DETAIL_FIELDS = new Set([
   'lifecycle', 'read_order', 'priority',
   'session_id', 'content_hash', '_dispatch', '_protocol',
@@ -1049,20 +1121,21 @@ function showDetail(node) {
     }
   }
 
-  const rels = [
-    ...out.map((r) => ({ ...r, dir: '→' })),
-    ...inc.map((r) => ({ ...r, dir: '←' })),
+  const edgeRows = [
+    ...out.map((r) => ({
+      direction: '→',
+      other_id: r.id,
+      other_name: nodesById[r.id]?.name || r.id,
+      reason: r.reason,
+    })),
+    ...inc.map((r) => ({
+      direction: '←',
+      other_id: r.id,
+      other_name: nodesById[r.id]?.name || r.id,
+      reason: r.reason,
+    })),
   ];
-  if (rels.length) {
-    html += `<div class="v2-section"><div class="v2-h">RELATIONSHIPS</div>`;
-    rels.slice(0, 40).forEach((r) => {
-      const nm = nodesById[r.id]?.name || r.id;
-      html += `<div class="v2-rel"><span class="v2-rel-verb">${esc(r.dir)} ${esc(r.type)}</span> `;
-      html += `<span class="rel-target" style="cursor:pointer;color:var(--text)" data-id="${escAttr(r.id)}">${esc(nm)}</span>`;
-      html += renderReasonHtml(r.reason);
-    });
-    html += `</div>`;
-  }
+  html += renderEdges(edgeRows.slice(0, 80));
 
   const skip = new Set([
     'id', 'type', 'name', '__hit', '__searchHit', 'x', 'y', 'z', 'vx', 'vy', 'vz', 'index', 'fx', 'fy', 'fz',
@@ -1088,7 +1161,7 @@ function showDetail(node) {
   content.innerHTML = html;
   document.getElementById('detail').classList.add('visible');
 
-  content.querySelectorAll('.rel-target[data-id]').forEach((el) => {
+  content.querySelectorAll('.rel-target[data-id], .edge-node-name[data-edge-nav]').forEach((el) => {
     el.addEventListener('click', () => {
       const nid = el.getAttribute('data-id');
       const n = GRAPH_DATA.nodes.find((x) => x.id === nid);
