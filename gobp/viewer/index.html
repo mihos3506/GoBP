@@ -85,13 +85,31 @@
   .v2-raw { font-size: 9px; background: rgba(0,0,0,0.25); padding: 8px; max-height: 180px; overflow: auto; white-space: pre-wrap; }
   .v2-k { font-size: 9px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--text-fade); margin-right: 6px; }
   #group-filters .gf-tree { font-size: 13px; margin-left: 0; }
-  #group-filters .gf-node { margin: 2px 0; cursor: pointer; user-select: none; }
-  #group-filters .gf-node:hover { color: var(--amber); }
-  #group-filters .gf-count { font-size: 9px; color: var(--text-fade); margin-left: 4px; }
-  #group-filters .gf-level-0 { padding-left: 8px; font-weight: 600; color: #e8e8ee; }
-  #group-filters .gf-level-1 { padding-left: 20px; font-weight: 500; color: #c9b99a; }
-  #group-filters .gf-level-2 { padding-left: 32px; font-weight: 400; color: #8b949e; }
-  #group-filters .gf-level-3 { padding-left: 44px; font-weight: 400; color: #6e7681; }
+  .group-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 3px 8px;
+    cursor: pointer;
+    user-select: none;
+    border-radius: 4px;
+  }
+  .group-item:hover { background: rgba(255,255,255,0.05); }
+  .group-name {
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .group-count {
+    min-width: 24px;
+    text-align: right;
+    font-size: 11px;
+    color: #636d83;
+    font-variant-numeric: tabular-nums;
+    margin-left: 8px;
+  }
+  .group-dot { margin-right: 4px; opacity: 0.85; }
 
   #statusbar { position: fixed; bottom: 0; left: 0; right: 0; z-index: 10; padding: 8px 24px; background: linear-gradient(0deg, var(--bg) 40%, transparent); font-size: 9px; color: var(--text-fade); letter-spacing: 0.12em; text-transform: uppercase; display: flex; justify-content: space-between; pointer-events: none; }
 
@@ -517,27 +535,39 @@ function _countByGroupPath(nodes) {
   return counts;
 }
 
-function renderGroupTreeEl(container, tree, counts, depth) {
+function renderGroupTreeEl(container, tree, counts, depth, allGroupsBtn) {
   const keys = Object.keys(tree._children || {}).sort();
   keys.forEach((k) => {
     const node = tree._children[k];
     const path = node._path || k;
     const cnt = counts[path] || 0;
     const row = document.createElement('div');
-    row.className = `gf-node gf-level-${Math.min(depth, 3)}`;
+    const d = Math.min(depth, 2);
+    row.className = `group-item group-level-${d}`;
+    row.style.paddingLeft = `${8 + depth * 12}px`;
+    if (FILTER_GROUP_PREFIX === path) row.classList.add('active');
     const mark = FILTER_GROUP_PREFIX === path ? '●' : '○';
-    row.innerHTML = `${mark} <span class="gf-label">${k}</span><span class="gf-count">${cnt}</span>`;
+    row.innerHTML = `
+      <span class="group-name">
+        <span class="group-dot">${mark}</span>${k}
+      </span>
+      <span class="group-count">${cnt}</span>`;
     row.addEventListener('click', () => {
       FILTER_GROUP_PREFIX = path;
-      document.querySelectorAll('#group-filters .gf-node').forEach((el) => {
-        el.style.color = '';
+      if (allGroupsBtn) allGroupsBtn.classList.remove('active');
+      document.querySelectorAll('#group-filters .group-item').forEach((el) => {
+        el.classList.remove('active');
+        const dot = el.querySelector('.group-dot');
+        if (dot) dot.textContent = '○';
       });
-      row.style.color = 'var(--amber)';
+      row.classList.add('active');
+      const dot = row.querySelector('.group-dot');
+      if (dot) dot.textContent = '●';
       applyFilters();
     });
     container.appendChild(row);
     if (Object.keys(node._children || {}).length) {
-      renderGroupTreeEl(container, node, counts, depth + 1);
+      renderGroupTreeEl(container, node, counts, depth + 1, allGroupsBtn);
     }
   });
 }
@@ -550,13 +580,17 @@ function initFilters() {
   gEl.innerHTML = '';
   const allG = document.createElement('button');
   allG.type = 'button';
+  allG.className = 'all-groups-btn';
   allG.textContent = 'All groups';
   allG.style.marginBottom = '8px';
   allG.addEventListener('click', () => {
     FILTER_GROUP_PREFIX = '';
-    gEl.querySelectorAll('.gf-node').forEach((el) => {
-      el.style.color = '';
+    gEl.querySelectorAll('.group-item').forEach((el) => {
+      el.classList.remove('active');
+      const dot = el.querySelector('.group-dot');
+      if (dot) dot.textContent = '○';
     });
+    allG.classList.add('active');
     applyFilters();
   });
   gEl.appendChild(allG);
@@ -564,18 +598,34 @@ function initFilters() {
   const counts = _countByGroupPath(nodes);
   const wrap = document.createElement('div');
   wrap.className = 'gf-tree';
-  renderGroupTreeEl(wrap, treeRoot, counts, 0);
+  renderGroupTreeEl(wrap, treeRoot, counts, 0, allG);
   gEl.appendChild(wrap);
   if (counts['__ungrouped__']) {
     const u = document.createElement('div');
-    u.className = 'gf-node gf-level-0';
-    u.innerHTML = `○ <span class="gf-label">(ungrouped)</span><span class="gf-count">${counts['__ungrouped__']}</span>`;
+    u.className = 'group-item group-level-0';
+    u.style.paddingLeft = '8px';
+    if (FILTER_GROUP_PREFIX === '__ungrouped__') u.classList.add('active');
+    const um = FILTER_GROUP_PREFIX === '__ungrouped__' ? '●' : '○';
+    u.innerHTML = `
+      <span class="group-name"><span class="group-dot">${um}</span>(ungrouped)</span>
+      <span class="group-count">${counts['__ungrouped__']}</span>`;
     u.addEventListener('click', () => {
       FILTER_GROUP_PREFIX = '__ungrouped__';
+      gEl.querySelectorAll('.group-item').forEach((el) => {
+        el.classList.remove('active');
+        const dot = el.querySelector('.group-dot');
+        if (dot) dot.textContent = '○';
+      });
+      u.classList.add('active');
+      const ud = u.querySelector('.group-dot');
+      if (ud) ud.textContent = '●';
+      allG.classList.remove('active');
       applyFilters();
     });
     gEl.appendChild(u);
   }
+  if (!FILTER_GROUP_PREFIX) allG.classList.add('active');
+  else allG.classList.remove('active');
 }
 
 function applyFilters(searchSet=null, hits=null) {
