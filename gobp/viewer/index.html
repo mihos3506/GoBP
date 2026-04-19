@@ -22,7 +22,12 @@
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html, body { width: 100%; height: 100%; overflow: hidden; }
-  body { background: var(--bg); color: var(--text); font-family: var(--mono); font-size: 13px; font-weight: 300; -webkit-font-smoothing: antialiased; }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', system-ui, sans-serif;
+    font-size: 14px; line-height: 1.5; font-weight: 400;
+    -webkit-font-smoothing: antialiased;
+  }
 
   #graph-canvas { position: fixed; inset: 0; z-index: 1; }
 
@@ -33,7 +38,7 @@
   #project-switcher { pointer-events: auto; background: transparent; border: 1px solid var(--border); color: var(--amber-soft); font-family: var(--mono); font-size: 11px; padding: 4px 8px; cursor: pointer; outline: none; }
   #project-switcher:focus { border-color: var(--border-strong); }
 
-  #controls { position: fixed; top: 56px; left: 16px; z-index: 10; width: 220px; background: var(--bg-panel); backdrop-filter: blur(16px); border: 1px solid var(--border); padding: 14px 16px; max-height: calc(100vh - 80px); overflow-y: auto; }
+  #controls { position: fixed; top: 56px; left: 16px; z-index: 10; width: 220px; background: var(--bg-panel); backdrop-filter: blur(16px); border: 1px solid var(--border); padding: 14px 16px; max-height: calc(100vh - 80px); overflow-y: auto; color: #c9b99a; }
   #controls section { margin-bottom: 16px; }
   #controls h3 { font-size: 9px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.22em; color: var(--amber-soft); margin-bottom: 8px; border-bottom: 1px solid var(--border); padding-bottom: 4px; }
   #controls label { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text); padding: 2px 0; cursor: pointer; user-select: none; }
@@ -51,7 +56,7 @@
   #detail.visible { display: block; }
   #detail .close { position: absolute; top: 12px; right: 14px; background: none; border: none; color: var(--text-dim); font-size: 16px; cursor: pointer; }
   #detail .close:hover { color: var(--amber); }
-  #detail .node-type { font-size: 9px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.22em; color: var(--amber-soft); margin-bottom: 4px; }
+  #detail .node-type { font-size: 11px; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; color: #f0883e; margin-bottom: 4px; }
   #detail .node-id { font-size: 9px; color: var(--text-fade); margin-bottom: 8px; word-break: break-all; }
   #detail .node-name { font-family: var(--serif); font-size: 17px; font-weight: 300; color: var(--text); line-height: 1.3; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
   #detail .field { margin-bottom: 8px; }
@@ -72,17 +77,21 @@
   .v2-title { font-family: var(--serif); font-size: 17px; font-weight: 300; margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
   .v2-meta { font-size: 10px; color: var(--text-dim); margin-bottom: 12px; }
   .v2-section { margin: 14px 0; padding-top: 10px; border-top: 1px solid var(--border); }
-  .v2-h { font-size: 9px; text-transform: uppercase; letter-spacing: 0.2em; color: var(--amber-soft); margin-bottom: 6px; }
+  .v2-h { font-size: 11px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; color: #8b949e; margin-bottom: 6px; }
   .v2-desc-info { font-size: 11px; line-height: 1.55; color: var(--text); white-space: pre-wrap; }
   .v2-code { font-size: 10px; background: rgba(0,0,0,0.35); border: 1px solid var(--border); padding: 10px; margin-top: 8px; white-space: pre-wrap; color: var(--text-dim); }
   .v2-rel { font-size: 10px; margin: 4px 0; color: var(--text-dim); }
   .v2-rel-verb { color: var(--amber-soft); text-transform: uppercase; font-size: 9px; letter-spacing: 0.08em; }
   .v2-raw { font-size: 9px; background: rgba(0,0,0,0.25); padding: 8px; max-height: 180px; overflow: auto; white-space: pre-wrap; }
   .v2-k { font-size: 9px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--text-fade); margin-right: 6px; }
-  #group-filters .gf-tree { font-size: 10px; margin-left: 0; }
-  #group-filters .gf-node { margin: 2px 0 2px 8px; cursor: pointer; user-select: none; }
+  #group-filters .gf-tree { font-size: 13px; margin-left: 0; }
+  #group-filters .gf-node { margin: 2px 0; cursor: pointer; user-select: none; }
   #group-filters .gf-node:hover { color: var(--amber); }
   #group-filters .gf-count { font-size: 9px; color: var(--text-fade); margin-left: 4px; }
+  #group-filters .gf-level-0 { padding-left: 8px; font-weight: 600; color: #e8e8ee; }
+  #group-filters .gf-level-1 { padding-left: 20px; font-weight: 500; color: #c9b99a; }
+  #group-filters .gf-level-2 { padding-left: 32px; font-weight: 400; color: #8b949e; }
+  #group-filters .gf-level-3 { padding-left: 44px; font-weight: 400; color: #6e7681; }
 
   #statusbar { position: fixed; bottom: 0; left: 0; right: 0; z-index: 10; padding: 8px 24px; background: linear-gradient(0deg, var(--bg) 40%, transparent); font-size: 9px; color: var(--text-fade); letter-spacing: 0.12em; text-transform: uppercase; display: flex; justify-content: space-between; pointer-events: none; }
 
@@ -241,6 +250,24 @@ const TYPE_COLORS = {
   Repository:'#94a3b8', Wave:'#64748b', Invariant:'#fb923c',
   SoulPrinciple:'#ffd700', SharedLibModule:'#c084fc',
 };
+
+/** Top-level group segment → color (schema v3 group_path). */
+const GROUP_COLORS = {
+  Dev: '#4a90d9',
+  Document: '#f0883e',
+  Constraint: '#e06c75',
+  Error: '#e06c75',
+  Test: '#98c379',
+  Meta: '#c678dd',
+  Unknown: '#636d83',
+};
+
+function getNodeColor(node) {
+  const group = String(node.group || node.group_path || '').trim();
+  if (!group) return GROUP_COLORS.Unknown;
+  const top = group.split(/\s*>\s*/)[0].trim();
+  return GROUP_COLORS[top] || GROUP_COLORS.Unknown;
+}
 const STATUS_COLORS = {
   ACTIVE:'#10b981', DRAFT:'#64748b', DEPRECATED:'#ef4444',
   SKELETON:'#4a4a55', BUILT:'#3b82f6', VERIFIED:'#10b981',
@@ -497,8 +524,7 @@ function renderGroupTreeEl(container, tree, counts, depth) {
     const path = node._path || k;
     const cnt = counts[path] || 0;
     const row = document.createElement('div');
-    row.className = 'gf-node';
-    row.style.paddingLeft = `${8 + depth * 10}px`;
+    row.className = `gf-node gf-level-${Math.min(depth, 3)}`;
     const mark = FILTER_GROUP_PREFIX === path ? '●' : '○';
     row.innerHTML = `${mark} <span class="gf-label">${k}</span><span class="gf-count">${cnt}</span>`;
     row.addEventListener('click', () => {
@@ -542,8 +568,7 @@ function initFilters() {
   gEl.appendChild(wrap);
   if (counts['__ungrouped__']) {
     const u = document.createElement('div');
-    u.className = 'gf-node';
-    u.style.paddingLeft = '8px';
+    u.className = 'gf-node gf-level-0';
     u.innerHTML = `○ <span class="gf-label">(ungrouped)</span><span class="gf-count">${counts['__ungrouped__']}</span>`;
     u.addEventListener('click', () => {
       FILTER_GROUP_PREFIX = '__ungrouped__';
@@ -619,13 +644,13 @@ function initGraph() {
   FG = ForceGraph3D()(document.getElementById('graph-canvas'))
     .backgroundColor('#0a0a0f')
     .nodeLabel(n => n.name)
-    .nodeColor(n => n.__hit ? '#ffffff' : (TYPE_COLORS[n.type]||'#888'))
+    .nodeColor(n => n.__hit ? '#ffffff' : (getNodeColor(n) || TYPE_COLORS[n.type] || '#888'))
     .nodeOpacity(0.92)
     .nodeVal((n) => READ_ORDER_SIZE[n.read_order] || PRIORITY_SIZE[n.priority] || NODE_VAL_DEFAULT)
     .nodeRelSize(6)
     .nodeThreeObject(n => {
       if(!SHOW_LABELS) return null;
-      return makeSprite(n.name, TYPE_COLORS[n.type]||'#aaa');
+      return makeSprite(n.name);
     })
     .nodeThreeObjectExtend(false)
     .linkColor(l => EDGE_STATIC_COLORS[l.type] || 'rgba(180, 188, 204, 0.24)')
@@ -675,15 +700,15 @@ function initGraph() {
   }
 }
 
-function makeSprite(text, color) {
+function makeSprite(text) {
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d');
   const fs = 32;
-  ctx.font = `${fs}px "Courier New", monospace`;
+  ctx.font = `500 ${fs}px "Courier New", ui-monospace, monospace`;
   const w = ctx.measureText(text).width;
   canvas.width = w+16; canvas.height = fs+8;
-  ctx.font = `${fs}px "Courier New", monospace`;
-  ctx.fillStyle = color;
+  ctx.font = `500 ${fs}px "Courier New", ui-monospace, monospace`;
+  ctx.fillStyle = '#f0e6d3';
   ctx.textBaseline = 'middle';
   ctx.fillText(text, 8, canvas.height/2);
   const tex = new THREE.CanvasTexture(canvas);
