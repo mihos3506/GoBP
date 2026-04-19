@@ -5,6 +5,90 @@ Format: [Wave N — Title] with date, what was added/changed/fixed.
 
 ---
 
+## [Wave B] — Cleanup + Viewer Dashboard — 2026-04-19
+
+### Removed
+
+- 7 deprecated docs superseded by v3 doc set
+- `docs/GoBP_ARCHITECTURE.md`, `docs/MCP_TOOLS.md`, `docs/GoBP_AI_USER_GUIDE.md`
+- `docs/GOBP_SCHEMA_REDESIGN_v2_1.md`, `docs/INPUT_MODEL.md`
+- `docs/IMPORT_MODEL.md`, `docs/IMPORT_CHECKLIST.md`
+
+### Added
+
+- `gobp/viewer/dashboard.html` — stats dashboard page (Page 2)
+- `gobp/viewer/server.py`: `/dashboard` route + `/api/dashboard` endpoint
+- `tests/test_wave_b.py`: 12+ tests
+
+### Changed
+
+- `gobp/viewer/index.html`: dashboard nav link
+- `.cursorrules`: schema v3 section added
+- `docs/README.md`: current state + deprecated list updated
+
+### Total after wave: 705+ tests passing
+
+---
+
+## [Wave A] — Database Foundation — 2026-04-19
+
+### Added
+
+- `gobp/core/pyramid.py` — description pyramid extractor (L1/L2/full)
+- `gobp/core/validator_v3.py` — schema v3 validator (2 templates)
+- `gobp/core/file_format_v3.py` — schema v3 serialize/deserialize
+- `gobp/core/db.py`: `create_schema_v3()`, `get_schema_version()`
+- `tests/test_wave_a.py`: 35+ tests
+- `waves/wave_a_brief.md`
+
+### Changed
+
+- `gobp/core/id_generator.py`: verified v2 format (group_slug.name_slug.8hex)
+
+### PostgreSQL Schema v3
+
+- `nodes`: desc_l1/l2/full pyramid, BM25F search_vec, no typed fields
+- `edges`: from/to/reason only (no type field), reason_vec index
+- `node_history`: append-only per node
+
+### Total after wave: 705+ tests passing
+
+---
+
+## [Wave 17A06] — Self-Upgrade Loop + Incident History — 2026-04-19
+
+### Changed — LessonSkill schema v2
+
+- **`sub_type`**: `ai_self` | `work_quality` | `product` (required).
+- **`procedure`**: when non-empty, missing `HOW` / `EVALUATE` / `EVOLVE_TRIGGER` markers emit **warnings** only (empty procedure allowed for backward compatibility).
+- **`supersedes`**, **`versions`**, **`applies_to`**, **`evolve_count`** optional fields; **`ValidatorV2.validate_node_full`** / **`SchemaV2.validate_node_warnings`**.
+
+### Added — `incident_history` on six infra node types
+
+- **Vulnerability** — `incident_history`, `cve_id`, `cvss_score`, `patched_in`.
+- **Migration** — `incident_history`, `rollback_plan`, `tested_on`, `duration_min`.
+- **AuthFlow**, **Engine**, **APIEndpoint**, **Encryption** — `incident_history` (append-only convention).
+
+### Added — Reflection node type
+
+- **`Meta > Reflection`**: `trigger`, `wave_ref`, `findings`; optional `skills_upgraded`, `skills_created`, `next_focus`, `actor`.
+
+### Added — `evolve:` MCP action (read-only)
+
+- **`gobp(query="evolve: wave='…'")`** — checklist + up to 20 LessonSkill summaries.
+- **`gobp(query="evolve: wave='…' status='complete'")`** — lookup Reflection by `wave_ref`.
+
+### Changed — write path
+
+- **`TYPE_DEFAULTS`**: LessonSkill (`evolve_count`, `applies_to`, `versions`); Reflection (`actor`, `skills_upgraded`, `skills_created`).
+- **`LessonSkill.supersedes`**: deprecate old skill, append new id to `versions`, create **`supersedes`** edge (idempotent via `create_edge`).
+
+### Tests
+
+- **`tests/test_wave17a06.py`** — 26 tests; full suite **730** passed.
+
+---
+
 ## [Docs] — Project snapshot refresh — 2026-04-19
 
 ### Changed
