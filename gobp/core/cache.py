@@ -95,6 +95,24 @@ class GoBPCache:
             for key in keys_to_delete:
                 del self._cache[key]
 
+    def invalidate_node(self, node_id: str) -> None:
+        """Invalidate cache entries whose keys mention this node id."""
+        with self._lock:
+            keys_to_delete = [k for k in self._cache if node_id in k]
+            for key in keys_to_delete:
+                del self._cache[key]
+
+    def invalidate_edge(self, from_id: str, to_id: str) -> None:
+        """Invalidate cache entries affected by an edge (either endpoint)."""
+        with self._lock:
+            keys_to_delete = [
+                k
+                for k in self._cache
+                if (from_id in k) or (to_id in k)
+            ]
+            for key in keys_to_delete:
+                del self._cache[key]
+
     def invalidate_all(self) -> None:
         """Clear entire cache."""
         with self._lock:
