@@ -142,6 +142,19 @@
     color: #636d83;
     font-style: italic;
   }
+  .code-block {
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 6px;
+    padding: 12px;
+    font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+    font-size: 12px;
+    line-height: 1.5;
+    color: #e1e4e8;
+    overflow-x: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
   #group-filters .gf-tree { font-size: 13px; margin-left: 0; }
   .group-item {
     display: flex;
@@ -977,13 +990,21 @@ function filterRelationshipEdges(edges) {
   });
 }
 
-function renderReasonHtml(reason) {
-  const r = reason != null ? String(reason).trim() : '';
-  if (!r || r === '(empty)') return '';
-  return `<div class="edge-reason" style="font-size:9px;color:var(--text-dim);margin-top:2px">${esc(r)}</div>`;
+function renderCodeBlock(code) {
+  if (!code || !String(code).trim()) return '';
+  return `
+    <div class="detail-section">
+      <div class="detail-section-title">CODE</div>
+      <pre class="code-block"><code>${esc(String(code).trim())}</code></pre>
+    </div>`;
 }
 
-/** EDGES section: direction, neighbor name, optional reason. */
+function getNodeCodeString(node, dp) {
+  if (node.code != null && String(node.code).trim()) return String(node.code).trim();
+  if (dp && dp.code && String(dp.code).trim()) return String(dp.code).trim();
+  return '';
+}
+
 function renderEdges(edgeRows) {
   if (!edgeRows || edgeRows.length === 0) {
     return `
@@ -1011,16 +1032,6 @@ function renderEdges(edgeRows) {
       <div class="detail-section-title">EDGES (${edgeRows.length})</div>
       ${edgeItems}
     </div>`;
-}
-
-const HIDDEN_DETAIL_FIELDS = new Set([
-  'lifecycle', 'read_order', 'priority',
-  'session_id', 'content_hash', '_dispatch', '_protocol',
-  'revision', 'fts_content',
-]);
-
-function shouldShowRawField(fieldName) {
-  return !HIDDEN_DETAIL_FIELDS.has(String(fieldName).toLowerCase());
 }
 
 function showDetail(node) {
@@ -1063,10 +1074,6 @@ function showDetail(node) {
     html += `<div class="node-id" style="margin-bottom:6px">${esc(node.id)}</div>`;
     html += `<div class="v2-type">ERROR CASE</div>`;
     html += `<div class="v2-title">${esc(node.name || '')}</div>`;
-    const code = node.code || '';
-    const sev = node.severity || '';
-    html += `<div class="v2-section"><div class="v2-h">CODE / SEVERITY</div>`;
-    html += `<div><span class="v2-k">code</span> ${esc(String(code))} · <span class="v2-k">severity</span> ${esc(String(sev))}</div></div>`;
     const blocks = [
       ['TRIGGER', node.trigger],
       ['SYSTEM RESPONSE', node.handling],
@@ -1091,6 +1098,7 @@ function showDetail(node) {
       });
       html += `</ul></div>`;
     }
+    html += renderCodeBlock(node.code);
   } else if (nt === 'Invariant') {
     html += breadcrumbHtml(node);
     html += `<div class="node-id" style="margin-bottom:6px">${esc(node.id)}</div>`;
@@ -1106,19 +1114,18 @@ function showDetail(node) {
     if (enf) {
       html += `<div class="v2-section"><div class="v2-h">ENFORCEMENT</div><div class="v2-desc-info">${esc(String(enf))}</div></div>`;
     }
+    const dpInv = descParts(node);
+    html += renderCodeBlock(getNodeCodeString(node, dpInv));
   } else {
     html += breadcrumbHtml(node);
     html += `<div class="node-id" style="margin-bottom:6px">${esc(node.id)}</div>`;
     html += `<div class="v2-type">${esc(nt)}</div>`;
     html += `<div class="v2-title">${esc(node.name || '')}</div>`;
     const dp = descParts(node);
-    if (dp.info || dp.code) {
-      html += `<div class="v2-section"><div class="v2-h">DESCRIPTION</div><div class="v2-desc-info">${esc(dp.info)}</div>`;
-      if (dp.code) {
-        html += `<div class="v2-h" style="margin-top:10px">CODE</div><pre class="v2-code">${esc(dp.code)}</pre>`;
-      }
-      html += `</div>`;
+    if (dp.info && String(dp.info).trim()) {
+      html += `<div class="v2-section"><div class="v2-h">DESCRIPTION</div><div class="v2-desc-info">${esc(dp.info)}</div></div>`;
     }
+    html += renderCodeBlock(getNodeCodeString(node, dp));
   }
 
   const edgeRows = [
@@ -1137,33 +1144,13 @@ function showDetail(node) {
   ];
   html += renderEdges(edgeRows.slice(0, 80));
 
-  const skip = new Set([
-    'id', 'type', 'name', '__hit', '__searchHit', 'x', 'y', 'z', 'vx', 'vy', 'vz', 'index', 'fx', 'fy', 'fz',
-    'description', 'group', 'lifecycle', 'read_order', 'priority',
-    'code', 'severity', 'trigger', 'handling', 'fix', 'user_message', 'dev_note', 'context', 'fix_history',
-    'rule', 'scope', 'enforcement', 'enforced_by',
-  ]);
-  const raw = Object.entries(node).filter(
-    ([k]) => !skip.has(k) && shouldShowRawField(k) && node[k] != null,
-  );
-  if (raw.length) {
-    html += `<details class="relations" style="margin-top:12px"><summary style="cursor:pointer;color:var(--amber-soft);font-size:11px;">Debug: raw fields (${raw.length})</summary>`;
-    raw.forEach(([k, v]) => {
-      const val = typeof v === 'object' ? JSON.stringify(v, null, 2) : String(v);
-      html += `<div class="field"><div class="field-label">${esc(k)}</div><pre class="v2-raw">${esc(val)}</pre></div>`;
-    });
-    html += `</details>`;
-  }
-
-  html += `<div class="gobp-query">gobp(query="get: ${esc(node.id)} brief=true")</div>`;
-
   const content = document.getElementById('detail-content');
   content.innerHTML = html;
   document.getElementById('detail').classList.add('visible');
 
   content.querySelectorAll('.rel-target[data-id], .edge-node-name[data-edge-nav]').forEach((el) => {
     el.addEventListener('click', () => {
-      const nid = el.getAttribute('data-id');
+      const nid = el.getAttribute('data-id') || el.getAttribute('data-edge-nav');
       const n = GRAPH_DATA.nodes.find((x) => x.id === nid);
       if (n) {
         showDetail(n);
