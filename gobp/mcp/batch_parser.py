@@ -29,6 +29,7 @@ _CREATE_PARAM = re.compile(r'(\w+)=(?:"([^"]*?)"|\'([^\']*?)\'|(\S+))')
 # Known batch line prefixes (after stripping). Used to split ops without breaking quoted newlines.
 _BATCH_OP_PREFIXES: tuple[str, ...] = (
     "create:",
+    "edit:",
     "update:",
     "replace:",
     "delete:",
@@ -157,7 +158,7 @@ def parse_batch_line(line: str) -> dict[str, Any]:
         return {"kind": "noop", "raw": raw}
 
     m = re.match(
-        r"^(?P<prefix>edge\*|edge~|edge\+|edge-|create|update|replace|delete|retype|merge)\s*:\s*(?P<rest>.*)$",
+        r"^(?P<prefix>edge\*|edge~|edge\+|edge-|create|edit|update|replace|delete|retype|merge)\s*:\s*(?P<rest>.*)$",
         raw,
         re.I | re.DOTALL,
     )
@@ -185,6 +186,18 @@ def parse_batch_line(line: str) -> dict[str, Any]:
         }
         out.update(named_params)
         return out
+
+    if prefix == "edit":
+        fields = _parse_assignments(rest)
+        node_id = fields.pop("id", None) or fields.pop("node_id", None)
+        if not node_id:
+            return {"kind": "error", "message": "edit: id= required", "raw": raw}
+        return {
+            "kind": "edit",
+            "node_id": str(node_id),
+            "changes": fields,
+            "raw": raw,
+        }
 
     if prefix in ("update", "replace"):
         um = re.match(r"^(\S+)\s+(.+)$", rest)
@@ -310,6 +323,27 @@ def parse_quick(raw: str) -> list[dict[str, Any]]:
             op["description"] = parts[3]
         ops.append(op)
     return ops
+
+
+def coerce_to_edit_op(item: dict[str, Any]) -> dict[str, Any]:
+    """Map legacy ``update`` / ``replace`` / ``retype`` batch lines to edit-shaped ops."""
+    k = item.get("kind")
+    if k in ("update", "replace"):
+        return {
+            "kind": "edit",
+            "node_id": item["node_id"],
+            "changes": dict(item.get("fields", {})),
+            "raw": item.get("raw", ""),
+        }
+    if k == "retype":
+        nt = str(item.get("new_type", "") or "")
+        return {
+            "kind": "edit",
+            "node_id": item["node_id"],
+            "changes": {"type": nt},
+            "raw": item.get("raw", ""),
+        }
+    return dict(item)
 
 
 def parse_batch(raw: str) -> list[dict[str, Any]]:
