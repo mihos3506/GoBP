@@ -5,6 +5,25 @@ Format: [Wave N — Title] with date, what was added/changed/fixed.
 
 ---
 
+## [Wave 17A04] — Docs + Agents + Backfill — 2026-04-19
+
+### Changed
+
+- **`.cursorrules` v9** — Lessons from implementation review of Waves 17A01–17A03 (prefix/`exact` semantics, `get:` default churn, `suggest` merge, `auto_fill_description` types, schema cache); not a duplicate of the Query v2 cheat sheet.
+- **`docs/GoBP_AI_USER_GUIDE.md`** — v2: 93-type table, `find:` group filters, `get:` brief/full/debug, `explore:` breadcrumb/siblings/relationships, `suggest:` group-aware, ID format v2, query rules 14–17, import workflow.
+- **`docs/IMPORT_CHECKLIST.md`** — Schema v2 pre-import, ErrorCase / Invariant sections, post-import verify with `explore:`.
+
+### Added
+
+- **`scripts/wave17a04_task5_backfill.py`** — Reproducible `session:start` → `batch` (Wave 17A01–17A03 nodes + edges to `dec:d004` / `dec:d006`) → `session:end` (reload `GraphIndex` after `session:start` before `batch`).
+- **GoBP graph:** Wave nodes **Wave 17A01**, **Wave 17A02**, **Wave 17A03** with `references` to decision nodes (dec:d005 backfill).
+
+### Tests
+
+- **690+** expected unchanged (docs-only wave); full suite run at end of wave.
+
+---
+
 ## [Wave 17A03] — Query Engine — 2026-04-19
 
 ### Added
