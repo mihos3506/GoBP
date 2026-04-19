@@ -161,14 +161,6 @@
     <div id="group-filters"></div>
   </section>
   <section>
-    <h3>Lifecycle</h3>
-    <div id="lifecycle-filters"></div>
-  </section>
-  <section>
-    <h3>Read order</h3>
-    <div id="readorder-filters"></div>
-  </section>
-  <section>
     <h3>View</h3>
     <label style="display:flex;align-items:center;gap:8px;font-size:11px;color:var(--text);margin-bottom:10px;cursor:pointer;user-select:none;">
       <input type="checkbox" id="chk-metadata-edges" style="width:12px;height:12px;">
@@ -393,8 +385,6 @@ const EDGE_SIGNAL_COLORS = {
 };
 
 let FG, GRAPH_DATA = {nodes:[], edges:[], links:[]};
-let VISIBLE_LIFECYCLES = new Set();
-let VISIBLE_READ_ORDERS = new Set();
 /** Empty string = no group filter; otherwise full prefix ``Dev > Infra`` or ``Dev > Infra > X``. */
 let FILTER_GROUP_PREFIX = '';
 const READ_ORDER_SIZE = { foundational: 12, important: 8, reference: 5, background: 3 };
@@ -464,14 +454,6 @@ async function loadGraph(root) {
   }
 }
 
-function _lifecycleKey(n) {
-  return (n.lifecycle && String(n.lifecycle).trim()) || '__none__';
-}
-
-function _readOrderKey(n) {
-  return (n.read_order && String(n.read_order).trim()) || (n.priority && String(n.priority).trim()) || '__none__';
-}
-
 function buildGroupTree(nodes) {
   const root = { _children: {}, _label: 'root' };
   nodes.forEach((n) => {
@@ -536,17 +518,6 @@ function renderGroupTreeEl(container, tree, counts, depth) {
 
 function initFilters() {
   const nodes = GRAPH_DATA.nodes || [];
-  const lcCounts = {};
-  const roCounts = {};
-  nodes.forEach((n) => {
-    const lk = _lifecycleKey(n);
-    lcCounts[lk] = (lcCounts[lk] || 0) + 1;
-    const rk = _readOrderKey(n);
-    roCounts[rk] = (roCounts[rk] || 0) + 1;
-  });
-
-  VISIBLE_LIFECYCLES = new Set(Object.keys(lcCounts));
-  VISIBLE_READ_ORDERS = new Set(Object.keys(roCounts));
   FILTER_GROUP_PREFIX = '';
 
   const gEl = document.getElementById('group-filters');
@@ -580,42 +551,6 @@ function initFilters() {
     });
     gEl.appendChild(u);
   }
-
-  const lcEl = document.getElementById('lifecycle-filters');
-  lcEl.innerHTML = '';
-  Object.keys(lcCounts)
-    .sort()
-    .forEach((k) => {
-      const label = document.createElement('label');
-      const disp = k === '__none__' ? '(none)' : k;
-      label.innerHTML = `<input type="checkbox" checked data-lc="${k}">
-      <span>■</span>
-      <span>${disp}</span><span class="count">${lcCounts[k]}</span>`;
-      label.querySelector('input').addEventListener('change', (e) => {
-        if (e.target.checked) VISIBLE_LIFECYCLES.add(k);
-        else VISIBLE_LIFECYCLES.delete(k);
-        applyFilters();
-      });
-      lcEl.appendChild(label);
-    });
-
-  const roEl = document.getElementById('readorder-filters');
-  roEl.innerHTML = '';
-  Object.keys(roCounts)
-    .sort()
-    .forEach((k) => {
-      const label = document.createElement('label');
-      const disp = k === '__none__' ? '(none)' : k;
-      label.innerHTML = `<input type="checkbox" checked data-ro="${k}">
-      <span>■</span>
-      <span>${disp}</span><span class="count">${roCounts[k]}</span>`;
-      label.querySelector('input').addEventListener('change', (e) => {
-        if (e.target.checked) VISIBLE_READ_ORDERS.add(k);
-        else VISIBLE_READ_ORDERS.delete(k);
-        applyFilters();
-      });
-      roEl.appendChild(label);
-    });
 }
 
 function applyFilters(searchSet=null, hits=null) {
@@ -628,10 +563,6 @@ function applyFilters(searchSet=null, hits=null) {
         return false;
       }
     }
-    const lk = _lifecycleKey(n);
-    if (VISIBLE_LIFECYCLES.size && !VISIBLE_LIFECYCLES.has(lk)) return false;
-    const rk = _readOrderKey(n);
-    if (VISIBLE_READ_ORDERS.size && !VISIBLE_READ_ORDERS.has(rk)) return false;
     if (searchSet && !searchSet.has(n.id)) return false;
     return true;
   });
