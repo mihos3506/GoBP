@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GoBP Dashboard</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #0f1117; color: #e1e4e8; min-height: 100vh;
+    }
+    header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 16px 24px; background: #161b22;
+      border-bottom: 1px solid #30363d;
+    }
+    header h1 { font-size: 18px; font-weight: 600; color: #f0883e; }
+    header nav a {
+      color: #8b949e; text-decoration: none;
+      margin-left: 16px; font-size: 14px;
+    }
+    header nav a:hover { color: #e1e4e8; }
+    .container { max-width: 1200px; margin: 0 auto; padding: 24px; }
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px; margin-bottom: 24px;
+    }
+    .stat-card {
+      background: #161b22; border: 1px solid #30363d;
+      border-radius: 8px; padding: 20px;
+    }
+    .stat-card .value {
+      font-size: 36px; font-weight: 700; color: #f0883e;
+      line-height: 1; margin-bottom: 8px;
+    }
+    .stat-card .label {
+      font-size: 13px; color: #8b949e;
+      text-transform: uppercase; letter-spacing: 0.5px;
+    }
+    .section {
+      background: #161b22; border: 1px solid #30363d;
+      border-radius: 8px; padding: 20px; margin-bottom: 16px;
+    }
+    .section h2 {
+      font-size: 14px; font-weight: 600; color: #8b949e;
+      text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 16px;
+    }
+    .group-bar { display: flex; align-items: center; margin-bottom: 10px; gap: 12px; }
+    .group-name { width: 120px; font-size: 13px; color: #e1e4e8; flex-shrink: 0; }
+    .bar-track { flex: 1; background: #21262d; border-radius: 4px; height: 8px; overflow: hidden; }
+    .bar-fill { height: 100%; background: #f0883e; border-radius: 4px; transition: width 0.5s ease; }
+    .group-count { width: 40px; text-align: right; font-size: 13px; color: #8b949e; }
+    .session-list { list-style: none; }
+    .session-item {
+      display: flex; align-items: center; gap: 12px;
+      padding: 10px 0; border-bottom: 1px solid #21262d;
+    }
+    .session-item:last-child { border-bottom: none; }
+    .session-status { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .status-in-progress { background: #3fb950; }
+    .status-completed   { background: #8b949e; }
+    .status-failed      { background: #f85149; }
+    .session-goal { flex: 1; font-size: 13px; color: #e1e4e8; }
+    .session-actor {
+      font-size: 12px; color: #8b949e;
+      background: #21262d; padding: 2px 8px; border-radius: 12px;
+    }
+    .error-text { color: #f85149; font-size: 14px; }
+    .loading { color: #8b949e; font-size: 14px; text-align: center; padding: 40px; }
+    .refresh-btn {
+      background: #21262d; border: 1px solid #30363d; color: #e1e4e8;
+      padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 13px;
+    }
+    .refresh-btn:hover { background: #30363d; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>◈ GoBP Dashboard</h1>
+    <nav>
+      <a href="/">Graph View</a>
+      <a href="/dashboard">Dashboard</a>
+      <button class="refresh-btn" onclick="loadDashboard()">↻ Refresh</button>
+    </nav>
+  </header>
+  <div class="container">
+    <div id="content"><div class="loading">Loading dashboard...</div></div>
+  </div>
+  <script>
+    async function loadDashboard() {
+      const content = document.getElementById('content');
+      content.innerHTML = '<div class="loading">Loading...</div>';
+      try {
+        const res = await fetch('/api/dashboard');
+        const data = await res.json();
+        if (!data.ok) {
+          content.innerHTML = `<div class="error-text">Error: ${data.error}</div>`;
+          return;
+        }
+        const { stats, recent_sessions } = data;
+        const byGroup = stats.nodes_by_group || {};
+        const sorted = Object.entries(byGroup).sort((a,b) => b[1]-a[1]);
+        const maxCount = sorted.length > 0 ? sorted[0][1] : 1;
+        const groupBars = sorted.map(([g, c]) => `
+          <div class="group-bar">
+            <span class="group-name">${g}</span>
+            <div class="bar-track">
+              <div class="bar-fill" style="width:${(c/maxCount*100).toFixed(1)}%"></div>
+            </div>
+            <span class="group-count">${c}</span>
+          </div>`).join('');
+        const sessionItems = (recent_sessions||[]).map(s => {
+          const cls = s.status==='IN_PROGRESS' ? 'status-in-progress'
+                    : s.status==='COMPLETED'   ? 'status-completed'
+                    : 'status-failed';
+          return `<li class="session-item">
+            <div class="session-status ${cls}"></div>
+            <span class="session-goal">${s.goal||'(no goal)'}</span>
+            <span class="session-actor">${s.actor||'unknown'}</span>
+          </li>`;
+        }).join('') || '<li style="color:#8b949e;padding:10px 0;font-size:13px">No sessions</li>';
+        const active = (recent_sessions||[]).filter(s=>s.status==='IN_PROGRESS').length;
+        content.innerHTML = `
+          <div class="stats-grid">
+            <div class="stat-card"><div class="value">${stats.total_nodes.toLocaleString()}</div><div class="label">Total Nodes</div></div>
+            <div class="stat-card"><div class="value">${stats.total_edges.toLocaleString()}</div><div class="label">Total Edges</div></div>
+            <div class="stat-card"><div class="value">${sorted.length}</div><div class="label">Top Groups</div></div>
+            <div class="stat-card"><div class="value">${active}</div><div class="label">Active Sessions</div></div>
+          </div>
+          <div class="section"><h2>Nodes by Group</h2>${groupBars||'<div style="color:#8b949e;font-size:13px">No data</div>'}</div>
+          <div class="section"><h2>Recent Sessions</h2><ul class="session-list">${sessionItems}</ul></div>`;
+      } catch(err) {
+        content.innerHTML = `<div class="error-text">Failed: ${err.message}</div>`;
+      }
+    }
+    loadDashboard();
+  </script>
+</body>
+</html>
