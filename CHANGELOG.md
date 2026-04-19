@@ -5,6 +5,41 @@ Format: [Wave N — Title] with date, what was added/changed/fixed.
 
 ---
 
+## [Wave D] — MCP Read Actions v3 — 2026-04-19
+
+### Added
+
+- `find: v3`: BM25F weighted search + BFS expand depth 1 + pyramid modes
+- `get_batch: v3`: pyramid modes + since= differential fetch (~70% token savings)
+- `context: task=`: FTS + BFS depth 2 → bundled context (1 request)
+- `session:resume`: load prev handoff + changes since last session
+- `overview: v3`: active_sessions + correct v3 group stats
+- `explore: v3`: no DISCOVERED_IN, desc_l2, group-based siblings
+- `tests/test_wave_d.py`: read actions v3 coverage
+
+---
+
+## [Wave C] — Write Path v3 + Viewer UI Overhaul — 2026-04-19
+
+### Added
+
+- `gobp/core/mutator_v3.py`: full write path (validate→pyramid→PG→file→log)
+- `gobp/core/db.py`: upsert_node_v3, delete_node_v3, upsert_edge_v3, etc.
+- `gobp/core/cache.py`: invalidate_node() + invalidate_edge()
+- `edit:` action: delete+create semantic, edge ops, history inherit
+- Optimistic locking: conflict_warning on updated_at mismatch
+- `tests/test_wave_c.py`: write path v3 coverage
+
+### Viewer
+
+- Removed: LIFECYCLE + READ ORDER sidebar filters
+- Hidden: DISCOVERED_IN edges from relationships panel
+- Hidden: empty reasons, lifecycle, read_order from detail panel
+- Updated: node colors by top-level group
+- Updated: font + hierarchy clarity
+
+---
+
 ## [Wave B] — Cleanup + Viewer Dashboard — 2026-04-19
 
 ### Removed
