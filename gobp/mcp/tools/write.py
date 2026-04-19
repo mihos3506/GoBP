@@ -14,6 +14,7 @@ from typing import Any
 
 from gobp.core.graph import GraphIndex
 from gobp.core.id_config import generate_external_id
+from gobp.core.id_generator import generate_id
 from gobp.core.search import find_similar_nodes, normalize_text
 from gobp.core.loader import load_schema, package_schema_dir
 from gobp.core.mutator import (
@@ -49,8 +50,25 @@ TYPE_DEFAULTS: dict[str, dict[str, Any]] = {
         "source_path": lambda n: f"docs/{str(n.get('name', '')).lower().replace(' ', '-')}.md",
     },
     "Concept": {
-        "definition": lambda n: str(n.get("description", "")),
-        "usage_guide": lambda n: "Usage guide — update after import",
+        "definition": lambda n: (
+            str((n.get("description") or {}).get("info", ""))
+            if isinstance(n.get("description"), dict)
+            else str(n.get("description", "") or "")
+        ),
+        "usage_guide": lambda n: str(
+            n.get("usage_guide") or "Usage guide — update after import"
+        ),
+    },
+    "ErrorDomain": {
+        "domain": lambda n: str(n.get("domain") or n.get("name", "") or "").strip(),
+        "fix_guide": lambda n: (
+            str(n.get("fix_guide") or "").strip()
+            or (
+                str((n.get("description") or {}).get("info", ""))
+                if isinstance(n.get("description"), dict)
+                else str(n.get("description", "") or "")
+            )
+        ),
     },
 }
 
@@ -83,6 +101,58 @@ def _type_defaults_v2() -> dict[str, dict[str, Any]]:
     if _TYPE_DEFAULTS_V2_CACHE is None:
         _TYPE_DEFAULTS_V2_CACHE = _build_type_defaults_v2()
     return _TYPE_DEFAULTS_V2_CACHE
+
+
+def _ensure_node_id(node: dict[str, Any], project_root: Path | None) -> None:
+    """Assign ``id`` when missing (batch create / node_upsert) using v2 ``generate_id``.
+
+    Preserves :func:`generate_external_id` behaviour for ``Session`` and ``TestCase``.
+    """
+    if str(node.get("id", "")).strip():
+        return
+
+    node_type = str(node.get("type", "") or "")
+    name = str(node.get("name", "") or "").strip()
+
+    if node_type == "Session":
+        node["id"] = generate_external_id("Session", name=name, gobp_root=project_root)
+        return
+    if node_type == "TestCase":
+        testkind = str(node.get("kind_id", "") or node.get("testkind", "") or "")
+        node["id"] = generate_external_id(
+            "TestCase",
+            name=name,
+            testkind=testkind,
+            gobp_root=project_root,
+        )
+        return
+
+    group = str(node.get("group", "") or "").strip()
+    if not group and node_type:
+        try:
+            from gobp.core.schema_loader import load_schema_v2
+
+            sv2 = load_schema_v2(package_schema_dir())
+            g = sv2.get_group(node_type)
+            if g:
+                group = str(g)
+                node["group"] = group
+        except Exception:
+            pass
+
+    if name and group:
+        node["id"] = generate_id(name, group)
+    elif name and node_type:
+        node["id"] = generate_id(name, node_type)
+    else:
+        import hashlib
+        import time
+
+        h = hashlib.md5(
+            f"{node_type}:{name}:{time.time_ns()}".encode(),
+            usedforsecurity=False,
+        ).hexdigest()[:16]
+        node["id"] = f"{node_type.lower()}.{h}" if node_type else h
 
 
 def _normalize_document_content_hash(node: dict[str, Any]) -> None:
@@ -226,15 +296,7 @@ def node_upsert(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> 
     if session.get("status") == "COMPLETED":
         return {"ok": False, "error": "Session already ended, start new one"}
 
-    node_id = args.get("id")
-    if not node_id:
-        testkind = str(fields.get("kind_id", ""))
-        node_id = generate_external_id(
-            node_type,
-            name=name,
-            testkind=testkind,
-            gobp_root=project_root,
-        )
+    explicit_id = str(args.get("id", "") or "").strip()
 
     now = datetime.now(timezone.utc).isoformat()
     if node_type == "Task":
@@ -244,7 +306,6 @@ def node_upsert(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> 
     else:
         status_default = "ACTIVE"
     node: dict[str, Any] = {
-        "id": node_id,
         "type": node_type,
         "name": name,
         "status": fields.get("status", status_default),
@@ -252,9 +313,12 @@ def node_upsert(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> 
         "updated": now,
         "session_id": session_id,
     }
+    if explicit_id:
+        node["id"] = explicit_id
     # Merge caller fields; then re-pin the identity fields so they cannot be overridden.
     node.update(fields)
-    node["id"] = node_id
+    if explicit_id:
+        node["id"] = explicit_id
     node["type"] = node_type
     node["name"] = name
     node["session_id"] = session_id
@@ -274,6 +338,9 @@ def node_upsert(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> 
 
     _auto_fill_defaults(node, node_type)
     _normalize_document_content_hash(node)
+    if not str(node.get("id", "")).strip():
+        _ensure_node_id(node, project_root)
+    node_id = str(node["id"])
 
     try:
         nodes_schema = load_schema(package_schema_dir() / "core_nodes.yaml")
@@ -733,6 +800,8 @@ def session_log(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> 
 
 INTERNAL_CHUNK_SIZE = 200
 
+_BATCH_CREATE_RESERVED = frozenset({"kind", "node_type", "name", "description", "raw"})
+
 
 def _batch_build_create_node(
     index: GraphIndex,
@@ -756,16 +825,12 @@ def _batch_build_create_node(
     fields: dict[str, Any] = {}
     if desc:
         fields["description"] = desc
+    for k, v in op.items():
+        if k in _BATCH_CREATE_RESERVED:
+            continue
+        fields[k] = v
 
-    node_id = str(op.get("id", "")).strip() if op.get("id") else ""
-    if not node_id:
-        testkind = str(fields.get("kind_id", ""))
-        node_id = generate_external_id(
-            node_type,
-            name=name,
-            testkind=testkind,
-            gobp_root=project_root,
-        )
+    explicit_id = str(op.get("id", "") or "").strip()
 
     now = datetime.now(timezone.utc).isoformat()
     if node_type == "Task":
@@ -775,7 +840,6 @@ def _batch_build_create_node(
     else:
         status_default = "ACTIVE"
     node: dict[str, Any] = {
-        "id": node_id,
         "type": node_type,
         "name": name,
         "status": fields.get("status", status_default),
@@ -783,8 +847,11 @@ def _batch_build_create_node(
         "updated": now,
         "session_id": session_id,
     }
+    if explicit_id:
+        node["id"] = explicit_id
     node.update(fields)
-    node["id"] = node_id
+    if explicit_id:
+        node["id"] = explicit_id
     node["type"] = node_type
     node["name"] = name
     node["session_id"] = session_id
@@ -804,6 +871,8 @@ def _batch_build_create_node(
 
     _auto_fill_defaults(node, node_type)
     _normalize_document_content_hash(node)
+    if not str(node.get("id", "")).strip():
+        _ensure_node_id(node, project_root)
 
     nodes_schema = load_schema(package_schema_dir() / "core_nodes.yaml")
     result = coerce_and_validate_node(project_root, node, nodes_schema)

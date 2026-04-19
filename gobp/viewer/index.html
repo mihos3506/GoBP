@@ -65,6 +65,25 @@
   #detail .rel-target { color: var(--text); }
   #detail .gobp-query { background: rgba(0,0,0,0.3); border: 1px solid var(--border); padding: 6px 10px; font-size: 10px; color: var(--amber); margin-top: 12px; word-break: break-all; }
 
+  .v2-breadcrumb { font-size: 10px; color: var(--amber-soft); margin-bottom: 10px; letter-spacing: 0.06em; }
+  .v2-breadcrumb a { color: var(--amber); cursor: pointer; text-decoration: none; border-bottom: 1px dotted rgba(255,193,7,0.35); }
+  .v2-breadcrumb a:hover { color: #fff; }
+  .v2-type { font-size: 9px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.22em; color: var(--amber-soft); margin-bottom: 4px; }
+  .v2-title { font-family: var(--serif); font-size: 17px; font-weight: 300; margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+  .v2-meta { font-size: 10px; color: var(--text-dim); margin-bottom: 12px; }
+  .v2-section { margin: 14px 0; padding-top: 10px; border-top: 1px solid var(--border); }
+  .v2-h { font-size: 9px; text-transform: uppercase; letter-spacing: 0.2em; color: var(--amber-soft); margin-bottom: 6px; }
+  .v2-desc-info { font-size: 11px; line-height: 1.55; color: var(--text); white-space: pre-wrap; }
+  .v2-code { font-size: 10px; background: rgba(0,0,0,0.35); border: 1px solid var(--border); padding: 10px; margin-top: 8px; white-space: pre-wrap; color: var(--text-dim); }
+  .v2-rel { font-size: 10px; margin: 4px 0; color: var(--text-dim); }
+  .v2-rel-verb { color: var(--amber-soft); text-transform: uppercase; font-size: 9px; letter-spacing: 0.08em; }
+  .v2-raw { font-size: 9px; background: rgba(0,0,0,0.25); padding: 8px; max-height: 180px; overflow: auto; white-space: pre-wrap; }
+  .v2-k { font-size: 9px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--text-fade); margin-right: 6px; }
+  #group-filters .gf-tree { font-size: 10px; margin-left: 0; }
+  #group-filters .gf-node { margin: 2px 0 2px 8px; cursor: pointer; user-select: none; }
+  #group-filters .gf-node:hover { color: var(--amber); }
+  #group-filters .gf-count { font-size: 9px; color: var(--text-fade); margin-left: 4px; }
+
   #statusbar { position: fixed; bottom: 0; left: 0; right: 0; z-index: 10; padding: 8px 24px; background: linear-gradient(0deg, var(--bg) 40%, transparent); font-size: 9px; color: var(--text-fade); letter-spacing: 0.12em; text-transform: uppercase; display: flex; justify-content: space-between; pointer-events: none; }
 
   #loading { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: var(--bg); z-index: 100; flex-direction: column; gap: 12px; }
@@ -127,12 +146,16 @@
     <input type="text" id="search" placeholder="name or id...">
   </section>
   <section>
-    <h3>Node Type</h3>
-    <div id="type-filters"></div>
+    <h3>Group</h3>
+    <div id="group-filters"></div>
   </section>
   <section>
-    <h3>Status</h3>
-    <div id="status-filters"></div>
+    <h3>Lifecycle</h3>
+    <div id="lifecycle-filters"></div>
+  </section>
+  <section>
+    <h3>Read order</h3>
+    <div id="readorder-filters"></div>
   </section>
   <section>
     <h3>View</h3>
@@ -359,7 +382,11 @@ const EDGE_SIGNAL_COLORS = {
 };
 
 let FG, GRAPH_DATA = {nodes:[], edges:[], links:[]};
-let VISIBLE_TYPES = new Set(), VISIBLE_STATUSES = new Set();
+let VISIBLE_LIFECYCLES = new Set();
+let VISIBLE_READ_ORDERS = new Set();
+/** Empty string = no group filter; otherwise full prefix ``Dev > Infra`` or ``Dev > Infra > X``. */
+let FILTER_GROUP_PREFIX = '';
+const READ_ORDER_SIZE = { foundational: 12, important: 8, reference: 5, background: 3 };
 /** When false, hide discovered_in (metadata) — default off to declutter. */
 let SHOW_METADATA_EDGES = false;
 let SHOW_LABELS = false;
@@ -426,52 +453,175 @@ async function loadGraph(root) {
   }
 }
 
-function initFilters() {
-  const typeCounts = {}, statusCounts = {};
-  GRAPH_DATA.nodes.forEach(n => {
-    typeCounts[n.type] = (typeCounts[n.type]||0)+1;
-    const s = n.status||'__none__';
-    statusCounts[s] = (statusCounts[s]||0)+1;
+function _lifecycleKey(n) {
+  return (n.lifecycle && String(n.lifecycle).trim()) || '__none__';
+}
+
+function _readOrderKey(n) {
+  return (n.read_order && String(n.read_order).trim()) || (n.priority && String(n.priority).trim()) || '__none__';
+}
+
+function buildGroupTree(nodes) {
+  const root = { _children: {}, _label: 'root' };
+  nodes.forEach((n) => {
+    const g = (n.group || '').trim();
+    if (!g) return;
+    const parts = g.split(/\s*>\s*/).map((s) => s.trim()).filter(Boolean);
+    let cur = root;
+    parts.forEach((part, idx) => {
+      if (!cur._children[part]) {
+        cur._children[part] = { _children: {}, _label: part, _path: '' };
+      }
+      const seg = cur._children[part];
+      seg._path = parts.slice(0, idx + 1).join(' > ');
+      cur = seg;
+    });
   });
+  return root;
+}
 
-  VISIBLE_TYPES = new Set(GRAPH_DATA.nodes.map(n=>n.type));
-  VISIBLE_STATUSES = new Set(GRAPH_DATA.nodes.map(n=>n.status||'__none__'));
+function _countByGroupPath(nodes) {
+  const counts = {};
+  nodes.forEach((n) => {
+    const g = (n.group || '').trim();
+    if (!g) {
+      counts['__ungrouped__'] = (counts['__ungrouped__'] || 0) + 1;
+      return;
+    }
+    const parts = g.split(/\s*>\s*/).map((s) => s.trim()).filter(Boolean);
+    for (let i = 0; i < parts.length; i++) {
+      const prefix = parts.slice(0, i + 1).join(' > ');
+      counts[prefix] = (counts[prefix] || 0) + 1;
+    }
+  });
+  return counts;
+}
 
-  const tEl = document.getElementById('type-filters');
-  tEl.innerHTML = '';
-  Object.keys(typeCounts).sort().forEach(t => {
-    const label = document.createElement('label');
-    label.innerHTML = `<input type="checkbox" checked data-type="${t}">
-      <span style="color:${TYPE_COLORS[t]||'#fff'}">●</span>
-      <span>${t}</span><span class="count">${typeCounts[t]}</span>`;
-    label.querySelector('input').addEventListener('change', e => {
-      if(e.target.checked) VISIBLE_TYPES.add(t); else VISIBLE_TYPES.delete(t);
+function renderGroupTreeEl(container, tree, counts, depth) {
+  const keys = Object.keys(tree._children || {}).sort();
+  keys.forEach((k) => {
+    const node = tree._children[k];
+    const path = node._path || k;
+    const cnt = counts[path] || 0;
+    const row = document.createElement('div');
+    row.className = 'gf-node';
+    row.style.paddingLeft = `${8 + depth * 10}px`;
+    const mark = FILTER_GROUP_PREFIX === path ? '●' : '○';
+    row.innerHTML = `${mark} <span class="gf-label">${k}</span><span class="gf-count">${cnt}</span>`;
+    row.addEventListener('click', () => {
+      FILTER_GROUP_PREFIX = path;
+      document.querySelectorAll('#group-filters .gf-node').forEach((el) => {
+        el.style.color = '';
+      });
+      row.style.color = 'var(--amber)';
       applyFilters();
     });
-    tEl.appendChild(label);
-  });
-
-  const sEl = document.getElementById('status-filters');
-  sEl.innerHTML = '';
-  Object.keys(statusCounts).sort().forEach(s => {
-    if(s==='__none__') return;
-    const label = document.createElement('label');
-    label.innerHTML = `<input type="checkbox" checked data-status="${s}">
-      <span style="color:${STATUS_COLORS[s]||'#888'}">■</span>
-      <span>${s}</span><span class="count">${statusCounts[s]}</span>`;
-    label.querySelector('input').addEventListener('change', e => {
-      if(e.target.checked) VISIBLE_STATUSES.add(s); else VISIBLE_STATUSES.delete(s);
-      applyFilters();
-    });
-    sEl.appendChild(label);
+    container.appendChild(row);
+    if (Object.keys(node._children || {}).length) {
+      renderGroupTreeEl(container, node, counts, depth + 1);
+    }
   });
 }
 
+function initFilters() {
+  const nodes = GRAPH_DATA.nodes || [];
+  const lcCounts = {};
+  const roCounts = {};
+  nodes.forEach((n) => {
+    const lk = _lifecycleKey(n);
+    lcCounts[lk] = (lcCounts[lk] || 0) + 1;
+    const rk = _readOrderKey(n);
+    roCounts[rk] = (roCounts[rk] || 0) + 1;
+  });
+
+  VISIBLE_LIFECYCLES = new Set(Object.keys(lcCounts));
+  VISIBLE_READ_ORDERS = new Set(Object.keys(roCounts));
+  FILTER_GROUP_PREFIX = '';
+
+  const gEl = document.getElementById('group-filters');
+  gEl.innerHTML = '';
+  const allG = document.createElement('button');
+  allG.type = 'button';
+  allG.textContent = 'All groups';
+  allG.style.marginBottom = '8px';
+  allG.addEventListener('click', () => {
+    FILTER_GROUP_PREFIX = '';
+    gEl.querySelectorAll('.gf-node').forEach((el) => {
+      el.style.color = '';
+    });
+    applyFilters();
+  });
+  gEl.appendChild(allG);
+  const treeRoot = buildGroupTree(nodes);
+  const counts = _countByGroupPath(nodes);
+  const wrap = document.createElement('div');
+  wrap.className = 'gf-tree';
+  renderGroupTreeEl(wrap, treeRoot, counts, 0);
+  gEl.appendChild(wrap);
+  if (counts['__ungrouped__']) {
+    const u = document.createElement('div');
+    u.className = 'gf-node';
+    u.style.paddingLeft = '8px';
+    u.innerHTML = `○ <span class="gf-label">(ungrouped)</span><span class="gf-count">${counts['__ungrouped__']}</span>`;
+    u.addEventListener('click', () => {
+      FILTER_GROUP_PREFIX = '__ungrouped__';
+      applyFilters();
+    });
+    gEl.appendChild(u);
+  }
+
+  const lcEl = document.getElementById('lifecycle-filters');
+  lcEl.innerHTML = '';
+  Object.keys(lcCounts)
+    .sort()
+    .forEach((k) => {
+      const label = document.createElement('label');
+      const disp = k === '__none__' ? '(none)' : k;
+      label.innerHTML = `<input type="checkbox" checked data-lc="${k}">
+      <span>■</span>
+      <span>${disp}</span><span class="count">${lcCounts[k]}</span>`;
+      label.querySelector('input').addEventListener('change', (e) => {
+        if (e.target.checked) VISIBLE_LIFECYCLES.add(k);
+        else VISIBLE_LIFECYCLES.delete(k);
+        applyFilters();
+      });
+      lcEl.appendChild(label);
+    });
+
+  const roEl = document.getElementById('readorder-filters');
+  roEl.innerHTML = '';
+  Object.keys(roCounts)
+    .sort()
+    .forEach((k) => {
+      const label = document.createElement('label');
+      const disp = k === '__none__' ? '(none)' : k;
+      label.innerHTML = `<input type="checkbox" checked data-ro="${k}">
+      <span>■</span>
+      <span>${disp}</span><span class="count">${roCounts[k]}</span>`;
+      label.querySelector('input').addEventListener('change', (e) => {
+        if (e.target.checked) VISIBLE_READ_ORDERS.add(k);
+        else VISIBLE_READ_ORDERS.delete(k);
+        applyFilters();
+      });
+      roEl.appendChild(label);
+    });
+}
+
 function applyFilters(searchSet=null, hits=null) {
-  const nodes = GRAPH_DATA.nodes.filter(n => {
-    if(!VISIBLE_TYPES.has(n.type)) return false;
-    if(!VISIBLE_STATUSES.has(n.status||'__none__')) return false;
-    if(searchSet && !searchSet.has(n.id)) return false;
+  const nodes = GRAPH_DATA.nodes.filter((n) => {
+    if (FILTER_GROUP_PREFIX) {
+      const g = (n.group || '').trim();
+      if (FILTER_GROUP_PREFIX === '__ungrouped__') {
+        if (g) return false;
+      } else if (g !== FILTER_GROUP_PREFIX && !g.startsWith(FILTER_GROUP_PREFIX + ' > ')) {
+        return false;
+      }
+    }
+    const lk = _lifecycleKey(n);
+    if (VISIBLE_LIFECYCLES.size && !VISIBLE_LIFECYCLES.has(lk)) return false;
+    const rk = _readOrderKey(n);
+    if (VISIBLE_READ_ORDERS.size && !VISIBLE_READ_ORDERS.has(rk)) return false;
+    if (searchSet && !searchSet.has(n.id)) return false;
     return true;
   });
   const ids = new Set(nodes.map(n=>n.id));
@@ -529,7 +679,7 @@ function initGraph() {
     .nodeLabel(n => n.name)
     .nodeColor(n => n.__hit ? '#ffffff' : (TYPE_COLORS[n.type]||'#888'))
     .nodeOpacity(0.92)
-    .nodeVal((n) => PRIORITY_SIZE[n.priority] || NODE_VAL_DEFAULT)
+    .nodeVal((n) => READ_ORDER_SIZE[n.read_order] || PRIORITY_SIZE[n.priority] || NODE_VAL_DEFAULT)
     .nodeRelSize(6)
     .nodeThreeObject(n => {
       if(!SHOW_LABELS) return null;
@@ -575,7 +725,7 @@ function initGraph() {
   }
   FG.d3Force(
     'collide',
-    d3.forceCollide((n) => (PRIORITY_SIZE[n.priority] || NODE_VAL_DEFAULT) * 10 + 42).strength(0.92),
+    d3.forceCollide((n) => (READ_ORDER_SIZE[n.read_order] || PRIORITY_SIZE[n.priority] || NODE_VAL_DEFAULT) * 10 + 42).strength(0.92),
   );
   FG.d3VelocityDecay(0.28);
   if (typeof FG.cooldownTicks === 'function') {
@@ -697,98 +847,179 @@ function copyMCP() {
   setTimeout(() => { btn.textContent = 'Copy'; }, 2000);
 }
 
+function descParts(node) {
+  const d = node.description;
+  if (d && typeof d === 'object' && !Array.isArray(d)) {
+    return { info: String(d.info || ''), code: String(d.code || '') };
+  }
+  return { info: String(d || ''), code: '' };
+}
+
 function showDetail(node) {
   const mcpPanel = document.getElementById('mcp-panel');
   if (mcpPanel) mcpPanel.style.display = 'none';
-  const out = [], inc = [];
-  const edges = GRAPH_DATA.edges||GRAPH_DATA.links||[];
-  edges.forEach(e => {
-    const f = e.from||e.source, t = e.to||e.target;
-    if(f===node.id) out.push({type:e.type,id:t});
-    if(t===node.id) inc.push({type:e.type,id:f});
-  });
+  const edges = GRAPH_DATA.edges || GRAPH_DATA.links || [];
   const nodesById = {};
-  GRAPH_DATA.nodes.forEach(n => nodesById[n.id]=n);
-
-  const skip = new Set(['id','type','name','status','__hit','__searchHit',
-    'x','y','z','vx','vy','vz','index','fx','fy','fz']);
-  const fields = Object.entries(node).filter(([k])=>!skip.has(k)&&node[k]!=null);
-  const primaryOrder = ['priority','description','topic','group','source_path','spec_source','created','updated'];
-  const primary = [];
-  const raw = [];
-  fields.forEach(([k,v]) => {
-    const isObj = Array.isArray(v) || (typeof v === 'object');
-    const text = isObj ? '' : String(v);
-    const isShortScalar = !isObj && text.length <= 220;
-    if (primaryOrder.includes(k) || isShortScalar) primary.push([k,v]);
-    else raw.push([k,v]);
-  });
-  primary.sort((a,b) => {
-    const ia = primaryOrder.indexOf(a[0]);
-    const ib = primaryOrder.indexOf(b[0]);
-    if (ia === -1 && ib === -1) return a[0].localeCompare(b[0]);
-    if (ia === -1) return 1;
-    if (ib === -1) return -1;
-    return ia - ib;
+  GRAPH_DATA.nodes.forEach((n) => {
+    nodesById[n.id] = n;
   });
 
-  let html = `<div class="node-type">${node.type}</div>
-    <div class="node-id">${node.id}</div>
-    <div class="node-name">${esc(node.name)}</div>`;
-  if(node.status) html += `<div class="field"><div class="field-label">Status</div>
-    <div class="field-value" style="color:${STATUS_COLORS[node.status]||'#888'}">${node.status}</div></div>`;
-  primary.forEach(([k,v]) => {
-    let val = Array.isArray(v) ? v.map(i=>`• ${esc(String(i))}`).join('<br>')
-            : typeof v==='object' ? `<pre style="font-size:9px;color:var(--text-dim);white-space:pre-wrap">${esc(JSON.stringify(v,null,2))}</pre>`
-            : esc(String(v));
-    html += `<div class="field"><div class="field-label">${k.replace(/_/g,' ')}</div>
-      <div class="field-value">${val}</div></div>`;
+  const out = [];
+  const inc = [];
+  edges.forEach((e) => {
+    const f = e.from || e.source;
+    const t = e.to || e.target;
+    const reason = e.reason != null ? String(e.reason) : '';
+    if (f === node.id) out.push({ type: e.type, id: t, reason });
+    if (t === node.id) inc.push({ type: e.type, id: f, reason });
   });
-  if(raw.length) {
-    html += `<details class="relations"><summary style="cursor:pointer;color:var(--amber-soft);font-size:11px;">Show raw fields (${raw.length})</summary>`;
-    raw.forEach(([k,v]) => {
-      const val = Array.isArray(v) ? v.map(i=>`• ${esc(String(i))}`).join('<br>')
-              : typeof v==='object' ? `<pre style="font-size:9px;color:var(--text-dim);white-space:pre-wrap">${esc(JSON.stringify(v,null,2))}</pre>`
-              : esc(String(v));
-      html += `<div class="field"><div class="field-label">${k.replace(/_/g,' ')}</div>
-        <div class="field-value">${val}</div></div>`;
+
+  function breadcrumbHtml(n) {
+    const g = (n.group || '').trim();
+    if (!g) return '';
+    const parts = g.split(/\s*>\s*/).map((s) => s.trim()).filter(Boolean);
+    const links = parts
+      .map((p, i) => {
+        const pref = parts.slice(0, i + 1).join(' > ');
+        return `<a href="#" data-gpref="${escAttr(pref)}">${esc(p)}</a>`;
+      })
+      .join(' &gt; ');
+    return `<div class="v2-breadcrumb">◈ ${links}</div>`;
+  }
+
+  let html = '';
+  const nt = node.type || '';
+
+  if (nt === 'ErrorCase') {
+    html += breadcrumbHtml(node);
+    html += `<div class="node-id" style="margin-bottom:6px">${esc(node.id)}</div>`;
+    html += `<div class="v2-type">ERROR CASE</div>`;
+    html += `<div class="v2-title">${esc(node.name || '')}</div>`;
+    const code = node.code || '';
+    const sev = node.severity || '';
+    html += `<div class="v2-section"><div class="v2-h">CODE / SEVERITY</div>`;
+    html += `<div><span class="v2-k">code</span> ${esc(String(code))} · <span class="v2-k">severity</span> ${esc(String(sev))}</div></div>`;
+    const blocks = [
+      ['TRIGGER', node.trigger],
+      ['SYSTEM RESPONSE', node.handling],
+      ['FIX', node.fix],
+      ['USER MESSAGE', node.user_message],
+      ['DEV NOTE', node.dev_note],
+    ];
+    blocks.forEach(([title, val]) => {
+      if (val == null || val === '') return;
+      html += `<div class="v2-section"><div class="v2-h">${title}</div><div class="v2-desc-info">${esc(String(val))}</div></div>`;
+    });
+    if (node.context) {
+      html += `<div class="v2-section"><div class="v2-h">CONTEXT</div><pre class="v2-raw">${esc(JSON.stringify(node.context, null, 2))}</pre></div>`;
+    }
+    const fh = node.fix_history;
+    const hist = Array.isArray(fh) ? fh : fh ? [fh] : [];
+    if (hist.length) {
+      html += `<div class="v2-section"><div class="v2-h">FIX HISTORY</div><ul style="font-size:10px;color:var(--text-dim);padding-left:16px;">`;
+      hist.forEach((h) => {
+        const line = typeof h === 'object' ? JSON.stringify(h) : String(h);
+        html += `<li>${esc(line)}</li>`;
+      });
+      html += `</ul></div>`;
+    }
+  } else if (nt === 'Invariant') {
+    html += breadcrumbHtml(node);
+    html += `<div class="node-id" style="margin-bottom:6px">${esc(node.id)}</div>`;
+    html += `<div class="v2-type">INVARIANT</div>`;
+    html += `<div class="v2-title">${esc(node.name || '')}</div>`;
+    if (node.rule) {
+      html += `<div class="v2-section"><div class="v2-h">RULE</div><div class="v2-desc-info">${esc(String(node.rule))}</div></div>`;
+    }
+    if (node.scope) {
+      html += `<div class="v2-section"><div class="v2-h">SCOPE</div><div class="v2-desc-info">${esc(String(node.scope))}</div></div>`;
+    }
+    const enf = node.enforcement || node.enforced_by;
+    if (enf) {
+      html += `<div class="v2-section"><div class="v2-h">ENFORCEMENT</div><div class="v2-desc-info">${esc(String(enf))}</div></div>`;
+    }
+  } else {
+    html += breadcrumbHtml(node);
+    html += `<div class="node-id" style="margin-bottom:6px">${esc(node.id)}</div>`;
+    html += `<div class="v2-type">${esc(nt)}</div>`;
+    html += `<div class="v2-title">${esc(node.name || '')}</div>`;
+    const life = node.lifecycle || '';
+    const ro = node.read_order || node.priority || '';
+    html += `<div class="v2-meta">`;
+    if (life) html += `lifecycle: ${esc(life)}`;
+    if (life && ro) html += ' · ';
+    if (ro) html += `read_order: ${esc(String(ro))}`;
+    html += `</div>`;
+    const dp = descParts(node);
+    if (dp.info || dp.code) {
+      html += `<div class="v2-section"><div class="v2-h">DESCRIPTION</div><div class="v2-desc-info">${esc(dp.info)}</div>`;
+      if (dp.code) {
+        html += `<div class="v2-h" style="margin-top:10px">CODE</div><pre class="v2-code">${esc(dp.code)}</pre>`;
+      }
+      html += `</div>`;
+    }
+  }
+
+  const rels = [
+    ...out.map((r) => ({ ...r, dir: '→' })),
+    ...inc.map((r) => ({ ...r, dir: '←' })),
+  ];
+  if (rels.length) {
+    html += `<div class="v2-section"><div class="v2-h">RELATIONSHIPS</div>`;
+    rels.slice(0, 40).forEach((r) => {
+      const nm = nodesById[r.id]?.name || r.id;
+      html += `<div class="v2-rel"><span class="v2-rel-verb">${esc(r.dir)} ${esc(r.type)}</span> `;
+      html += `<span class="rel-target" style="cursor:pointer;color:var(--text)" data-id="${escAttr(r.id)}">${esc(nm)}</span>`;
+      html += `<div style="font-size:9px;color:var(--text-fade);margin-top:2px">reason: ${esc(r.reason || '(empty)')}</div></div>`;
+    });
+    html += `</div>`;
+  }
+
+  const skip = new Set([
+    'id', 'type', 'name', '__hit', '__searchHit', 'x', 'y', 'z', 'vx', 'vy', 'vz', 'index', 'fx', 'fy', 'fz',
+    'description', 'group', 'lifecycle', 'read_order', 'priority',
+    'code', 'severity', 'trigger', 'handling', 'fix', 'user_message', 'dev_note', 'context', 'fix_history',
+    'rule', 'scope', 'enforcement', 'enforced_by',
+  ]);
+  const raw = Object.entries(node).filter(([k]) => !skip.has(k) && node[k] != null);
+  if (raw.length) {
+    html += `<details class="relations" style="margin-top:12px"><summary style="cursor:pointer;color:var(--amber-soft);font-size:11px;">Debug: raw fields (${raw.length})</summary>`;
+    raw.forEach(([k, v]) => {
+      const val = typeof v === 'object' ? JSON.stringify(v, null, 2) : String(v);
+      html += `<div class="field"><div class="field-label">${esc(k)}</div><pre class="v2-raw">${esc(val)}</pre></div>`;
     });
     html += `</details>`;
   }
-  if(out.length) {
-    html += '<div class="relations"><h4>→ Outgoing</h4>';
-    out.slice(0,30).forEach(e => {
-      const name = nodesById[e.id]?.name||e.id;
-      html += `<div class="rel-item" data-id="${e.id}">
-        <span class="rel-verb">${e.type}</span>
-        <span class="rel-target">${esc(name)}</span></div>`;
-    });
-    html += '</div>';
-  }
-  if(inc.length) {
-    html += '<div class="relations"><h4>← Incoming</h4>';
-    inc.slice(0,30).forEach(e => {
-      const name = nodesById[e.id]?.name||e.id;
-      html += `<div class="rel-item" data-id="${e.id}">
-        <span class="rel-verb">${e.type}</span>
-        <span class="rel-target">${esc(name)}</span></div>`;
-    });
-    html += '</div>';
-  }
-  html += `<div class="gobp-query">gobp(query="get: ${node.id} brief=true")</div>`;
+
+  html += `<div class="gobp-query">gobp(query="get: ${esc(node.id)} brief=true")</div>`;
 
   const content = document.getElementById('detail-content');
   content.innerHTML = html;
   document.getElementById('detail').classList.add('visible');
 
-  content.querySelectorAll('.rel-item[data-id]').forEach(el => {
+  content.querySelectorAll('.rel-target[data-id]').forEach((el) => {
     el.addEventListener('click', () => {
-      const n = GRAPH_DATA.nodes.find(n=>n.id===el.dataset.id);
-      if(n) { showDetail(n); focusNode(n); }
+      const nid = el.getAttribute('data-id');
+      const n = GRAPH_DATA.nodes.find((x) => x.id === nid);
+      if (n) {
+        showDetail(n);
+        focusNode(n);
+      }
+    });
+  });
+  content.querySelectorAll('.v2-breadcrumb a[data-gpref]').forEach((a) => {
+    a.addEventListener('click', (ev) => {
+      ev.preventDefault();
+      FILTER_GROUP_PREFIX = a.getAttribute('data-gpref') || '';
+      applyFilters();
     });
   });
 
   focusNode(node);
+}
+
+function escAttr(s) {
+  return String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
 }
 
 function focusNode(n) {
@@ -805,15 +1036,26 @@ function esc(s) {
 }
 
 document.getElementById('btn-core').addEventListener('click', () => {
-  document.querySelectorAll('#type-filters input').forEach(cb => {
-    cb.checked = CORE_TYPES.has(cb.dataset.type);
-    if(cb.checked) VISIBLE_TYPES.add(cb.dataset.type); else VISIBLE_TYPES.delete(cb.dataset.type);
+  FILTER_GROUP_PREFIX = '';
+  document.querySelectorAll('#lifecycle-filters input').forEach((cb) => {
+    cb.checked = true;
+    VISIBLE_LIFECYCLES.add(cb.dataset.lc);
+  });
+  document.querySelectorAll('#readorder-filters input').forEach((cb) => {
+    cb.checked = true;
+    VISIBLE_READ_ORDERS.add(cb.dataset.ro);
   });
   applyFilters();
 });
 document.getElementById('btn-all').addEventListener('click', () => {
-  document.querySelectorAll('#type-filters input').forEach(cb => {
-    cb.checked = true; VISIBLE_TYPES.add(cb.dataset.type);
+  FILTER_GROUP_PREFIX = '';
+  document.querySelectorAll('#lifecycle-filters input').forEach((cb) => {
+    cb.checked = true;
+    VISIBLE_LIFECYCLES.add(cb.dataset.lc);
+  });
+  document.querySelectorAll('#readorder-filters input').forEach((cb) => {
+    cb.checked = true;
+    VISIBLE_READ_ORDERS.add(cb.dataset.ro);
   });
   applyFilters();
 });

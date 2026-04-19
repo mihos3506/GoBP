@@ -24,6 +24,112 @@ _ASSIGN = re.compile(r"(\w+)=('([^']*)'|\"([^\"]*)\"|(\S+))")
 _MERGE = re.compile(r"keep=(\S+)\s+absorb=(\S+)", re.I)
 _NEW_TYPE = re.compile(r"new_type=(\S+)", re.I)
 _EDGE_TILDE_TO = re.compile(r"\s+to=(\w+)\s*$", re.I)
+_CREATE_PARAM = re.compile(r'(\w+)=(?:"([^"]*?)"|\'([^\']*?)\'|(\S+))')
+
+# Known batch line prefixes (after stripping). Used to split ops without breaking quoted newlines.
+_BATCH_OP_PREFIXES: tuple[str, ...] = (
+    "create:",
+    "update:",
+    "replace:",
+    "delete:",
+    "retype:",
+    "merge:",
+    "edge+:",
+    "edge-:",
+    "edge~:",
+    "edge*:",
+    "quick:",
+    "lock:",
+)
+
+
+def _parse_create_rhs(rhs: str) -> tuple[str, str, dict[str, str]]:
+    """Parse the right-hand side of ``Type: …`` in a create line.
+
+    Returns:
+        ``(name, plain_description, named_params)``.
+    """
+    rhs = rhs.strip()
+    if "|" not in rhs:
+        return rhs, "", {}
+
+    name_part, rest = rhs.split("|", 1)
+    name = name_part.strip()
+    rest = rest.strip()
+    if not rest:
+        return name, "", {}
+
+    matches = list(_CREATE_PARAM.finditer(rest))
+    named_params: dict[str, str] = {}
+    for m in matches:
+        key = m.group(1)
+        value = m.group(2) or m.group(3) or m.group(4) or ""
+        named_params[key] = value
+
+    if matches:
+        plain_desc = rest[: matches[0].start()].strip()
+    else:
+        plain_desc = rest.strip()
+
+    return name, plain_desc, named_params
+
+
+def _detect_unclosed_quote(text: str) -> str | None:
+    """Return a quote character if ``text`` has an unclosed ``'`` or ``\"``, else ``None``."""
+    in_quote: str | None = None
+    for char in text:
+        if char in ('"', "'") and in_quote is None:
+            in_quote = char
+        elif char == in_quote:
+            in_quote = None
+    return in_quote
+
+
+def _split_ops(ops_text: str) -> list[str]:
+    """Split batch text into op strings; newlines inside quoted values do not start a new op."""
+    lines = ops_text.split("\n")
+    current_op: list[str] = []
+    ops: list[str] = []
+    in_quote: str | None = None
+
+    for line in lines:
+        stripped = line.strip()
+        if not stripped:
+            continue
+
+        lower = stripped.lower()
+        is_known_op = any(lower.startswith(p) for p in _BATCH_OP_PREFIXES)
+        colon_word = re.match(r"^([A-Za-z0-9_]+)\s*:", stripped)
+        looks_like_prefixed_op = bool(colon_word) and not stripped.startswith("#")
+
+        if in_quote is not None:
+            if current_op:
+                current_op.append(stripped)
+                in_quote = _detect_unclosed_quote(" ".join(current_op))
+            continue
+
+        if is_known_op:
+            if current_op:
+                ops.append(" ".join(current_op))
+            current_op = [stripped]
+            in_quote = _detect_unclosed_quote(stripped)
+            continue
+
+        if looks_like_prefixed_op and not is_known_op:
+            if current_op:
+                ops.append(" ".join(current_op))
+            current_op = [stripped]
+            in_quote = _detect_unclosed_quote(stripped)
+            continue
+
+        if current_op:
+            current_op.append(stripped)
+            in_quote = _detect_unclosed_quote(" ".join(current_op))
+
+    if current_op:
+        ops.append(" ".join(current_op))
+
+    return [op for op in ops if op.strip()]
 
 
 def _parse_assignments(blob: str) -> dict[str, Any]:
@@ -67,22 +173,18 @@ def parse_batch_line(line: str) -> dict[str, Any]:
             return {"kind": "error", "message": "create: expected Type: Name | Desc", "raw": raw}
         node_type = cm.group(1)
         rhs = cm.group(2).strip()
-        if "|" in rhs:
-            name_part, desc_part = rhs.split("|", 1)
-            name = name_part.strip()
-            desc = desc_part.strip()
-        else:
-            name = rhs.strip()
-            desc = ""
+        name, plain_desc, named_params = _parse_create_rhs(rhs)
         if not name:
             return {"kind": "error", "message": "create: empty name", "raw": raw}
-        return {
+        out: dict[str, Any] = {
             "kind": "create",
             "node_type": node_type,
             "name": name,
-            "description": desc,
+            "description": plain_desc,
             "raw": raw,
         }
+        out.update(named_params)
+        return out
 
     if prefix in ("update", "replace"):
         um = re.match(r"^(\S+)\s+(.+)$", rest)
@@ -164,12 +266,12 @@ def parse_batch_ops(ops_text: str) -> tuple[list[dict[str, Any]], list[str]]:
     text = ops_text.replace("\\\\n", "\n").replace("\\n", "\n")
     parsed: list[dict[str, Any]] = []
     errors: list[str] = []
-    for line in text.splitlines():
-        item = parse_batch_line(line)
+    for op_line in _split_ops(text):
+        item = parse_batch_line(op_line)
         if item.get("kind") == "noop":
             continue
         if item.get("kind") == "error":
-            errors.append(f"{item.get('message')}: {item.get('raw', line)!r}")
+            errors.append(f"{item.get('message')}: {item.get('raw', op_line)!r}")
             continue
         parsed.append(item)
     return parsed, errors

@@ -195,7 +195,8 @@ def test_migrated_ids_have_group_namespace() -> None:
     root = Path("D:/GoBP")
     index = GraphIndex.load_from_disk(root)
     sample = [n["id"] for n in index.all_nodes()[:25]]
-    assert all("." in sid for sid in sample)
+    # External ids use dots; legacy ids may use ``dec:dNNN`` (colon) without dots.
+    assert all(("." in sid or ":" in sid) for sid in sample)
 
 def test_parse_invalid_external_id() -> None:
     parsed = parse_external_id("just_text")

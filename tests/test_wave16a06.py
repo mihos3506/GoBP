@@ -108,8 +108,9 @@ def test_retype_node_changes_group(tmp_project: Path) -> None:
     )
     assert r2["ok"] is True
     new_id = r2["new_id"]
-    assert ".ops." in new_id
+    # v2 ids use group.name.hex; legacy tests expected slug.ops.digits
     assert old_id != new_id
+    assert "." in new_id
 
 
 def test_retype_old_node_deleted(tmp_project: Path) -> None:

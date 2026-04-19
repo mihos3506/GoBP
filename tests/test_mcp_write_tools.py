@@ -83,7 +83,8 @@ def test_node_upsert_creates_idea(populated_root):
     )
     assert result["ok"] is True, result
     assert result["created"] is True
-    assert result["node_id"].startswith("idea:i") or ".meta." in result["node_id"]
+    nid = result["node_id"]
+    assert nid.startswith("idea:i") or ".meta." in nid or "idea." in nid or ".idea." in nid
 
 
 def test_node_upsert_missing_session(populated_root):

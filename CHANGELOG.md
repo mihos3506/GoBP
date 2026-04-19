@@ -5,6 +5,26 @@ Format: [Wave N — Title] with date, what was added/changed/fixed.
 
 ---
 
+## [Wave 17A05] — Bug Fixes + Viewer v2 — 2026-04-19
+
+### Fixed
+
+- **Batch parser** — `create: Type: Name | key="value"` named params merged into the op; plain text before first `key=` remains `description`.
+- **Batch parser** — newlines inside quoted values no longer split ops; unknown `word:` lines start a new logical op (strict parse errors preserved).
+- **`create:` / `node_upsert`** — auto-generate `id` via `generate_id(name, group)` when missing (`Session` / `TestCase` keep `generate_external_id` formats).
+- **`TYPE_DEFAULTS`** — `Concept.definition` and `ErrorDomain.fix_guide` / `domain` align with `description` `{info, code}`.
+
+### Changed
+
+- **Viewer** — panel v2: group breadcrumb, lifecycle + read_order, description info + code, RELATIONSHIPS with reason, raw fields under collapsed Debug; ErrorCase and Invariant layouts; sidebar: group tree, lifecycle, read order filters.
+- **`gobp/viewer/server.py`** — `/api/graph` nodes pass full YAML payloads; edges include `reason`.
+
+### Tests
+
+- **`tests/test_wave17a05.py`** — 15 tests (batch, write path, panel HTML helpers).
+
+---
+
 ## [Wave 17A04] — Docs + Agents + Backfill — 2026-04-19
 
 ### Changed

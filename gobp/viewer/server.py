@@ -77,26 +77,13 @@ def _load_graph_data(project_root: Path) -> dict[str, Any]:
 
     index = GraphIndex.load_from_disk(project_root)
 
-    def _desc_preview(raw: object) -> str:
-        if isinstance(raw, dict):
-            text = f"{raw.get('info', '')} {raw.get('code', '')}"
-        else:
-            text = str(raw or "")
-        return text[:200]
-
-    # Build node list
+    # Build node list (full node payloads for viewer v2 detail panel)
     nodes = []
     for node in index.all_nodes():
-        nodes.append({
-            "id": node.get("id", ""),
-            "name": node.get("name", ""),
-            "type": node.get("type", "Node"),
-            "priority": node.get("priority", "medium"),
-            "status": node.get("status", "ACTIVE"),
-            "description": _desc_preview(node.get("description", "")),
-            "topic": node.get("topic", ""),
-            "group": node.get("group", ""),
-        })
+        payload = dict(node)
+        payload.setdefault("priority", node.get("priority", "medium"))
+        payload.setdefault("status", node.get("status", "ACTIVE"))
+        nodes.append(payload)
 
     # Build edge list (3d-force-graph uses 'source'/'target')
     links = []
@@ -113,6 +100,7 @@ def _load_graph_data(project_root: Path) -> dict[str, Any]:
                 "from": from_id,    # for detail panel relations
                 "to": to_id,        # for detail panel relations
                 "type": edge_type,
+                "reason": edge.get("reason", ""),
             })
             seen.add(key)
 
