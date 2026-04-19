@@ -5,6 +5,30 @@ Format: [Wave N — Title] with date, what was added/changed/fixed.
 
 ---
 
+## [Wave F] — Multi-Agent Coordination — 2026-04-19
+
+### Added
+
+- `gobp/core/import_lock.py`: PostgreSQL advisory lock for imports
+  - `acquire_import_lock()`: non-blocking, context manager
+  - `import_locks` table in schema v3
+- `gobp/core/session_watchdog.py`: auto-close stale sessions > 24h
+  - `close_stale_sessions()`: mark IN_PROGRESS → STALE_CLOSED
+  - Runs automatically on `overview:` call
+- `validate: v3`: schema v3 compatibility check (5 checks)
+  - Required fields, ErrorCase severity, dangling edges, orphans, stale sessions
+  - Score 0-100
+- `ping:` action: health check with DB status + active_sessions + import_locks
+- `tests/test_wave_f.py`: multi-agent coordination coverage
+
+### Changed
+
+- `overview: v3`: runs session watchdog, reports closed sessions
+- `import_atomic:`: acquires import lock before executing
+- `create_schema_v3()`: creates import_locks table
+
+---
+
 ## [Wave E] — Viewer UI Improvements — 2026-04-19
 
 ### Changed (viewer)
