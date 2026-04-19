@@ -156,6 +156,10 @@ def create_schema_v3(conn: Any) -> None:
 
         conn.commit()
 
+    from gobp.core.import_lock import create_import_locks_table
+
+    create_import_locks_table(conn)
+
 
 def get_schema_version(conn: Any) -> str:
     """Return 'v3' if nodes table has desc_l1 column, else 'v2'."""
