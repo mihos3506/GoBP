@@ -90,6 +90,8 @@
   .v2-breadcrumb a { color: var(--amber); cursor: pointer; text-decoration: none; border-bottom: 1px dotted rgba(255,193,7,0.35); }
   .v2-breadcrumb a:hover { color: #fff; }
   .v2-type { font-size: 9px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.22em; color: var(--amber-soft); margin-bottom: 4px; }
+  .v2-type-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 4px; }
+  .v2-type-row .v2-type { margin-bottom: 0; }
   .v2-title { font-family: var(--serif); font-size: 17px; font-weight: 300; margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
   .v2-meta { font-size: 10px; color: var(--text-dim); margin-bottom: 12px; }
   .v2-section { margin: 14px 0; padding-top: 10px; border-top: 1px solid var(--border); }
@@ -1005,6 +1007,19 @@ function getNodeCodeString(node, dp) {
   return '';
 }
 
+function renderSeverityBadge(severity) {
+  if (!severity) return '';
+  const colors = {
+    fatal: { bg: '#4a1515', text: '#f85149', border: '#f85149' },
+    error: { bg: '#3a1a10', text: '#f0883e', border: '#f0883e' },
+    warning: { bg: '#2d2610', text: '#e3b341', border: '#e3b341' },
+    info: { bg: '#0d2137', text: '#58a6ff', border: '#58a6ff' },
+  };
+  const key = String(severity).toLowerCase();
+  const c = colors[key] || colors.info;
+  return `<span class="severity-badge" style="background:${c.bg};color:${c.text};border:1px solid ${c.border};padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;letter-spacing:0.5px;text-transform:uppercase;">${esc(String(severity).toUpperCase())}</span>`;
+}
+
 function renderEdges(edgeRows) {
   if (!edgeRows || edgeRows.length === 0) {
     return `
@@ -1072,7 +1087,7 @@ function showDetail(node) {
   if (nt === 'ErrorCase') {
     html += breadcrumbHtml(node);
     html += `<div class="node-id" style="margin-bottom:6px">${esc(node.id)}</div>`;
-    html += `<div class="v2-type">ERROR CASE</div>`;
+    html += `<div class="v2-type-row"><span class="v2-type">ERROR CASE</span>${renderSeverityBadge(node.severity)}</div>`;
     html += `<div class="v2-title">${esc(node.name || '')}</div>`;
     const blocks = [
       ['TRIGGER', node.trigger],
