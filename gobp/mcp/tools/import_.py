@@ -160,6 +160,52 @@ def import_commit(index: GraphIndex, project_root: Path, args: dict[str, Any]) -
         pending_file.rename(rejected_file)
         return {"ok": True, "nodes_created": 0, "edges_created": 0, "errors": []}
 
+    doc_id = str(proposal.get("source_path") or proposal_id)
+
+    def _execute_import_commit() -> dict[str, Any]:
+        return _import_commit_body(
+            project_root,
+            proposal,
+            proposal_id,
+            pending_file,
+            proposals_dir,
+            accept,
+            args,
+        )
+
+    from gobp.core import db as db_mod
+    from gobp.core.import_lock import acquire_import_lock
+
+    conn = db_mod._get_conn(project_root)
+    if conn is not None:
+        try:
+            with acquire_import_lock(conn, doc_id, session_id) as lock:
+                if not lock.acquired:
+                    return {
+                        "ok": False,
+                        "blocked": True,
+                        "owner": lock.owner,
+                        "hint": lock.hint,
+                    }
+                return _execute_import_commit()
+        finally:
+            try:
+                conn.close()
+            except Exception:
+                pass
+    return _execute_import_commit()
+
+
+def _import_commit_body(
+    project_root: Path,
+    proposal: dict[str, Any],
+    proposal_id: str,
+    pending_file: Path,
+    proposals_dir: Path,
+    accept: str,
+    args: dict[str, Any],
+) -> dict[str, Any]:
+    """Apply validated import proposal (nodes, edges, rename pending file)."""
     # Select nodes and edges based on accept mode
     all_nodes = list(proposal.get("proposed_nodes", []))
     if proposal.get("proposed_document"):
