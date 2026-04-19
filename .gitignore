@@ -34,3 +34,7 @@ Thumbs.db
 # Machine-specific viewer config
 projects.json
 GoBP_Viewer.bat
+
+.gobp/nodes/
+.gobp/edges/
+.gobp/history/
