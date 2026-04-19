@@ -84,7 +84,6 @@
   #detail .rel-item:hover .rel-target { color: var(--amber); }
   #detail .rel-verb { color: var(--text-fade); font-size: 9px; text-transform: uppercase; letter-spacing: 0.1em; min-width: 70px; flex-shrink: 0; }
   #detail .rel-target { color: var(--text); }
-  #detail .gobp-query { background: rgba(0,0,0,0.3); border: 1px solid var(--border); padding: 6px 10px; font-size: 10px; color: var(--amber); margin-top: 12px; word-break: break-all; }
 
   .v2-breadcrumb { font-size: 10px; color: var(--amber-soft); margin-bottom: 10px; letter-spacing: 0.06em; }
   .v2-breadcrumb a { color: var(--amber); cursor: pointer; text-decoration: none; border-bottom: 1px dotted rgba(255,193,7,0.35); }
@@ -143,6 +142,35 @@
     font-size: 12px;
     color: #636d83;
     font-style: italic;
+  }
+  .history-item {
+    padding: 8px 0;
+    border-bottom: 1px solid #21262d;
+  }
+  .history-item:last-child { border-bottom: none; }
+  .history-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 4px;
+  }
+  .history-index {
+    font-size: 11px;
+    color: #636d83;
+    font-variant-numeric: tabular-nums;
+  }
+  .history-date {
+    font-size: 11px;
+    color: #636d83;
+  }
+  .history-desc {
+    font-size: 13px;
+    color: #c9b99a;
+    line-height: 1.4;
+  }
+  .history-code {
+    margin-top: 6px;
+    font-size: 11px;
   }
   .code-block {
     background: #161b22;
@@ -566,6 +594,22 @@ async function boot() {
     allEdgesChk.checked = SHOW_ALL_EDGES;
     allEdgesChk.addEventListener('change', (e) => {
       SHOW_ALL_EDGES = e.target.checked;
+      const gEl = document.getElementById('group-filters');
+      if (!gEl) {
+        applyFilters();
+        return;
+      }
+      if (SHOW_ALL_EDGES) {
+        gEl.querySelectorAll('.group-item').forEach((item) => {
+          item.classList.add('active');
+          const dot = item.querySelector('.group-dot');
+          if (dot) dot.textContent = '●';
+        });
+        const allG = gEl.querySelector('.all-groups-btn');
+        if (allG) allG.classList.remove('active');
+      } else {
+        syncGroupSidebarHighlight();
+      }
       applyFilters();
     });
   }
@@ -631,6 +675,32 @@ function buildGroupTree(nodes) {
   return root;
 }
 
+/** Sync sidebar ●/○ with ``FILTER_GROUP_PREFIX`` (and All groups button). */
+function syncGroupSidebarHighlight() {
+  const gEl = document.getElementById('group-filters');
+  if (!gEl) return;
+  const allG = gEl.querySelector('.all-groups-btn');
+  gEl.querySelectorAll('.group-item').forEach((el) => {
+    el.classList.remove('active');
+    const dot = el.querySelector('.group-dot');
+    if (dot) dot.textContent = '○';
+  });
+  if (allG) allG.classList.remove('active');
+
+  if (!FILTER_GROUP_PREFIX) {
+    if (allG) allG.classList.add('active');
+    return;
+  }
+  gEl.querySelectorAll('.group-item').forEach((el) => {
+    const p = el.getAttribute('data-group-path');
+    if (p === FILTER_GROUP_PREFIX) {
+      el.classList.add('active');
+      const dot = el.querySelector('.group-dot');
+      if (dot) dot.textContent = '●';
+    }
+  });
+}
+
 function _countByGroupPath(nodes) {
   const counts = {};
   nodes.forEach((n) => {
@@ -660,6 +730,7 @@ function renderGroupTreeEl(container, tree, counts, depth, allGroupsBtn) {
     row.style.paddingLeft = `${8 + depth * 12}px`;
     if (FILTER_GROUP_PREFIX === path) row.classList.add('active');
     const mark = FILTER_GROUP_PREFIX === path ? '●' : '○';
+    row.setAttribute('data-group-path', path);
     row.innerHTML = `
       <span class="group-name">
         <span class="group-dot">${mark}</span>${k}
@@ -718,6 +789,7 @@ function initFilters() {
     u.style.paddingLeft = '8px';
     if (FILTER_GROUP_PREFIX === '__ungrouped__') u.classList.add('active');
     const um = FILTER_GROUP_PREFIX === '__ungrouped__' ? '●' : '○';
+    u.setAttribute('data-group-path', '__ungrouped__');
     u.innerHTML = `
       <span class="group-name"><span class="group-dot">${um}</span>(ungrouped)</span>
       <span class="group-count">${counts['__ungrouped__']}</span>`;
@@ -736,8 +808,7 @@ function initFilters() {
     });
     gEl.appendChild(u);
   }
-  if (!FILTER_GROUP_PREFIX) allG.classList.add('active');
-  else allG.classList.remove('active');
+  syncGroupSidebarHighlight();
 }
 
 function applyFilters(searchSet=null, hits=null) {
@@ -1001,10 +1072,66 @@ function renderCodeBlock(code) {
     </div>`;
 }
 
-function getNodeCodeString(node, dp) {
-  if (node.code != null && String(node.code).trim()) return String(node.code).trim();
-  if (dp && dp.code && String(dp.code).trim()) return String(dp.code).trim();
-  return '';
+/** CODE from v3 ``node.code`` or v2-style ``description.code`` — after DESCRIPTION, before EDGES. */
+function renderCodeSection(node) {
+  let code = '';
+  if (node.code != null && String(node.code).trim()) {
+    code = String(node.code).trim();
+  } else if (
+    node.description
+    && typeof node.description === 'object'
+    && !Array.isArray(node.description)
+    && node.description.code != null
+    && String(node.description.code).trim()
+  ) {
+    code = String(node.description.code).trim();
+  }
+  if (!code) return '';
+  return `
+    <div class="detail-section">
+      <div class="detail-section-title">CODE</div>
+      <pre class="code-block"><code>${esc(code)}</code></pre>
+    </div>`;
+}
+
+function renderHistory(node) {
+  const history = node.history || [];
+  if (!history.length) return '';
+  const items = history.map((entry, i) => {
+    const e = entry || {};
+    let desc = e.description ?? e.desc ?? '';
+    if (desc && typeof desc === 'object' && !Array.isArray(desc)) {
+      desc = desc.info != null ? String(desc.info) : JSON.stringify(desc);
+    } else {
+      desc = String(desc || '');
+    }
+    const code = e.code != null ? String(e.code) : '';
+    let ts = '';
+    const ca = e.created_at ?? e.ts ?? e.createdAt;
+    if (ca != null && ca !== '') {
+      let d;
+      if (typeof ca === 'number') {
+        d = ca < 1e12 ? new Date(ca * 1000) : new Date(ca);
+      } else {
+        d = new Date(ca);
+      }
+      if (!isNaN(d.getTime())) ts = d.toLocaleDateString();
+    }
+    return `
+        <div class="history-item">
+            <div class="history-header">
+                <span class="history-index">#${i + 1}</span>
+                ${ts ? `<span class="history-date">${esc(ts)}</span>` : ''}
+            </div>
+            ${desc.trim() ? `<div class="history-desc">${esc(desc.trim())}</div>` : ''}
+            ${code.trim() ? `<pre class="code-block history-code"><code>${esc(code.trim())}</code></pre>` : ''}
+        </div>`;
+  }).join('');
+  return `
+    <div class="detail-section">
+      <div class="detail-section-title">HISTORY (${history.length})</div>
+      ${items}
+    </div>`;
 }
 
 function renderSeverityBadge(severity) {
@@ -1113,7 +1240,7 @@ function showDetail(node) {
       });
       html += `</ul></div>`;
     }
-    html += renderCodeBlock(node.code);
+    html += renderCodeSection(node);
   } else if (nt === 'Invariant') {
     html += breadcrumbHtml(node);
     html += `<div class="node-id" style="margin-bottom:6px">${esc(node.id)}</div>`;
@@ -1129,8 +1256,7 @@ function showDetail(node) {
     if (enf) {
       html += `<div class="v2-section"><div class="v2-h">ENFORCEMENT</div><div class="v2-desc-info">${esc(String(enf))}</div></div>`;
     }
-    const dpInv = descParts(node);
-    html += renderCodeBlock(getNodeCodeString(node, dpInv));
+    html += renderCodeSection(node);
   } else {
     html += breadcrumbHtml(node);
     html += `<div class="node-id" style="margin-bottom:6px">${esc(node.id)}</div>`;
@@ -1140,7 +1266,7 @@ function showDetail(node) {
     if (dp.info && String(dp.info).trim()) {
       html += `<div class="v2-section"><div class="v2-h">DESCRIPTION</div><div class="v2-desc-info">${esc(dp.info)}</div></div>`;
     }
-    html += renderCodeBlock(getNodeCodeString(node, dp));
+    html += renderCodeSection(node);
   }
 
   const edgeRows = [
@@ -1158,6 +1284,7 @@ function showDetail(node) {
     })),
   ];
   html += renderEdges(edgeRows.slice(0, 80));
+  html += renderHistory(node);
 
   const content = document.getElementById('detail-content');
   content.innerHTML = html;
@@ -1205,11 +1332,9 @@ document.getElementById('btn-core').addEventListener('click', () => {
   FILTER_GROUP_PREFIX = '';
   document.querySelectorAll('#lifecycle-filters input').forEach((cb) => {
     cb.checked = true;
-    VISIBLE_LIFECYCLES.add(cb.dataset.lc);
   });
   document.querySelectorAll('#readorder-filters input').forEach((cb) => {
     cb.checked = true;
-    VISIBLE_READ_ORDERS.add(cb.dataset.ro);
   });
   applyFilters();
 });
@@ -1217,11 +1342,9 @@ document.getElementById('btn-all').addEventListener('click', () => {
   FILTER_GROUP_PREFIX = '';
   document.querySelectorAll('#lifecycle-filters input').forEach((cb) => {
     cb.checked = true;
-    VISIBLE_LIFECYCLES.add(cb.dataset.lc);
   });
   document.querySelectorAll('#readorder-filters input').forEach((cb) => {
     cb.checked = true;
-    VISIBLE_READ_ORDERS.add(cb.dataset.ro);
   });
   applyFilters();
 });
