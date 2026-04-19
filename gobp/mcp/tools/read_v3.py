@@ -412,6 +412,10 @@ def overview_v3(conn: Any, project_root: Path, full_interface: bool = False) -> 
     """overview: v3 — stats + active sessions (schema v3)."""
     del full_interface
 
+    from gobp.core.session_watchdog import run_watchdog_in_overview
+
+    watchdog_result = run_watchdog_in_overview(conn)
+
     with conn.cursor() as cur:
         cur.execute("SELECT COUNT(*) FROM nodes")
         total_nodes = cur.fetchone()[0]
@@ -460,7 +464,7 @@ def overview_v3(conn: Any, project_root: Path, full_interface: bool = False) -> 
         except Exception:
             config = {}
 
-    return {
+    out: dict[str, Any] = {
         "ok": True,
         "project": {
             "name": config.get("project_name", project_root.name),
@@ -479,6 +483,9 @@ def overview_v3(conn: Any, project_root: Path, full_interface: bool = False) -> 
             "Use session:resume id='...' to continue a previous session."
         ),
     }
+    if watchdog_result:
+        out["watchdog"] = watchdog_result
+    return out
 
 
 def explore_v3(conn: Any, keyword: str) -> dict[str, Any]:

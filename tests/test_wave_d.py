@@ -167,6 +167,7 @@ def test_overview_v3_structure(tmp_path: Path) -> None:
     conn.cursor.return_value.__enter__.return_value = cur
     cur.fetchone.side_effect = [(10,), (3,)]
     cur.fetchall.side_effect = [
+        [],  # session_watchdog: no stale sessions
         [("Dev", 5), ("Meta", 2)],
         [],
     ]
