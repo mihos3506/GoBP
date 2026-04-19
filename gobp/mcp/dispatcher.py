@@ -124,6 +124,22 @@ async def dispatch(
         if action == "overview":
             result = tools_read.gobp_overview(index, project_root, params)
 
+        elif action == "ping":
+            from gobp.mcp.tools import read_v3 as _read_v3
+
+            conn_ping, is_v3_ping = _read_v3._conn_v3(project_root)
+            if conn_ping is None or not is_v3_ping:
+                result = {
+                    "ok": False,
+                    "db": "not_connected",
+                    "hint": "Set GOBP_DB_URL and ensure PostgreSQL schema v3.",
+                }
+            else:
+                try:
+                    result = _read_v3.ping_action(conn_ping, project_root)
+                finally:
+                    conn_ping.close()
+
         elif action == "refresh":
             import time as _t
 

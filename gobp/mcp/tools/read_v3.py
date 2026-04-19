@@ -707,3 +707,70 @@ def validate_v3(conn: Any) -> dict[str, Any]:
             f"{infos} info."
         ),
     }
+
+
+def ping_action(conn: Any, project_root: Path) -> dict[str, Any]:
+    """
+    ping: — health check.
+
+    Returns:
+      ok:              bool
+      db:              connected | error
+      active_sessions: count
+      schema_version:  v3 | v2 | unknown
+      import_locks:    {doc_id: session_id} nếu có
+    """
+    del project_root
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT 1")
+        db_status = "connected"
+    except Exception as e:
+        return {"ok": False, "db": str(e)}
+
+    try:
+        from gobp.core import db as db_mod
+
+        schema_version = db_mod.get_schema_version(conn)
+    except Exception:
+        schema_version = "unknown"
+
+    active_sessions = 0
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT COUNT(*) FROM nodes
+                WHERE group_path = 'Meta > Session'
+                  AND desc_full LIKE %s
+                """,
+                ("%IN_PROGRESS%",),
+            )
+            row = cur.fetchone()
+            active_sessions = int(row[0]) if row and row[0] is not None else 0
+    except Exception:
+        active_sessions = 0
+
+    import_locks: dict[str, str] = {}
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT doc_id, session_id FROM import_locks")
+            import_locks = {str(r[0]): str(r[1]) for r in cur.fetchall()}
+    except Exception:
+        pass
+
+    n_locks = len(import_locks)
+    hint = (
+        "GoBP is healthy."
+        if not n_locks
+        else f"{n_locks} import(s) in progress."
+    )
+
+    return {
+        "ok": True,
+        "db": db_status,
+        "schema_version": schema_version,
+        "active_sessions": active_sessions,
+        "import_locks": import_locks,
+        "hint": hint,
+    }
