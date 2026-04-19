@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import time
 from pathlib import Path
 from typing import Any
 
@@ -558,3 +559,144 @@ def explore_v3(conn: Any, keyword: str) -> dict[str, Any]:
     if severity:
         result["severity"] = severity
     return result
+
+
+def validate_v3(conn: Any) -> dict[str, Any]:
+    """
+    validate: metadata — schema v3 compatibility check.
+
+    Checks:
+      1. Nodes có đủ required fields (name, group_path, desc_full không rỗng)
+      2. ErrorCase nodes có severity hợp lệ (fatal/error/warning/info)
+      3. Edges có from_id và to_id tồn tại (FK integrity)
+      4. Không có orphan nodes (nodes không có edges và group != Meta)
+      5. Sessions không có IN_PROGRESS quá 24h (stale)
+    """
+    issues: list[dict[str, Any]] = []
+
+    with conn.cursor() as cur:
+        # Check 1: Required fields
+        cur.execute(
+            """
+            SELECT id, name, group_path, desc_full
+            FROM nodes
+            WHERE name IS NULL OR name = ''
+               OR group_path IS NULL OR group_path = ''
+               OR desc_full IS NULL OR desc_full = ''
+            """
+        )
+        for row in cur.fetchall():
+            node_id, name, group, desc = row
+            missing: list[str] = []
+            if not name:
+                missing.append("name")
+            if not group:
+                missing.append("group_path")
+            if not desc:
+                missing.append("description")
+            issues.append(
+                {
+                    "node_id": node_id,
+                    "issue": f"Missing required fields: {', '.join(missing)}",
+                    "severity": "error",
+                }
+            )
+
+        # Check 2: ErrorCase severity
+        cur.execute(
+            """
+            SELECT id, severity FROM nodes
+            WHERE group_path LIKE 'Error%%'
+              AND (severity IS NULL OR severity = ''
+                   OR severity NOT IN ('fatal', 'error', 'warning', 'info'))
+            """
+        )
+        for row in cur.fetchall():
+            issues.append(
+                {
+                    "node_id": row[0],
+                    "issue": f"ErrorCase has invalid severity: '{row[1]}'",
+                    "severity": "error",
+                }
+            )
+
+        # Check 3: Dangling edges (FK)
+        cur.execute(
+            """
+            SELECT e.from_id, e.to_id
+            FROM edges e
+            WHERE NOT EXISTS (SELECT 1 FROM nodes WHERE id = e.from_id)
+               OR NOT EXISTS (SELECT 1 FROM nodes WHERE id = e.to_id)
+            """
+        )
+        for row in cur.fetchall():
+            issues.append(
+                {
+                    "node_id": f"{row[0]} → {row[1]}",
+                    "issue": "Dangling edge — node không tồn tại",
+                    "severity": "warning",
+                }
+            )
+
+        # Check 4: Orphan nodes (không có edges, không phải Meta)
+        cur.execute(
+            """
+            SELECT n.id, n.name, n.group_path
+            FROM nodes n
+            WHERE n.group_path NOT LIKE 'Meta%%'
+              AND NOT EXISTS (
+                  SELECT 1 FROM edges e
+                  WHERE e.from_id = n.id OR e.to_id = n.id
+              )
+            """
+        )
+        for row in cur.fetchall():
+            issues.append(
+                {
+                    "node_id": row[0],
+                    "issue": f"Orphan node '{row[1]}' — không có edges",
+                    "severity": "info",
+                }
+            )
+
+        # Check 5: Stale sessions
+        stale_threshold = int(time.time()) - (24 * 3600)
+        cur.execute(
+            """
+            SELECT id, name, updated_at
+            FROM nodes
+            WHERE group_path = 'Meta > Session'
+              AND desc_full LIKE %s
+              AND updated_at < %s
+            """,
+            ("%IN_PROGRESS%", stale_threshold),
+        )
+        for row in cur.fetchall():
+            issues.append(
+                {
+                    "node_id": row[0],
+                    "issue": f"Stale session '{row[1]}' — IN_PROGRESS > 24h",
+                    "severity": "warning",
+                }
+            )
+
+        cur.execute("SELECT COUNT(*) FROM nodes")
+        total = cur.fetchone()[0]
+
+    errors = sum(1 for i in issues if i["severity"] == "error")
+    warnings = sum(1 for i in issues if i["severity"] == "warning")
+    infos = sum(1 for i in issues if i["severity"] == "info")
+
+    score = max(0, 100 - (errors * 10) - (warnings * 3))
+
+    return {
+        "ok": True,
+        "score": score,
+        "total": total,
+        "issues": issues,
+        "summary": (
+            f"{total} nodes, score {score}/100. "
+            f"{errors} errors, {warnings} warnings, "
+            f"{infos} info."
+        ),
+    }

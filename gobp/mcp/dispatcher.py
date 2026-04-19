@@ -791,7 +791,16 @@ async def dispatch(
                     index, project_root, {"scope": scope}
                 )
             elif scope == "metadata":
-                result = tools_read.metadata_lint(index, project_root, params)
+                from gobp.mcp.tools import read_v3 as _read_v3
+
+                conn_v, is_v3 = _read_v3._conn_v3(project_root)
+                if conn_v is not None and is_v3:
+                    try:
+                        result = _read_v3.validate_v3(conn_v)
+                    finally:
+                        conn_v.close()
+                else:
+                    result = tools_read.metadata_lint(index, project_root, params)
             else:
                 result = tools_maintain.validate(
                     index, project_root, {"scope": scope, "severity_filter": "all"}
