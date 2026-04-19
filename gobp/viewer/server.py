@@ -64,6 +64,58 @@ def _respond_json(handler: BaseHTTPRequestHandler, data: dict[str, Any]) -> None
     handler.wfile.write(body)
 
 
+def _dashboard_payload(project_root: Path) -> dict[str, Any]:
+    """Build JSON for GET /api/dashboard (stats + recent sessions)."""
+    from gobp.core.graph import GraphIndex
+
+    index = GraphIndex.load_from_disk(project_root)
+    all_nodes = list(index.all_nodes())
+    all_edges = list(index.all_edges())
+
+    nodes_by_group: dict[str, int] = {}
+    for node in all_nodes:
+        group = (node.get("group") or "Unknown").strip()
+        if not group:
+            top = "Unknown"
+        elif ">" in group:
+            top = group.split(">")[0].strip() or "Unknown"
+        else:
+            top = group
+        nodes_by_group[top] = nodes_by_group.get(top, 0) + 1
+
+    sessions_raw = [n for n in all_nodes if n.get("type") == "Session"]
+
+    def _session_sort_key(n: dict[str, Any]) -> str:
+        return str(
+            n.get("updated")
+            or n.get("updated_at")
+            or n.get("created")
+            or n.get("id")
+            or ""
+        )
+
+    sessions_raw.sort(key=_session_sort_key, reverse=True)
+    recent_sessions = [
+        {
+            "id": n.get("id", ""),
+            "goal": (n.get("goal") or "")[:80],
+            "status": n.get("status", ""),
+            "actor": n.get("actor", ""),
+        }
+        for n in sessions_raw[:5]
+    ]
+
+    return {
+        "ok": True,
+        "stats": {
+            "total_nodes": len(all_nodes),
+            "total_edges": len(all_edges),
+            "nodes_by_group": nodes_by_group,
+        },
+        "recent_sessions": recent_sessions,
+    }
+
+
 def _load_graph_data(project_root: Path) -> dict[str, Any]:
     """Load nodes and edges from .gobp/ folder.
 
@@ -133,7 +185,15 @@ def make_handler(project_root: Path, viewer_dir: Path):
 
         def do_GET(self):
             path_only = self.path.split("?", 1)[0]
-            if path_only == "/api/projects":
+            if path_only == "/dashboard":
+                self._serve_file(viewer_dir / "dashboard.html", "text/html")
+            elif path_only == "/api/dashboard":
+                try:
+                    data = _dashboard_payload(project_root)
+                    _respond_json(self, data)
+                except Exception as e:
+                    _respond_json(self, {"ok": False, "error": str(e)})
+            elif path_only == "/api/projects":
                 # Same shape as multi-project server so index.html boots cleanly.
                 one = {
                     "name": project_root.name,
@@ -204,6 +264,23 @@ def make_multi_handler(projects: list[dict[str, str]], viewer_dir: Path):
 
             if path == "/api/projects":
                 self._serve_json(projects)
+            elif path == "/dashboard":
+                self._serve_file(viewer_dir / "dashboard.html", "text/html")
+            elif path == "/api/dashboard":
+                root_param = params.get("root", [None])[0]
+                if root_param:
+                    proj_root = Path(root_param)
+                else:
+                    proj_root = Path(projects[0]["root"]) if projects else Path.cwd()
+                try:
+                    data = _dashboard_payload(proj_root)
+                    self._serve_json(data)
+                except Exception as e:
+                    err = json.dumps({"ok": False, "error": str(e)}).encode("utf-8")
+                    self.send_response(500)
+                    self.send_header("Content-Type", "application/json")
+                    self.end_headers()
+                    self.wfile.write(err)
             elif path == "/api/config":
                 root_param = params.get("root", [None])[0]
                 if root_param:
