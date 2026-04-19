@@ -245,10 +245,10 @@
   </section>
   <section>
     <h3 class="sidebar-section-title">View</h3>
-    <label style="display:flex;align-items:center;gap:8px;font-size:11px;color:var(--text);margin-bottom:10px;cursor:pointer;user-select:none;">
-      <input type="checkbox" id="chk-metadata-edges" style="width:12px;height:12px;">
-      <span>Show metadata edges</span>
-      <span style="font-size:9px;color:var(--text-fade);">(e.g. <code>discovered_in</code>)</span>
+    <label style="display:flex;align-items:center;gap:8px;font-size:11px;color:var(--text);margin-bottom:10px;cursor:pointer;user-select:none;flex-wrap:wrap;">
+      <input type="checkbox" id="showAllEdges" style="width:12px;height:12px;">
+      <span>Show all edges</span>
+      <span class="hint" style="font-size:9px;color:var(--text-fade);width:100%;padding-left:20px;margin-top:2px;">including edges without reasons</span>
     </label>
     <button id="btn-core">Core Only</button>
     <button id="btn-all">Show All</button>
@@ -490,7 +490,7 @@ let FG, GRAPH_DATA = {nodes:[], edges:[], links:[]};
 let FILTER_GROUP_PREFIX = '';
 const READ_ORDER_SIZE = { foundational: 12, important: 8, reference: 5, background: 3 };
 /** When false, hide discovered_in (metadata) — default off to declutter. */
-let SHOW_METADATA_EDGES = false;
+let SHOW_ALL_EDGES = false;
 let SHOW_LABELS = false;
 let CURRENT_ROOT = null;
 let PROJECTS = [];
@@ -504,11 +504,11 @@ async function boot() {
   }
   buildProjectSwitcher();
   initGraph();
-  const metaChk = document.getElementById('chk-metadata-edges');
-  if (metaChk) {
-    metaChk.checked = SHOW_METADATA_EDGES;
-    metaChk.addEventListener('change', (e) => {
-      SHOW_METADATA_EDGES = e.target.checked;
+  const allEdgesChk = document.getElementById('showAllEdges');
+  if (allEdgesChk) {
+    allEdgesChk.checked = SHOW_ALL_EDGES;
+    allEdgesChk.addEventListener('change', (e) => {
+      SHOW_ALL_EDGES = e.target.checked;
       applyFilters();
     });
   }
@@ -702,7 +702,7 @@ function applyFilters(searchSet=null, hits=null) {
   let hiddenMeta = 0;
   const links = rawEdges.filter((e) => {
     if (!ids.has(e.source || e.from) || !ids.has(e.target || e.to)) return false;
-    if (!SHOW_METADATA_EDGES && e.type === 'discovered_in') {
+    if (!SHOW_ALL_EDGES && e.type === 'discovered_in') {
       hiddenMeta += 1;
       return false;
     }
