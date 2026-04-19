@@ -40,7 +40,23 @@
 
   #controls { position: fixed; top: 56px; left: 16px; z-index: 10; width: 220px; background: var(--bg-panel); backdrop-filter: blur(16px); border: 1px solid var(--border); padding: 14px 16px; max-height: calc(100vh - 80px); overflow-y: auto; color: #c9b99a; }
   #controls section { margin-bottom: 16px; }
-  #controls h3 { font-size: 9px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.22em; color: var(--amber-soft); margin-bottom: 8px; border-bottom: 1px solid var(--border); padding-bottom: 4px; }
+  #controls.sidebar {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', sans-serif;
+    font-size: 13px;
+    line-height: 1.6;
+  }
+  .sidebar-section-title {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: #636d83;
+    margin: 16px 8px 6px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 4px;
+  }
+  #controls section:first-child .sidebar-section-title { margin-top: 0; }
+  #controls h3.sidebar-section-title { font-size: 10px; font-weight: 700; letter-spacing: 1.5px; }
   #controls label { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text); padding: 2px 0; cursor: pointer; user-select: none; }
   #controls label:hover { color: var(--amber); }
   #controls input[type="checkbox"] { appearance: none; width: 10px; height: 10px; border: 1px solid var(--text-dim); background: transparent; cursor: pointer; flex-shrink: 0; position: relative; }
@@ -110,6 +126,46 @@
     margin-left: 8px;
   }
   .group-dot { margin-right: 4px; opacity: 0.85; }
+  /* Top-level groups (Constraint, Dev, Document...) */
+  .group-level-0 .group-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: #c9b99a;
+  }
+  .group-level-1 .group-name {
+    font-size: 12px;
+    font-weight: 500;
+    color: #a0a8b8;
+  }
+  .group-level-2 .group-name {
+    font-size: 12px;
+    font-weight: 400;
+    color: #6e7681;
+  }
+  .group-item.active .group-name {
+    color: #f0883e;
+    font-weight: 600;
+  }
+  .group-item.active .group-count {
+    color: #f0883e;
+  }
+  .all-groups-btn {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    padding: 4px 10px;
+    margin-bottom: 8px;
+    border-radius: 4px;
+    border: 1px solid #f0883e;
+    color: #f0883e;
+    background: transparent;
+    cursor: pointer;
+  }
+  .all-groups-btn:hover,
+  .all-groups-btn.active {
+    background: #f0883e;
+    color: #0f1117;
+  }
 
   #statusbar { position: fixed; bottom: 0; left: 0; right: 0; z-index: 10; padding: 8px 24px; background: linear-gradient(0deg, var(--bg) 40%, transparent); font-size: 9px; color: var(--text-fade); letter-spacing: 0.12em; text-transform: uppercase; display: flex; justify-content: space-between; pointer-events: none; }
 
@@ -178,17 +234,17 @@
   <select id="project-switcher"></select>
 </div>
 
-<div id="controls">
+<div id="controls" class="sidebar">
   <section>
-    <h3>Search</h3>
+    <h3 class="sidebar-section-title">Search</h3>
     <input type="text" id="search" placeholder="name or id...">
   </section>
   <section>
-    <h3>Group</h3>
+    <h3 class="sidebar-section-title">Group</h3>
     <div id="group-filters"></div>
   </section>
   <section>
-    <h3>View</h3>
+    <h3 class="sidebar-section-title">View</h3>
     <label style="display:flex;align-items:center;gap:8px;font-size:11px;color:var(--text);margin-bottom:10px;cursor:pointer;user-select:none;">
       <input type="checkbox" id="chk-metadata-edges" style="width:12px;height:12px;">
       <span>Show metadata edges</span>
@@ -582,7 +638,6 @@ function initFilters() {
   allG.type = 'button';
   allG.className = 'all-groups-btn';
   allG.textContent = 'All groups';
-  allG.style.marginBottom = '8px';
   allG.addEventListener('click', () => {
     FILTER_GROUP_PREFIX = '';
     gEl.querySelectorAll('.group-item').forEach((el) => {
