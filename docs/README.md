@@ -77,7 +77,8 @@ gobp(query="overview:") → project state
 Schema:     v3 — 2 templates, ~75 node types
 Protocol:   v2 — single tool gobp(), 30+ actions
 PostgreSQL: primary storage
-Tests:      705+
+Tests:      705+ (Wave A adds 35+, Wave B adds 12+)
+Viewer:     3D graph (Page 1) + Dashboard (Page 2)
 ```
 
 ---
@@ -95,16 +96,18 @@ Tests:      705+
 
 ---
 
-## DEPRECATED
+## DEPRECATED — ĐÃ XÓA (Wave B)
+
+Các files sau đã được xóa khỏi repo:
 
 ```
-GoBP_ARCHITECTURE.md v0.1   → thay bằng ARCHITECTURE.md
-MCP_TOOLS.md                → thay bằng MCP_PROTOCOL.md
-GoBP_AI_USER_GUIDE.md       → merge vào MCP_PROTOCOL.md + COOKBOOK.md
-GOBP_SCHEMA_REDESIGN_v2_1.md → implemented, superseded bởi SCHEMA.md v3
-INPUT_MODEL.md              → merge vào COOKBOOK.md
-IMPORT_MODEL.md             → merge vào COOKBOOK.md
-IMPORT_CHECKLIST.md         → merge vào COOKBOOK.md + AGENT_RULES.md
+  GoBP_ARCHITECTURE.md   → superseded by ARCHITECTURE.md
+  MCP_TOOLS.md           → superseded by MCP_PROTOCOL.md
+  GoBP_AI_USER_GUIDE.md  → merged into MCP_PROTOCOL.md + COOKBOOK.md
+  GOBP_SCHEMA_REDESIGN_v2_1.md → implemented in SCHEMA.md v3
+  INPUT_MODEL.md         → merged into COOKBOOK.md
+  IMPORT_MODEL.md        → merged into COOKBOOK.md
+  IMPORT_CHECKLIST.md    → merged into COOKBOOK.md + AGENT_RULES.md
 ```
 
 ---
