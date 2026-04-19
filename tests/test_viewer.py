@@ -109,6 +109,29 @@ def test_index_html_returns_200(viewer_server) -> None:
         assert "3d-force-graph" in content
 
 
+def test_dashboard_html_returns_200(viewer_server) -> None:
+    """GET /dashboard returns 200 HTML."""
+    import urllib.request
+    port = viewer_server
+    with urllib.request.urlopen(f"http://localhost:{port}/dashboard") as resp:
+        assert resp.status == 200
+        content = resp.read().decode()
+        assert "Dashboard" in content
+
+
+def test_api_dashboard_returns_ok(viewer_server) -> None:
+    """GET /api/dashboard returns JSON with ok and stats."""
+    import urllib.request
+    port = viewer_server
+    with urllib.request.urlopen(f"http://localhost:{port}/api/dashboard") as resp:
+        assert resp.status == 200
+        data = json.loads(resp.read())
+        assert data.get("ok") is True
+        assert "stats" in data
+        assert data["stats"]["total_nodes"] == 17
+        assert "recent_sessions" in data
+
+
 def test_api_projects_single_root_returns_one_entry(viewer_server, gobp_root: Path) -> None:
     """GET /api/projects works in single-project mode (matches multi-server shape)."""
     import urllib.request
