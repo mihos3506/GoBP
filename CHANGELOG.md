@@ -5,6 +5,22 @@ Format: [Wave N — Title] with date, what was added/changed/fixed.
 
 ---
 
+## [Wave E] — Viewer UI Improvements — 2026-04-19
+
+### Changed (viewer)
+
+- Sidebar: count column alignment (tabular-nums, flex layout)
+- Sidebar: font hierarchy by depth level, active group highlight
+- VIEW section: "Show all edges" label (was: "Show metadata edges")
+- Node detail: added EDGES section (direction + name + reason)
+- Node detail: added CODE section (shown when node has code)
+- Node detail: added severity badge for ErrorCase nodes
+- Node detail: removed gobp query string display
+- Node detail: removed Debug: raw fields section
+- Rendering order: breadcrumb → name → description → code → edges
+
+---
+
 ## [Wave D] — MCP Read Actions v3 — 2026-04-19
 
 ### Added
