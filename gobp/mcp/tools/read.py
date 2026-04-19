@@ -288,6 +288,26 @@ def gobp_overview(index: GraphIndex, project_root: Path, args: dict[str, Any]) -
             "List reads use page_info: use next_cursor with same query for next page "
             "(find / related / tests)."
         )
+
+    # Wave D — enrich from PostgreSQL schema v3 when available
+    from gobp.mcp.tools import read_v3 as _read_v3
+
+    conn_ov, is_v3_ov = _read_v3._conn_v3(project_root)
+    if conn_ov is not None and is_v3_ov:
+        try:
+            v3 = _read_v3.overview_v3(conn_ov, project_root, full_interface)
+            base["project"]["schema_version"] = v3["project"].get("schema_version", "v3")
+            if v3["project"].get("name"):
+                base["project"]["name"] = v3["project"]["name"]
+            if v3["project"].get("id") is not None:
+                base["project"]["id"] = v3["project"]["id"]
+            base["stats"]["total_nodes"] = v3["stats"]["total_nodes"]
+            base["stats"]["total_edges"] = v3["stats"]["total_edges"]
+            base["stats"]["nodes_by_group"] = v3["stats"]["nodes_by_group"]
+            base["active_sessions"] = v3["active_sessions"]
+            base["hint_v3"] = v3.get("hint", "")
+        finally:
+            conn_ov.close()
     return base
 
 
@@ -482,7 +502,6 @@ def find(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> dict[st
         sort: Sort field (default: 'id')
         direction: 'asc' or 'desc' (default: 'asc')
     """
-    del project_root
     query_str = str(args.get("query", "") or "")
     if "query" not in args:
         return {"ok": False, "error": "Missing required field: query"}
@@ -499,6 +518,28 @@ def find(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> dict[st
         cursor: str | None = str(cursor_raw).strip()
     else:
         cursor = None
+
+    from gobp.mcp.tools import read_v3 as _read_v3
+
+    conn_f, is_v3_f = _read_v3._conn_v3(project_root)
+    if conn_f is not None and is_v3_f:
+        try:
+            if not query_str.strip():
+                return {"ok": False, "error": "find: requires a keyword"}
+            gf_raw = args.get("group")
+            gf_s = str(gf_raw).strip() if gf_raw is not None else None
+            if gf_s == "":
+                gf_s = None
+            mode_v3 = str(args.get("mode", "summary")).lower()
+            if mode_v3 in ("standard", ""):
+                mode_v3 = "summary"
+            out = _read_v3.find_v3(conn_f, query_str, gf_s, mode_v3, page_size, cursor)
+            out["sessions_excluded"] = True
+            out["type_filter"] = type_filter
+            return out
+        finally:
+            conn_f.close()
+
     sort_field = args.get("sort", "id")
     direction = str(args.get("direction", "asc")).lower()
     include_sessions_param = str(args.get("include_sessions", "false")).lower() == "true"
@@ -783,8 +824,35 @@ def context(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> dict
     Returns:
         Node payload and edges per mode; brief uses relationships with reason.
     """
-    del project_root
+    from gobp.mcp.tools import read_v3 as _read_v3
+
+    task_raw = args.get("task") or args.get("task_description")
+    if task_raw and str(task_raw).strip():
+        conn_t, is_v3_t = _read_v3._conn_v3(project_root)
+        if conn_t is not None and is_v3_t:
+            try:
+                max_n = int(args.get("max_nodes", 15))
+                return _read_v3.context_action(conn_t, str(task_raw).strip(), max_n)
+            finally:
+                conn_t.close()
+        return {
+            "ok": False,
+            "error": "context: task= requires PostgreSQL schema v3",
+        }
+
+    mcp_action = str(args.get("_mcp_action", "") or "")
     node_id = args.get("node_id")
+    if mcp_action == "get" and node_id and str(node_id).strip():
+        mode_g = str(args.get("mode", "brief")).lower()
+        if mode_g not in ("brief", "full"):
+            mode_g = "brief"
+        conn_g, is_v3_g = _read_v3._conn_v3(project_root)
+        if conn_g is not None and is_v3_g:
+            try:
+                return _read_v3.get_v3(conn_g, str(node_id), mode_g)
+            finally:
+                conn_g.close()
+
     if not node_id:
         return {"ok": False, "error": "node_id parameter required"}
 
@@ -1414,7 +1482,6 @@ def get_batch(
     Returns:
         ok, nodes[], found, not_found[], mode
     """
-    del project_root
     raw_ids = args.get("ids", args.get("query", ""))
     if isinstance(raw_ids, str):
         ids = [i.strip() for i in raw_ids.split(",") if i.strip()]
@@ -1426,6 +1493,31 @@ def get_batch(
         mode = "brief"
     max_nodes = min(int(args.get("max", 20)), 50)
     ids = ids[:max_nodes]
+
+    from gobp.mcp.tools import read_v3 as _read_v3
+
+    conn_b, is_v3_b = _read_v3._conn_v3(project_root)
+    if conn_b is not None and is_v3_b:
+        try:
+            since_raw = args.get("since")
+            since_i: int | None
+            if since_raw is None or since_raw == "":
+                since_i = None
+            else:
+                try:
+                    since_i = int(since_raw)
+                except (TypeError, ValueError):
+                    since_i = None
+            gb_mode = "brief" if mode in ("brief", "standard") else mode
+            if gb_mode == "summary":
+                gb_mode = "brief"
+            out = _read_v3.get_batch_v3(conn_b, ids, gb_mode, since_i)
+            if out.get("ok"):
+                out["not_found"] = []
+                out["found"] = out["summary"].get("fetched", len(ids))
+            return out
+        finally:
+            conn_b.close()
 
     nodes: list[dict[str, Any]] = []
     not_found: list[str] = []
@@ -1748,10 +1840,18 @@ def _sibling_entries(index: GraphIndex, node_id: str, limit: int = 10) -> list[d
 
 def explore_action(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> dict[str, Any]:
     """Return best-matching node plus edges and close matches (explore: keyword)."""
-    del project_root
     query = str(args.get("query", "")).strip()
     if not query:
         return {"ok": False, "error": "Query required"}
+
+    from gobp.mcp.tools import read_v3 as _read_v3
+
+    conn_x, is_v3_x = _read_v3._conn_v3(project_root)
+    if conn_x is not None and is_v3_x:
+        try:
+            return _read_v3.explore_v3(conn_x, query)
+        finally:
+            conn_x.close()
 
     results: list[tuple[int, dict[str, Any]]] = []
     direct = index.get_node(query)
@@ -1999,4 +2099,71 @@ def suggest_action(index: GraphIndex, project_root: Path, args: dict[str, Any]) 
         out["group_filter"] = group_filter
     return out
 
+
+def evolve_action(
+    index: GraphIndex,
+    project_root: Path,
+    args: dict[str, Any],
+) -> dict[str, Any]:
+    """Read-only evolve-cycle helper: Reflection checklist or lookup by ``wave_ref``.
+
+    ``gobp(query="evolve: wave='17A05'")`` returns a template + existing LessonSkill summary.
+    ``gobp(query="evolve: wave='17A05' status='complete'")`` returns an existing Reflection
+    for that wave when present.
+    """
+    del project_root  # read-only; kept for signature parity with other actions
+    wave_ref = str(args.get("wave") or args.get("query") or "").strip()
+    status = str(args.get("status") or "").strip().lower()
+
+    if not wave_ref:
+        return {
+            "ok": False,
+            "error": "wave is required (e.g. evolve: wave='17A05')",
+        }
+
+    if status == "complete":
+        matches = [
+            n
+            for n in index.all_nodes()
+            if n.get("type") == "Reflection"
+            and str(n.get("wave_ref", "")).strip() == wave_ref
+        ]
+        if matches:
+            return {"ok": True, "reflection": matches[0]}
+        return {
+            "ok": False,
+            "message": f"No Reflection found for wave '{wave_ref}'",
+        }
+
+    skills = index.nodes_by_type("LessonSkill")
+    skill_summary = [
+        {
+            "id": s.get("id"),
+            "name": s.get("name"),
+            "sub_type": s.get("sub_type", ""),
+            "evolve_count": s.get("evolve_count", 0),
+        }
+        for s in skills[:20]
+    ]
+
+    checklist = {
+        "wave_ref": wave_ref,
+        "instruction": (
+            "Tạo Reflection node với:\n"
+            "  trigger: wave_complete\n"
+            f"  wave_ref: '{wave_ref}'\n"
+            "  findings: list of [KEEP|UPGRADE|CREATE] <skill_name> — <reason>\n"
+            "Sau đó dùng batch: để upgrade/create LessonSkill nodes."
+        ),
+        "existing_skills": skill_summary,
+        "template": {
+            "type": "Reflection",
+            "group": "Meta > Reflection",
+            "trigger": "wave_complete",
+            "wave_ref": wave_ref,
+            "findings": [],
+            "next_focus": "",
+        },
+    }
+    return {"ok": True, "checklist": checklist}
 

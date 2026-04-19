@@ -193,9 +193,12 @@ async def dispatch(
                     args[_gk] = params[_gk]
             result = tools_read.find(index, project_root, args)
 
-        elif action in ("get", "context"):
+        elif action == "get":
             node_id = params.get("query") or params.get("id") or params.get("node_id", "")
-            ctx_args: dict[str, Any] = {"node_id": node_id}
+            ctx_args: dict[str, Any] = {
+                "node_id": node_id,
+                "_mcp_action": "get",
+            }
             if "mode" in params:
                 ctx_args["mode"] = params["mode"]
             if "brief" in params:
@@ -206,12 +209,35 @@ async def dispatch(
                 ctx_args["compact"] = params["compact"]
             result = tools_read.context(index, project_root, ctx_args)
 
+        elif action == "context":
+            task_ctx = params.get("task") or params.get("task_description")
+            ctx_args2: dict[str, Any] = {"_mcp_action": "context"}
+            if task_ctx:
+                ctx_args2["task"] = task_ctx
+                try:
+                    ctx_args2["max_nodes"] = int(params.get("max_nodes", 15))
+                except (TypeError, ValueError):
+                    ctx_args2["max_nodes"] = 15
+            else:
+                node_id = params.get("query") or params.get("id") or params.get("node_id", "")
+                ctx_args2["node_id"] = node_id
+            if "mode" in params:
+                ctx_args2["mode"] = params["mode"]
+            if "brief" in params:
+                ctx_args2["brief"] = params["brief"]
+            if "edge_limit" in params:
+                ctx_args2["edge_limit"] = params["edge_limit"]
+            if "compact" in params:
+                ctx_args2["compact"] = params["compact"]
+            result = tools_read.context(index, project_root, ctx_args2)
+
         elif action == "get_batch":
             raw_ids = params.get("ids") or params.get("query", "")
             args = {
                 "ids": raw_ids,
                 "mode": params.get("mode", "brief"),
                 "max": params.get("max", 20),
+                "since": params.get("since"),
             }
             result = tools_read.get_batch(index, project_root, args)
 
@@ -563,29 +589,38 @@ async def dispatch(
 
         elif action == "session":
             sub = params.get("query", "start")
-            args = {
-                "action": sub,
-                "actor": params.get("actor", "unknown"),
-                "goal": params.get("goal", ""),
-                "outcome": params.get("outcome", ""),
-                "pending": params.get("pending", "").split(",") if params.get("pending") else [],
-                "handoff_notes": params.get("handoff", params.get("handoff_notes", "")),
-                "role": params.get("role", "contributor"),
-            }
-            if "session_id" in params:
-                args["session_id"] = params["session_id"]
-            if _is_dry_run(params.get("dry_run")):
-                existing = index.get_node(args.get("session_id", "")) if args.get("session_id") else None
-                result = {
-                    "ok": True,
-                    "dry_run": True,
-                    "would_action": "updated" if existing else "created",
-                    "action": sub,
-                    "session_id": args.get("session_id", "(auto-generated)"),
-                    "message": "dry_run=true: no changes made",
-                }
+            if sub == "resume":
+                result = tools_write.session_resume(project_root, params)
             else:
-                result = tools_write.session_log(index, project_root, args)
+                args = {
+                    "action": sub,
+                    "actor": params.get("actor", "unknown"),
+                    "goal": params.get("goal", ""),
+                    "outcome": params.get("outcome", ""),
+                    "pending": params.get("pending", "").split(",")
+                    if params.get("pending")
+                    else [],
+                    "handoff_notes": params.get("handoff", params.get("handoff_notes", "")),
+                    "role": params.get("role", "contributor"),
+                }
+                if "session_id" in params:
+                    args["session_id"] = params["session_id"]
+                if _is_dry_run(params.get("dry_run")):
+                    existing = (
+                        index.get_node(args.get("session_id", ""))
+                        if args.get("session_id")
+                        else None
+                    )
+                    result = {
+                        "ok": True,
+                        "dry_run": True,
+                        "would_action": "updated" if existing else "created",
+                        "action": sub,
+                        "session_id": args.get("session_id", "(auto-generated)"),
+                        "message": "dry_run=true: no changes made",
+                    }
+                else:
+                    result = tools_write.session_log(index, project_root, args)
 
         elif action == "edge":
             from_id = params.get("from", "")

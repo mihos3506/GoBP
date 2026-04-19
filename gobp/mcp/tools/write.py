@@ -781,6 +781,77 @@ def decision_lock(index: GraphIndex, project_root: Path, args: dict[str, Any]) -
     }
 
 
+def session_resume(project_root: Path, params: dict[str, Any]) -> dict[str, Any]:
+    """Load previous session handoff and nodes changed since (schema v3 PostgreSQL)."""
+    from gobp.core import db as db_mod
+
+    sid = str(params.get("id") or params.get("session_id") or "").strip()
+    if not sid:
+        return {"ok": False, "error": "id required for session:resume"}
+
+    conn = db_mod._get_conn(project_root)
+    if conn is None:
+        return {
+            "ok": False,
+            "error": "PostgreSQL not available",
+            "hint": "Set GOBP_DB_URL",
+        }
+    try:
+        if db_mod.get_schema_version(conn) != "v3":
+            return {
+                "ok": False,
+                "error": "session:resume requires PostgreSQL schema v3",
+                "hint": "Use overview: to start a new session",
+            }
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT id, name, desc_full, updated_at
+                FROM nodes
+                WHERE id = %s AND group_path LIKE 'Meta > Session%%'
+                """,
+                (sid,),
+            )
+            row = cur.fetchone()
+        if not row:
+            return {
+                "ok": False,
+                "error": f"Session not found: {sid}",
+                "hint": "Use overview: to start a new session",
+            }
+        _prev_id, _prev_name, prev_desc, prev_updated_at = row
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT id, name, group_path, desc_l1
+                FROM nodes
+                WHERE updated_at > %s
+                  AND group_path NOT LIKE 'Meta > Session%%'
+                ORDER BY updated_at DESC
+                LIMIT 20
+                """,
+                (prev_updated_at,),
+            )
+            changed_rows = cur.fetchall()
+        changed_nodes = [
+            {"id": r[0], "name": r[1], "group": r[2], "desc": r[3]}
+            for r in changed_rows
+        ]
+        return {
+            "ok": True,
+            "resumed_from": sid,
+            "prev_outcome": prev_desc or "(no outcome recorded)",
+            "changes_since": changed_nodes,
+            "changes_count": len(changed_nodes),
+            "hint": (
+                "Start new session with session:start. "
+                "Changes since your last session are listed above."
+            ),
+        }
+    finally:
+        conn.close()
+
+
 def session_log(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> dict[str, Any]:
     """Start, update, or end a session.
 
