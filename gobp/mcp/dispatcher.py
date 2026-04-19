@@ -793,10 +793,13 @@ async def dispatch(
         # -- Maintenance actions -----------------------------------------------
         elif action == "validate":
             scope = params.get("query", params.get("scope", ""))
+            scope_primary = str(params.get("scope") or params.get("query") or scope or "").strip()
             if scope in ("schema-docs", "schema-tests", "schema"):
                 result = tools_read.schema_governance(
                     index, project_root, {"scope": scope, **params}
                 )
+            elif scope_primary == "metadata":
+                result = tools_read.metadata_lint(index, project_root, params)
             else:
                 from gobp.mcp.tools import read_v3 as _read_v3
 
