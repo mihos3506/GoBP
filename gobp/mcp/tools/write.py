@@ -59,6 +59,16 @@ TYPE_DEFAULTS: dict[str, dict[str, Any]] = {
             n.get("usage_guide") or "Usage guide — update after import"
         ),
     },
+    "LessonSkill": {
+        "evolve_count": 0,
+        "applies_to": ["all"],
+        "versions": [],
+    },
+    "Reflection": {
+        "skills_upgraded": [],
+        "skills_created": [],
+        "actor": "cto_chat",
+    },
     "ErrorDomain": {
         "domain": lambda n: str(n.get("domain") or n.get("name", "") or "").strip(),
         "fix_guide": lambda n: (
@@ -237,6 +247,50 @@ def _get_revision(node_id: str, project_root: Path) -> int:
         return 1
 
 
+def _handle_lesson_skill_supersedes(
+    project_root: Path,
+    nodes_schema: dict[str, Any],
+    edges_schema: dict[str, Any],
+    fresh_index: GraphIndex,
+    node: dict[str, Any],
+    node_id: str,
+    now: str,
+) -> list[str]:
+    """Deprecate superseded skill, append new id to ``versions``, ensure ``supersedes`` edge.
+
+    :func:`gobp.core.mutator.create_edge` skips duplicate (from, to, type) — idempotent.
+    """
+    warnings: list[str] = []
+    supersedes_id = str(node.get("supersedes") or "").strip()
+    if not supersedes_id:
+        return warnings
+    old = fresh_index.get_node(supersedes_id)
+    if not old:
+        warnings.append(f"supersedes target not found: {supersedes_id}")
+        return warnings
+    old_copy = dict(old)
+    old_copy["lifecycle"] = "deprecated"
+    vers = list(old_copy.get("versions") or [])
+    if node_id not in vers:
+        vers.append(node_id)
+    old_copy["versions"] = vers
+    old_copy["updated"] = now
+    try:
+        update_node(project_root, old_copy, nodes_schema, actor="lesson_skill_supersedes")
+    except Exception as e:
+        warnings.append(f"Failed to update superseded LessonSkill: {e}")
+    try:
+        create_edge(
+            project_root,
+            {"from": node_id, "to": supersedes_id, "type": "supersedes"},
+            edges_schema,
+            actor="lesson_skill_supersedes",
+        )
+    except Exception as e:
+        warnings.append(f"Failed to create supersedes edge: {e}")
+    return warnings
+
+
 def _generate_node_id(node_type: str, index: GraphIndex) -> str:
     """Generate a sequential node ID for auto-numbered types.
 
@@ -352,6 +406,8 @@ def node_upsert(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> 
     if not result.ok:
         return {"ok": False, "errors": result.errors}
 
+    val_warnings: list[str] = list(getattr(result, "warnings", None) or [])
+
     existing = index.get_node(node_id)
     created = existing is None
 
@@ -365,6 +421,7 @@ def node_upsert(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> 
         return {"ok": False, "error": f"Write failed: {e}"}
 
     warnings: list[Any] = []
+    warnings.extend(val_warnings)
 
     try:
         fresh_index = GraphIndex.load_from_disk(project_root)
@@ -381,23 +438,20 @@ def node_upsert(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> 
                     "similar_ids": [n["id"] for n in similar[:3]],
                 }
             )
+        if node_type == "LessonSkill":
+            warnings.extend(
+                _handle_lesson_skill_supersedes(
+                    project_root,
+                    nodes_schema,
+                    edges_schema,
+                    fresh_index,
+                    node,
+                    node_id,
+                    now,
+                )
+            )
     except Exception:
         pass
-
-    supersedes_id = fields.get("supersedes")
-    if supersedes_id:
-        if index.get_node(supersedes_id):
-            try:
-                create_edge(
-                    project_root,
-                    {"from": node_id, "to": supersedes_id, "type": "supersedes"},
-                    edges_schema,
-                    actor="node_upsert",
-                )
-            except Exception as e:
-                warnings.append(f"Failed to create supersedes edge: {e}")
-        else:
-            warnings.append(f"supersedes target not found: {supersedes_id}")
 
     try:
         create_edge(
@@ -569,6 +623,57 @@ def retype_node_action(
         "new_type": new_type,
         "edges_migrated": edges_migrated,
     }
+
+
+def handle_edit(
+    index: GraphIndex,
+    project_root: Path,
+    args: dict[str, Any],
+) -> dict[str, Any]:
+    """Handle ``edit:`` — mutator v3 node edits (file + optional PostgreSQL v3)."""
+    from gobp.core import db as db_mod
+    from gobp.core.mutator_v3 import edit_node
+
+    _ = index
+    gobp_dir = project_root / ".gobp"
+    node_id = str(args.get("id", "") or args.get("node_id", "")).strip()
+    session_id = str(args.get("session_id", "")).strip()
+    exp_raw = args.get("expected_updated_at")
+
+    expected: int | None
+    if exp_raw is None or exp_raw == "":
+        expected = None
+    else:
+        try:
+            expected = int(exp_raw)
+        except (TypeError, ValueError):
+            expected = None
+
+    if not node_id:
+        return {"ok": False, "errors": ["id required for edit:"]}
+    if not session_id:
+        return {"ok": False, "errors": ["session_id required for edit:"]}
+
+    changes = {
+        k: v
+        for k, v in args.items()
+        if k not in ("id", "node_id", "session_id", "expected_updated_at", "_actor")
+    }
+    changes["_actor"] = args.get("_actor", "unknown")
+
+    conn = db_mod._get_conn(project_root)
+    try:
+        return edit_node(
+            node_id=node_id,
+            changes=changes,
+            gobp_dir=gobp_dir,
+            conn=conn,
+            session_id=session_id,
+            expected_updated_at=expected,
+        )
+    finally:
+        if conn is not None:
+            conn.close()
 
 
 def decision_lock(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> dict[str, Any]:

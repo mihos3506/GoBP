@@ -21,6 +21,7 @@ Actions:
     recent      -> session_recent()
     decisions   -> decisions_for()
     signature   -> signature()
+    evolve      -> evolve_action()  # read-only: checklist or Reflection lookup by wave_ref
 
 Examples:
     "overview:"
@@ -296,6 +297,9 @@ async def dispatch(
                 index, project_root, {"query": suggest_ctx, **params}
             )
 
+        elif action == "evolve":
+            result = tools_read.evolve_action(index, project_root, params)
+
         elif action == "template":
             node_type_arg = _normalize_type(
                 str(params.get("query") or params.get("node_type") or node_type or "")
@@ -397,6 +401,9 @@ async def dispatch(
                 result = tools_write.node_upsert(index, project_root, fallback_args)
                 if isinstance(result, dict) and result.get("ok"):
                     result["node_id"] = node_id
+
+        elif action == "edit":
+            result = tools_write.handle_edit(index, project_root, params)
 
         elif action == "update":
             node_id = params.pop("id", params.pop("node_id", ""))
