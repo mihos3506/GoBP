@@ -44,6 +44,131 @@ def _get_conn(gobp_root: Path):
         return None
 
 
+def create_schema_v3(conn: Any) -> None:
+    """
+    Create GoBP schema v3 tables.
+
+    Drop existing tables if present — only for fresh setup.
+    Migration from v2 to v3 is Wave F.
+    """
+    with conn.cursor() as cur:
+        cur.execute("DROP TABLE IF EXISTS node_history CASCADE")
+        cur.execute("DROP TABLE IF EXISTS edges CASCADE")
+        cur.execute("DROP TABLE IF EXISTS nodes CASCADE")
+
+        cur.execute(
+            """
+            CREATE TABLE nodes (
+                id          TEXT PRIMARY KEY,
+                name        TEXT NOT NULL,
+                group_path  TEXT NOT NULL,
+                desc_l1     TEXT DEFAULT '',
+                desc_l2     TEXT DEFAULT '',
+                desc_full   TEXT DEFAULT '',
+                code        TEXT DEFAULT '',
+                severity    TEXT DEFAULT '',
+                search_vec  tsvector GENERATED ALWAYS AS (
+                    setweight(to_tsvector('simple', coalesce(name, '')), 'A') ||
+                    setweight(to_tsvector('simple', coalesce(group_path, '')), 'B') ||
+                    setweight(to_tsvector('simple', coalesce(desc_l2, '')), 'C')
+                ) STORED,
+                updated_at  BIGINT NOT NULL DEFAULT
+                    extract(epoch from now())::BIGINT
+            )
+            """
+        )
+
+        cur.execute(
+            """
+            CREATE TABLE edges (
+                from_id    TEXT NOT NULL REFERENCES nodes(id)
+                           ON DELETE CASCADE,
+                to_id      TEXT NOT NULL REFERENCES nodes(id)
+                           ON DELETE CASCADE,
+                reason     TEXT DEFAULT '',
+                reason_vec tsvector GENERATED ALWAYS AS (
+                    to_tsvector('simple', coalesce(reason, ''))
+                ) STORED,
+                code       TEXT DEFAULT '',
+                created_at BIGINT NOT NULL DEFAULT
+                    extract(epoch from now())::BIGINT,
+                PRIMARY KEY (from_id, to_id)
+            )
+            """
+        )
+
+        cur.execute(
+            """
+            CREATE TABLE node_history (
+                id          SERIAL PRIMARY KEY,
+                node_id     TEXT NOT NULL REFERENCES nodes(id)
+                            ON DELETE CASCADE,
+                description TEXT NOT NULL,
+                code        TEXT DEFAULT '',
+                created_at  BIGINT NOT NULL DEFAULT
+                    extract(epoch from now())::BIGINT
+            )
+            """
+        )
+
+        cur.execute(
+            """
+            CREATE INDEX idx_nodes_search
+            ON nodes USING GIN(search_vec)
+            """
+        )
+        cur.execute(
+            """
+            CREATE INDEX idx_nodes_group
+            ON nodes(group_path text_pattern_ops)
+            """
+        )
+        cur.execute(
+            """
+            CREATE INDEX idx_nodes_updated
+            ON nodes(updated_at)
+            """
+        )
+        cur.execute(
+            """
+            CREATE INDEX idx_edges_from
+            ON edges(from_id)
+            """
+        )
+        cur.execute(
+            """
+            CREATE INDEX idx_edges_to
+            ON edges(to_id)
+            """
+        )
+        cur.execute(
+            """
+            CREATE INDEX idx_edges_reason
+            ON edges USING GIN(reason_vec)
+            """
+        )
+        cur.execute(
+            """
+            CREATE INDEX idx_history_node
+            ON node_history(node_id)
+            """
+        )
+
+        conn.commit()
+
+
+def get_schema_version(conn: Any) -> str:
+    """Return 'v3' if nodes table has desc_l1 column, else 'v2'."""
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT column_name FROM information_schema.columns
+            WHERE table_name = 'nodes' AND column_name = 'desc_l1'
+            """
+        )
+        return "v3" if cur.fetchone() else "v2"
+
+
 def init_schema(gobp_root: Path) -> None:
     """Create PostgreSQL schema if not exists. Idempotent."""
     conn = _get_conn(gobp_root)
