@@ -152,15 +152,8 @@ NO type field — system infers edge type from group breadcrumb
 
 ---
 
-### Schema v2 (legacy — active until Wave F migration)
-
-Still used by existing code. Key rules:
-- `description.info` required (non-empty)
-- `group` required on every node
-- `lifecycle`: draft | specified | implemented | tested | deprecated
-- ErrorCase code format: `{DOMAIN}_{SEVERITY}_{SEQ}` e.g. `AUTH_E_001`
-- Invariant: `rule` field must be boolean expression, not policy prose
-- Validator: `ValidatorV2` / `auto_fix()`
+**File-backed YAML (v2 taxonomy):** `core_nodes.yaml` may still declare `schema_name: gobp_core_v2`.  
+`ValidatorV2` + `auto_fix()` live in `gobp/core/validator.py`; file writes use `gobp/core/fs_mutator.py`.
 
 ---
 
@@ -201,7 +194,7 @@ $env:GOBP_DB_URL = "postgresql://postgres:Hieu%408283%40@localhost/gobp"
 ## PROJECT STRUCTURE
 
 ```
-gobp/core/     graph, search, indexes, mutator, validator_v3, pyramid, file_format_v3
+gobp/core/     graph, search, indexes, fs_mutator, validator, validator_v3, pyramid, file_format_v3
 gobp/mcp/      server, dispatcher, parser, batch_parser, tools/
 gobp/schema/   core_nodes.yaml, core_edges.yaml
 gobp/viewer/   server.py, index.html, dashboard.html
@@ -295,7 +288,6 @@ Issues / notes: <warnings>
 
 ---
 
-*v10 — Quality Rules (QR1-QR7) replace Lessons Learned*
-*Schema v3 modules documented. Legacy v2 kept until Wave F.*
+*v11 — Wave G cleanup (schema v3 primary; v2 YAML via ValidatorV2 + fs_mutator)*
 
 ◈
