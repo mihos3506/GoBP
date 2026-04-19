@@ -5,6 +5,29 @@ Format: [Wave N — Title] with date, what was added/changed/fixed.
 
 ---
 
+## [Wave G] — Code Refactor + Clean — 2026-04-19
+
+### Removed
+
+- `gobp/core/validator_v2.py` — merged into `gobp/core/validator.py` (`ValidatorV2`, `make_validator_v2`)
+- `gobp/core/mutator.py` — replaced by `gobp/core/fs_mutator.py` (file-backed YAML nodes/edges)
+- `update:` / `retype:` MCP query actions — use `edit:` instead
+- `lifecycle` / `read_order` explicit defaults in `write.py` node_upsert path (validation still applies via `ValidatorV2.auto_fix` when schema is v2)
+- Live `D:/GoBP` dependency tests from `tests/test_wave16a02.py`
+- Orphaned CSS `.gobp-query` in viewer
+
+### Fixed
+
+- Viewer: `VISIBLE_LIFECYCLES` / `VISIBLE_READ_ORDERS` ReferenceError on CORE ONLY / SHOW ALL
+- `validate: metadata` now routes to `metadata_lint` without requiring PostgreSQL v3
+
+### Changed
+
+- `.cursorrules` — v2 legacy section trimmed; module list updated
+- `docs/README.md` — current state (Waves A–G, 764+ tests) + Wave G deprecated notes
+
+---
+
 ## [Wave F] — Multi-Agent Coordination — 2026-04-19
 
 ### Added
