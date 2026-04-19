@@ -10,7 +10,7 @@ Actions:
     find        -> find()
     get         -> context() or signature()
     create      -> node_upsert()
-    update      -> node_upsert() with existing id
+    edit        -> handle_edit() (v3 PG + file backup; replaces legacy update:/retype:)
     lock        -> decision_lock()
     session     -> session_log()
     import      -> import_proposal()
@@ -445,32 +445,26 @@ async def dispatch(
                     result["node_id"] = node_id
 
         elif action == "edit":
-            result = tools_write.handle_edit(index, project_root, params)
-
-        elif action == "update":
-            node_id = params.pop("id", params.pop("node_id", ""))
-            raw_update_type = node_type or params.pop("type", "")
-            update_type = _normalize_type(raw_update_type) if raw_update_type else ""
-            args = {
-                "id": node_id,
-                "type": update_type,
-                "name": params.get("name", ""),
-                "fields": {k: v for k, v in params.items() if k not in ("name", "type")},
-                "session_id": params.get("session_id", ""),
-            }
             if _is_dry_run(params.get("dry_run")):
-                existing = index.get_node(node_id) if node_id else None
                 result = {
                     "ok": True,
                     "dry_run": True,
-                    "would_action": "updated" if existing else "created",
-                    "node_id": node_id or "(auto-generated)",
-                    "name": args.get("name", ""),
-                    "type": args.get("type", ""),
                     "message": "dry_run=true: no changes made",
                 }
             else:
-                result = tools_write.node_upsert(index, project_root, args)
+                result = tools_write.handle_edit(index, project_root, params)
+
+        elif action in ("update", "retype"):
+            result = {
+                "ok": False,
+                "error": (
+                    f"Action '{action}' was removed in Wave G; use edit: for node changes."
+                ),
+                "hint": (
+                    "Example: edit: id='node:x' type=Engine session_id='...' "
+                    "(or batch line edit: id=... field=value ...)"
+                ),
+            }
 
         elif action == "upsert":
             node_type = _normalize_type(node_type or params.pop("type", "Node"))
@@ -530,9 +524,6 @@ async def dispatch(
 
         elif action == "delete":
             result = tools_write.delete_node_action(index, project_root, params)
-
-        elif action == "retype":
-            result = tools_write.retype_node_action(index, project_root, params)
 
         elif action == "lock":
             locked_by_raw = params.get("locked_by", "CEO,Claude-CLI")
@@ -652,7 +643,7 @@ async def dispatch(
                 }
             else:
                 from gobp.core.loader import load_schema
-                from gobp.core.mutator import create_edge
+                from gobp.core.fs_mutator import create_edge
                 from pathlib import Path as _Path
 
                 schema_dir = project_root / "gobp" / "schema"
@@ -801,12 +792,12 @@ async def dispatch(
 
         # -- Maintenance actions -----------------------------------------------
         elif action == "validate":
-            scope = params.get("query", params.get("scope", "all"))
+            scope = params.get("query", params.get("scope", ""))
             if scope in ("schema-docs", "schema-tests", "schema"):
                 result = tools_read.schema_governance(
-                    index, project_root, {"scope": scope}
+                    index, project_root, {"scope": scope, **params}
                 )
-            elif scope == "metadata":
+            else:
                 from gobp.mcp.tools import read_v3 as _read_v3
 
                 conn_v, is_v3 = _read_v3._conn_v3(project_root)
@@ -816,11 +807,9 @@ async def dispatch(
                     finally:
                         conn_v.close()
                 else:
-                    result = tools_read.metadata_lint(index, project_root, params)
-            else:
-                result = tools_maintain.validate(
-                    index, project_root, {"scope": scope, "severity_filter": "all"}
-                )
+                    result = tools_maintain.validate(
+                        index, project_root, {"scope": scope or "all", **params}
+                    )
 
         elif action == "extract":
             result = await lessons_extract(index, project_root, {})
@@ -828,7 +817,7 @@ async def dispatch(
         elif action == "dedupe":
             scope = params.get("action_filter") or params.get("scope", "edges")
             if scope in ("edges", "all"):
-                from gobp.core.mutator import deduplicate_edges
+                from gobp.core.fs_mutator import deduplicate_edges
 
                 result = deduplicate_edges(project_root)
             else:

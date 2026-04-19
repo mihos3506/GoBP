@@ -159,3 +159,23 @@ def test_ping_db_failure() -> None:
     out = read_v3.ping_action(conn, Path("/tmp"))
     assert out["ok"] is False
     assert "down" in out["db"]
+
+
+def test_validate_dispatcher_routes_to_v3(tmp_path: Path) -> None:
+    """Plain validate: routes to validate_v3 (score key) when v3 active."""
+    import asyncio
+
+    from gobp.core.graph import GraphIndex
+    from gobp.mcp.dispatcher import dispatch
+
+    mock_conn = MagicMock()
+    mock_cur = MagicMock()
+    mock_conn.cursor.return_value.__enter__.return_value = mock_cur
+    mock_cur.fetchall.side_effect = [[], [], [], [], []]
+    mock_cur.fetchone.return_value = (0,)
+
+    idx = GraphIndex()
+    with patch("gobp.mcp.tools.read_v3._conn_v3", return_value=(mock_conn, True)):
+        result = asyncio.run(dispatch("validate:", idx, tmp_path))
+
+    assert "score" in result, f"Expected 'score' in result, got: {result}"
