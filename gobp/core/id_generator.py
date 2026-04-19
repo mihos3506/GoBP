@@ -2,14 +2,15 @@
 
 Format: ``{group_slug}.{name_slug}.{8hex}`` (group-embedded, human-readable prefix).
 
-See: ``docs/GOBP_SCHEMA_REDESIGN_v2.1.md``, ``waves/wave_17a01_brief.md`` Task 3.
+See: ``docs/ARCHITECTURE.md`` Section 4, ``waves/wave_a_brief.md`` Task 3.
 """
 
 from __future__ import annotations
 
+import datetime
 import hashlib
 import re
-import time
+import uuid
 from typing import Any
 
 _ABBREV: dict[str, str] = {
@@ -49,12 +50,54 @@ def _group_to_slug(group: str) -> str:
 
 
 def generate_id(name: str, group: str) -> str:
-    """Generate a new unique node id from display name and group breadcrumb."""
-    group_slug = _group_to_slug(group)
-    name_slug = _slugify(name)
-    content = f"{group}:{name}:{time.time_ns()}"
-    hex_suffix = hashlib.md5(content.encode(), usedforsecurity=False).hexdigest()[:8]
+    """
+    Generate deterministic node ID v2.
+
+    Format: {group_slug}.{name_slug}.{8hex}
+
+    Args:
+        name:  Node name, e.g. "PaymentService"
+        group: Group breadcrumb, e.g. "Dev > Infrastructure > Engine"
+
+    Returns:
+        ID string, e.g. "dev.infrastructure.engine.paymentservice.a1b2c3d4"
+
+    Examples:
+        >>> generate_id("PaymentService", "Dev > Infrastructure > Engine")
+        "dev.infrastructure.engine.paymentservice.a1b2c3d4"
+    """
+    group_slug = group.lower()
+    group_slug = re.sub(r"\s*>\s*", ".", group_slug)
+    group_slug = re.sub(r"[^a-z0-9.]", "", group_slug)
+    group_slug = group_slug.strip(".")
+
+    name_slug = name.lower()
+    name_slug = re.sub(r"\s+", "_", name_slug)
+    name_slug = re.sub(r"[^a-z0-9_]", "", name_slug)
+    name_slug = name_slug.strip("_")
+
+    hash_input = f"{name}{group}".encode("utf-8")
+    hex_suffix = hashlib.md5(hash_input, usedforsecurity=False).hexdigest()[:8]
+
     return f"{group_slug}.{name_slug}.{hex_suffix}"
+
+
+def generate_session_id(date_str: str | None = None) -> str:
+    """
+    Generate session ID.
+
+    Format: meta.session.YYYY-MM-DD.{8hex}
+
+    Args:
+        date_str: ISO date string, defaults to today
+
+    Returns:
+        Session ID, e.g. "meta.session.2026-04-19.a1b2c3d4"
+    """
+    if date_str is None:
+        date_str = datetime.date.today().isoformat()
+    hex_suffix = uuid.uuid4().hex[:8]
+    return f"meta.session.{date_str}.{hex_suffix}"
 
 
 def infer_group_from_type(node_type: str, schema: dict[str, Any]) -> str:

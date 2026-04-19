@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import time
 from pathlib import Path
 
 import pytest
@@ -43,14 +42,13 @@ def test_generate_id_entity() -> None:
 
 def test_generate_id_security() -> None:
     id_ = generate_id("OTP Flow", "Dev > Infrastructure > Security > AuthFlow")
-    assert "infra" in id_ or "sec" in id_
+    assert "infrastructure" in id_ or "security" in id_ or "authflow" in id_
 
 
 def test_generate_id_uniqueness() -> None:
     id1 = generate_id("Test", "Dev > Domain > Entity")
-    time.sleep(0.001)
     id2 = generate_id("Test", "Dev > Domain > Entity")
-    assert id1 != id2
+    assert id1 == id2
 
 
 def test_group_to_slug_abbreviation() -> None:
@@ -61,12 +59,12 @@ def test_group_to_slug_abbreviation() -> None:
 
 def test_generate_id_doc() -> None:
     id_ = generate_id("DOC-01 Soul", "Document > Spec")
-    assert id_.startswith("doc.spec.")
+    assert id_.startswith("document.spec.")
 
 
 def test_generate_id_constraint() -> None:
     id_ = generate_id("Balance Non-Negative", "Constraint > Invariant")
-    assert id_.startswith("const.invariant.")
+    assert id_.startswith("constraint.invariant.")
 
 
 # --- File format (7) ----------------------------------------------------------
