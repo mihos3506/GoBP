@@ -74,11 +74,13 @@ gobp(query="overview:") → project state
 ## CURRENT STATE (2026-04-19)
 
 ```
-Schema:     v3 — 2 templates, ~75 node types
-Protocol:   v2 — single tool gobp(), 30+ actions
-PostgreSQL: primary storage
-Tests:      705+ (Wave A adds 35+, Wave B adds 12+)
-Viewer:     3D graph (Page 1) + Dashboard (Page 2)
+Schema:       v3 — 2 templates, ~75 node types
+Waves done:   A, B, C, D, E, F, G
+Protocol:     single tool gobp(); writes use edit: (v3 PG + file backup)
+PostgreSQL:   primary storage (clean, schema v3)
+Tests:        764+ passing
+Viewer:       3D graph + Dashboard
+Multi-agent:  import lock + validate v3 + session watchdog + ping
 ```
 
 ---
@@ -96,9 +98,9 @@ Viewer:     3D graph (Page 1) + Dashboard (Page 2)
 
 ---
 
-## DEPRECATED — ĐÃ XÓA (Wave B)
+## DEPRECATED — ĐÃ XÓA (Wave B + Wave G)
 
-Các files sau đã được xóa khỏi repo:
+Các files sau đã được xóa hoặc thay thế:
 
 ```
   GoBP_ARCHITECTURE.md   → superseded by ARCHITECTURE.md
@@ -109,6 +111,11 @@ Các files sau đã được xóa khỏi repo:
   IMPORT_MODEL.md        → merged into COOKBOOK.md
   IMPORT_CHECKLIST.md    → merged into COOKBOOK.md + AGENT_RULES.md
 ```
+
+**Wave G (2026-04-19):** `gobp/core/validator_v2.py` → merged into `validator.py`;  
+`gobp/core/mutator.py` → replaced by `fs_mutator.py`; MCP `update:` / `retype:` removed (use `edit:`);  
+lifecycle/read_order no longer applied in write defaults (ValidatorV2 `auto_fix` only);  
+live-path tests removed from `test_wave16a02.py`; viewer undefined `VISIBLE_*` fixed; orphaned `.gobp-query` CSS removed.
 
 ---
 
