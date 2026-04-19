@@ -169,6 +169,116 @@ def get_schema_version(conn: Any) -> str:
         return "v3" if cur.fetchone() else "v2"
 
 
+def _node_desc_full_v3(node: dict[str, Any]) -> str:
+    """Full description text for schema v3 ``desc_full`` column."""
+    if node.get("desc_full") is not None:
+        return str(node.get("desc_full", ""))
+    desc = node.get("description", "")
+    if isinstance(desc, dict):
+        return str(desc.get("info", "") or "")
+    return str(desc or "")
+
+
+def upsert_node_v3(conn: Any, node: dict[str, Any]) -> None:
+    """Upsert node into PostgreSQL schema v3."""
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            INSERT INTO nodes
+                (id, name, group_path, desc_l1, desc_l2, desc_full,
+                 code, severity, updated_at)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s,
+                    extract(epoch from now())::BIGINT)
+            ON CONFLICT (id) DO UPDATE SET
+                name       = EXCLUDED.name,
+                group_path = EXCLUDED.group_path,
+                desc_l1    = EXCLUDED.desc_l1,
+                desc_l2    = EXCLUDED.desc_l2,
+                desc_full  = EXCLUDED.desc_full,
+                code       = EXCLUDED.code,
+                severity   = EXCLUDED.severity,
+                updated_at = extract(epoch from now())::BIGINT
+            """,
+            (
+                node["id"],
+                node["name"],
+                str(node.get("group") or node.get("group_path", "") or ""),
+                str(node.get("desc_l1", "") or ""),
+                str(node.get("desc_l2", "") or ""),
+                _node_desc_full_v3(node),
+                str(node.get("code", "") or ""),
+                str(node.get("severity", "") or ""),
+            ),
+        )
+    conn.commit()
+
+
+def delete_node_v3(conn: Any, node_id: str) -> None:
+    """Delete node (edges CASCADE)."""
+    with conn.cursor() as cur:
+        cur.execute("DELETE FROM nodes WHERE id = %s", (node_id,))
+    conn.commit()
+
+
+def upsert_edge_v3(
+    conn: Any,
+    from_id: str,
+    to_id: str,
+    reason: str = "",
+    code: str = "",
+) -> None:
+    """Upsert edge — schema v3 has no edge type column."""
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            INSERT INTO edges (from_id, to_id, reason, code, created_at)
+            VALUES (%s, %s, %s, %s, extract(epoch from now())::BIGINT)
+            ON CONFLICT (from_id, to_id) DO UPDATE SET
+                reason = EXCLUDED.reason,
+                code   = EXCLUDED.code
+            """,
+            (from_id, to_id, reason, code),
+        )
+    conn.commit()
+
+
+def delete_edge_v3(conn: Any, from_id: str, to_id: str) -> None:
+    """Delete one edge row."""
+    with conn.cursor() as cur:
+        cur.execute(
+            "DELETE FROM edges WHERE from_id=%s AND to_id=%s",
+            (from_id, to_id),
+        )
+    conn.commit()
+
+
+def append_history_v3(
+    conn: Any,
+    node_id: str,
+    description: str,
+    code: str = "",
+) -> None:
+    """Append history entry (append-only)."""
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            INSERT INTO node_history
+                (node_id, description, code, created_at)
+            VALUES (%s, %s, %s, extract(epoch from now())::BIGINT)
+            """,
+            (node_id, description, code),
+        )
+    conn.commit()
+
+
+def get_node_updated_at(conn: Any, node_id: str) -> int | None:
+    """Return ``updated_at`` epoch seconds for optimistic locking."""
+    with conn.cursor() as cur:
+        cur.execute("SELECT updated_at FROM nodes WHERE id = %s", (node_id,))
+        row = cur.fetchone()
+        return int(row[0]) if row else None
+
+
 def init_schema(gobp_root: Path) -> None:
     """Create PostgreSQL schema if not exists. Idempotent."""
     conn = _get_conn(gobp_root)
