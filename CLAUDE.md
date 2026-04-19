@@ -81,10 +81,31 @@ When failure occurs:
 - [ ] Functions reasonable size (<50 lines typically)
 
 ### Schema (if applicable)
-- [ ] YAML valid (parseable)
+- [ ] YAML valid (parseable) — verify via `python -c "import yaml; yaml.safe_load(open('...').read())"`, not just visual read
 - [ ] Required fields present
 - [ ] No unknown node/edge types (must match SCHEMA.md)
 - [ ] Field types match spec
+
+### Schema v2 (when schema file changes are in scope)
+- [ ] `schema_name` header field present and matches expected value (e.g., `gobp_core_v2`)
+- [ ] Node type count in file matches brief specification (count `node_types:` keys)
+- [ ] When brief mandates backup: backup file is non-zero bytes AND spot-check one node type entry
+- [ ] Promoted `core_nodes.yaml` contains `schema_name: gobp_core_v2` (not leftover v1 value)
+- [ ] `lifecycle` enum values restricted to: `draft | specified | implemented | tested | deprecated`
+- [ ] `read_order` enum values restricted to: `foundational | important | reference | background`
+- [ ] `group` paths use ` > ` separator (space-chevron-space), not `/` or `>`
+
+### Group index tasks (when GraphIndex group methods added)
+- [ ] Run module tests in isolation first: `pytest tests/test_wave<N>.py -v` (surface exact test names)
+- [ ] Verify `find_by_group(exact=True)` excludes nodes indexed only at ancestor prefixes (run quick Python snippet, not just code-read)
+- [ ] Verify `find_siblings()` excludes self from result
+- [ ] Verify `get_group_tree()` counts only root segments (no `>` in key)
+
+### ErrorCase (when ErrorCase nodes are created or imported)
+- [ ] `code` field follows `{DOMAIN}_{SEVERITY}_{SEQ}` format (e.g., `GPS_E_001`)
+- [ ] Severity letter is one of: `F` (Fatal) | `E` (Error) | `W` (Warning) | `I` (Info)
+- [ ] `context` field includes `features` and/or `flows` (not empty)
+- [ ] `trigger` and `fix` fields are non-empty strings
 
 ### Tests
 - [ ] Test file exists for new module
@@ -99,6 +120,7 @@ When failure occurs:
 - [ ] Commit message follows format
 - [ ] Only intended files in commit
 - [ ] No __pycache__, venv, IDE files
+- [ ] Each task has exactly one commit — count commits in `git log` matching wave prefix vs number of tasks; note multi-task commits as deviations (non-blocking if code passes, but log it)
 
 ### Brief compliance
 - [ ] All acceptance criteria from Brief met
@@ -251,6 +273,7 @@ session_log(index, root, {
 - Set `GOBP_DB_URL` env var before loading GraphIndex (bash prefix, not `$env:`)
 - If GoBP session capture fails → report to CEO before approving push
 - Session capture is **part of the audit**, not an afterthought
+- **`session_log 'note' action`**: After `session:start` writes a node to disk, the same in-memory `index` object does NOT see it. Subsequent `{'action': 'note', ...}` returns `ok=False`. Fix: use a fresh `GraphIndex.load_from_disk()` for `session:end`, or skip note step entirely. Start → End is sufficient for dec:d004 compliance.
 
 ---
 
@@ -340,10 +363,10 @@ When CEO runs `claude` in D:\GoBP\:
 
 ---
 
-*CLAUDE.md v3 for GoBP project*
+*CLAUDE.md v4 for GoBP project*
 *Role: Sequential auditor with fail-stop + GoBP MCP capture*
 *Owner: Claude CLI (dec:d003) — CTO sets requirements, CLI writes*
-*Last updated: 2026-04-18*
+*Last updated: 2026-04-19*
 
 ---
 
@@ -363,5 +386,16 @@ When CEO runs `claude` in D:\GoBP\:
 **Wave 16A16 — 2026-04-18**
 
 - **dec:d011 — Lessons = update over create (graph hygiene):** Before creating a new Lesson node, `suggest:` search for an existing node on the same topic. If found → `update:` its description with the new lesson, preserving still-valuable prior content. Only create a new node when the topic is genuinely new. This rule applies **only** to AI self-learning nodes (Lesson, Wave summary) — NOT to project knowledge nodes (Entity, Engine, Flow, Decision, etc.). Reason: one small lesson = one new node → metadata bloat; updating existing node = true knowledge accumulation.
+
+◈
+
+**Wave 17A03–17A04 — 2026-04-19** *(from actual audit experience, not brief requirements)*
+
+- **session_log 'note' returns ok=False**: After `session:start` writes a node to disk, the same in-memory `GraphIndex` object won't find it for subsequent actions. The `'note'` action fails silently (ok=False). Resolution: skip 'note'; use `start` then a fresh `load_from_disk()` before `end`. Verified: `session:end` with fresh index returns ok=True.
+- **Commit granularity not checked tightly enough in 17A03**: Tasks 2-5 were combined in one commit. I noted this as a "minor observation" but should have counted git commits vs tasks proactively at the start of git verification, not discovered it during log review. New rule: count commits matching wave prefix before reading code.
+- **YAML schema files — read ≠ validate**: In schema waves (17A01/17A02), reading the file visually is insufficient. I should run `yaml.safe_load()` programmatically to catch parse errors, then check `schema_name` field and count node types. I did neither explicitly in 17A03 (no schema change), but must add this for schema-touching waves.
+- **Group index logic — code read ≠ behavior verified**: For 17A03 `find_by_group(exact=True)`, I read the implementation and judged it correct. The 690-test suite passing confirms it at test level. But for future index/query behavior changes, a 3-line Python smoke check (`add_node_in_memory`, `find_by_group`) catches regressions that tests might not cover if tests themselves have gaps.
+- **Full suite vs module suite for new tests**: I ran the full suite (690) but didn't run `pytest tests/test_wave17a03.py -v` in isolation first. Isolation run surfaces exact test names, lets me verify the right behavior is being tested — not just that a count passes.
+- **Backup file content**: When a brief says "back up v1 to v1.yaml", check file size > 0 AND read first node type entry. Empty backup = silent data loss. Must add to schema v2 checklist.
 
 ◈
