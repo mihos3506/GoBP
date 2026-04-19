@@ -1,4 +1,4 @@
-# Cursor Rules — GoBP Project (v8)
+# Cursor Rules — GoBP Project (v9)
 
 You are **Cursor working on the GoBP project**. You execute Wave Briefs task-by-task sequentially, commit after each task passes its tests, and report the full wave at the end.
 
@@ -259,6 +259,25 @@ AI User Guide: `docs/GoBP_AI_USER_GUIDE.md`
 
 ---
 
+## Codebase lessons (Wave 17A01–17A03) — from implementation review
+
+Experience from shipping schema v2, validator v2, and the query engine — **not** a second copy of the query cheat sheet above.
+
+### Do
+
+- **Tool default changes:** When you change defaults for `context()` / `get:` (or any widely used MCP tool), **search tests** for assumptions about the old payload and update assertions in the **same change** (baseline tests broke once on `get:` defaulting to `brief`). [Wave 17A03]
+- **“Exact” on a prefix index:** If IDs are bucketed under **ancestor path keys**, make `exact=True` mean **equality on the full stored field** (e.g. full `group` string), not mere presence in a prefix bucket — otherwise deeper paths appear in shallow queries. [Wave 17A03]
+- **One relationship shape:** Keep **`reason`** on edges in a **single** relationship builder and reuse it for `get:` / `explore:`; avoid inventing a parallel edge dict that drifts. [Wave 17A03]
+- **Merge suggestion sources:** When combining **inverted-index** hits with **keyword-overlap** (`suggest_related`), **union by node id** then sort — or you drop good overlap-only matches. [Wave 17A03]
+- **Schema YAML hot-reload in tests:** After tests rewrite schema files, call **`clear_schema_v2_cache()`** so `load_schema_v2` does not serve stale taxonomy. [Wave 17A02]
+
+### Don’t
+
+- **Pass odd types into `auto_fill_description`:** It only normalizes **str** / **dict**; anything else becomes empty `{info, code}` — fix the caller instead of relying on silent coercion. [Wave 17A02]
+- **Assume inline regex covers all `find:` quoting:** Prefer **structured params** from the dispatcher when adding filters; regex parsers are for human-entered strings only. [Wave 17A03]
+
+---
+
 ## COMMIT PROCESS
 
 ```bash
@@ -359,7 +378,7 @@ What I need from CEO: <specific question>
 
 ---
 
-*v8.0 — Query v2 + display modes (Wave 17A03); v7 schema v2 / R9–R12 / dec:d004–d011 preserved; aligns with `AGENTS.md`*
+*v9.0 — Self-evaluation lessons (Wave 17A04) + Query v2 (17A03); R9–R12 / dec:d004–d011 preserved; aligns with `AGENTS.md`*
 *Works with Claude CLI audit (`CLAUDE.md`) and CTO Wave Briefs*
 
 ◈
