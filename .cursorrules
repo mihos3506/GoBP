@@ -122,9 +122,9 @@ Never pass unexpected types — fix the caller, not the normalizer.
 
 ## SCHEMA
 
-### Schema v3 (Wave A — current)
+### Schema v3 (Wave A — new foundation)
 
-Defined in `docs/SCHEMA.md`. 2 templates only:
+Schema v3 đã được define trong `docs/SCHEMA.md`. 2 templates:
 
 **Template 1 — Every node:**
 ```
