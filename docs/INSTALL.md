@@ -1,6 +1,8 @@
 # GoBP Installation Guide
 
-**Documentation (repo `docs/`):** `SCHEMA.md` (node/edge contracts), `MCP_TOOLS.md` (`gobp()` protocol), `GoBP_AI_USER_GUIDE.md` (AI usage), `VISION.md` / `GoBP_ARCHITECTURE.md` (design).
+**Documentation (repo `docs/`):** Start with **`README.md`** (index + current snapshot). Then `SCHEMA.md` (v2: **93** node / **15** edge kinds), `MCP_TOOLS.md` (`gobp()` protocol), `GoBP_AI_USER_GUIDE.md` (AI usage), `VISION.md` / `GoBP_ARCHITECTURE.md` (design).
+
+**Current product snapshot:** Schema **v2** is the default; optional **PostgreSQL** via `GOBP_DB_URL`; local **graph viewer** via `python -m gobp.viewer` (see `gobp/viewer/`). Full test suite: `pytest tests/ --override-ini="addopts="` (700+ tests).
 
 ## Requirements
 
@@ -201,4 +203,16 @@ python -m gobp.cli validate --reindex
 
 ### Note
 
-If GOBP_DB_URL is not set, GoBP falls back to in-memory index (no persistence between restarts). PostgreSQL is optional but recommended for MIHOS-scale projects.
+If `GOBP_DB_URL` is not set, GoBP still **persists** graph data under **`.gobp/`** on disk; the DB is an **optional accelerator** for large graphs / MCP latency. PostgreSQL is recommended for multi‑thousand‑node projects or when the team already runs a shared DB.
+
+---
+
+## 7. Graph viewer (optional)
+
+From the GoBP repo (or with `PYTHONPATH` set):
+
+```bash
+python -m gobp.viewer
+```
+
+Serves a local HTTP UI (3D force graph + **v2** detail panel: group breadcrumb, lifecycle/read_order, relationships with **reason**). Read-only — does not mutate `.gobp/`. See `gobp/viewer/server.py`.

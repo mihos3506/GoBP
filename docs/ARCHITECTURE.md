@@ -1,6 +1,6 @@
 **Architecture doc model:** The long-form base spec is [`GoBP_ARCHITECTURE.md`](./GoBP_ARCHITECTURE.md). **This file** (`ARCHITECTURE.md`) holds **patches, deltas, and pasted update blocks** relative to that base—read both when auditing or implementing anything that touches project layout, MCP wiring, or scaling notes.
 
-**Current runtime (2026):** The MCP server exposes a **single** tool, `gobp`, with the **gobp query protocol v2** (`gobp(query="overview:")`, `find:…`, `get:…`, `batch …`, …). Older sections below that mention separate tools such as `gobp_find` / `gobp_overview` describe the **same capabilities** routed through `gobp()` — see [`MCP_TOOLS.md`](./MCP_TOOLS.md) for the authoritative contract.
+**Current runtime (2026-04):** The MCP server exposes a **single** tool, `gobp`, with the **gobp query protocol v2** (`gobp(query="overview:")`, `find:…`, `explore:…`, `get:…`, `batch …`, …). **Schema v2** is live: **93** node types / **15** edge kinds in packaged YAML; validation via **Validator v2** when `schema_name` is v2. **IDs** for new nodes use **`generate_id(name, group)`** except **Session** / **TestCase** special formats. **Batch parser** (`gobp/mcp/batch_parser.py`) supports **`create: Type: Name | … key="value"`** and **quote-aware** line joining for multiline values. **Optional PostgreSQL** (`GOBP_DB_URL`) indexes the graph; files under `.gobp/` remain authoritative. **Viewer v2** (`gobp/viewer/`) shows group breadcrumb, lifecycle/read_order, relationships + **reason**. Older sections below that mention separate tools such as `gobp_find` / `gobp_overview` describe the **same capabilities** routed through `gobp()` — see [`MCP_TOOLS.md`](./MCP_TOOLS.md) for the authoritative contract.
 
 ---
 
@@ -10,7 +10,8 @@ Runtime layout under `gobp/mcp/`:
 
 - `parser.py` — Query parsing (`parse_query`, `_normalize_type`, coercion helpers).
 - `dispatcher.py` — Routes parsed actions to tool implementations.
-- `batch_parser.py` — Parses multi-line `batch` operations.
+- `batch_parser.py` — Parses multi-line `batch` operations (`create:` pipe + named params; quote-aware op splitting).
+- `hooks.py` — Optional pre-write checks (Validator v2 hooks).
 - `server.py` — MCP stdio server entrypoint.
 - `tools/read.py` — Core reads: `find`, `get`/`context`, `related`, `sections`, batch helpers, etc.
 - `tools/read_governance.py` — `schema_governance`, `metadata_lint`.
@@ -18,6 +19,8 @@ Runtime layout under `gobp/mcp/`:
 - `tools/read_interview.py` — `node_template`, `node_interview` and edge-declaration templates.
 - `tools/write.py` — Node upsert, sessions, decision lock.
 - `tools/maintain.py` — Validate, prune, stats.
+
+**Viewer (read-only):** `gobp/viewer/` — static `index.html` + `server.py` serving `/api/graph` (full node payloads + edge `reason` for UI v2).
 
 ---
 

@@ -10,6 +10,20 @@
 
 ---
 
+## Current implementation snapshot (2026-04)
+
+This section summarizes **what is shipped today** so agents do not rely on outdated v1-only descriptions elsewhere.
+
+- **Schema:** Production taxonomy is **v2** (`gobp_core_v2`): **93** packaged node types in `gobp/schema/core_nodes.yaml`, **15** edge kinds in `core_edges.yaml`. Nodes carry **`group`**, **`lifecycle`**, **`read_order`**, and **`description`** as `{info, code}` where applicable.
+- **API:** A **single** MCP tool **`gobp`** with a structured **`query`** string (`overview:`, `find:`, `explore:`, `get:`, `batch …`, `session:start`, …). See `MCP_TOOLS.md` and `gobp/mcp/parser.py` (`PROTOCOL_GUIDE`).
+- **Writes:** `node_upsert` / batch **`create:`** auto-generate **`id`** when omitted (v2 `generate_id(name, group)`; **Session** / **TestCase** keep special `generate_external_id` formats). Batch **`create:`** lines support **named parameters** after `|` (e.g. `what="…"`, `fix_guide="…"`) and **multiline quoted** values without splitting into separate ops.
+- **Storage:** **File-first** under `.gobp/` remains the source of truth; **PostgreSQL** (`GOBP_DB_URL`) is optional for indexed access / MCP performance.
+- **Viewer:** Local HTTP viewer (`gobp/viewer/`) serves a 3D graph and a **v2** detail panel (group breadcrumb, lifecycle/read_order, relationships + edge **reason**, ErrorCase layout). See `CHANGELOG.md` Wave 17A05.
+
+For a short bilingual index of all docs, see **`docs/README.md`**.
+
+---
+
 ## ONE-LINER
 
 **GoBP là bộ nhớ dài hạn cho AI agents khi làm việc trên 1 project.**

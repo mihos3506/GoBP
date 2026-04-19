@@ -9,6 +9,8 @@
 > **Protocol version:** 2.0 — Call `gobp(query="version:")` for full version info.
 > **Read-only mode:** Set `GOBP_READ_ONLY=true` to prevent all write operations.
 
+**Current stack (2026-04):** Production schema is **v2** (**93** node types, **15** edge kinds). **`batch`** ops are parsed by `gobp/mcp/batch_parser.py`: each `create:` line may include **named parameters** after `|` (e.g. `create: Decision: X | plain text what="…" why="…"`); newlines inside quoted values do **not** split into separate ops; **`create:`** without `id` triggers auto-ID in `gobp/mcp/tools/write.py` (`generate_id` / special cases for Session & TestCase). Long-running writes should log **`session:start`** / **`session:end`** per project policy (**dec:d004**). For a doc index and viewer notes, see **`docs/README.md`** and **`CHANGELOG.md`** (Wave 17A05).
+
 ---
 
 ## gobp() - Primary Interface (v2)

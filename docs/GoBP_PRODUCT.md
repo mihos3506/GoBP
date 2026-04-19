@@ -1,7 +1,8 @@
 # ◈ GoBP — Product Overview
 
-**Version:** v1.0
-**Date:** 2026-04-15
+**Version:** v1.1
+**Date:** 2026-04-19  
+**Snapshot:** Schema **v2** (93 packaged node types), MCP protocol **v2**, file-first + optional PostgreSQL — see `docs/README.md`.
 
 ---
 
@@ -73,36 +74,39 @@ GoBP exposes a single MCP tool: `gobp()`. Actions are listed in `gobp/mcp/parser
 
 ## What GoBP Stores
 
-### Node Types (21 in packaged `core_nodes.yaml`)
+### Node Types (93 in packaged `gobp/schema/core_nodes.yaml`, v2)
 
-| Type | Purpose | Example ID |
+The taxonomy is **domain-complete** (product, security, persistence, messaging, observability, UI, code AST, constraints, errors, tests, meta, lessons, …). Examples:
+
+| Type | Purpose | Example ID pattern |
 |---|---|---|
-| Node | Generic container | `node:flow_auth` |
-| Idea | Raw brainstorm from conversation | `idea:i001` |
-| Decision | Locked architectural choice | `dec:d001` |
-| Session | AI working session record | `meta.session.YYYY-MM-DD.*` |
-| Document | Registered project document | `doc:…` |
-| Lesson | Learned pattern from experience | `lesson:ll001` |
-| Concept | Framework concept for AI orientation | `concept:test_taxonomy` |
-| TestKind | Test category (16 kinds seeded on init); field `group` = process / functional / non_functional / security | `testkind:unit` |
-| TestCase | Individual test instance; `kind_id` → TestKind | `tc:…` |
-| Engine, Flow, Entity, Feature | Product graph | `engine:…`, `flow:…`, … |
-| Invariant, Screen, APIEndpoint, Repository | Constraints, UI, API, repo metadata | … |
-| Wave, Task | Sprint / AI queue work | … |
-| CtoDevHandoff, QaCodeDevHandoff | Structured handoffs | … |
+| Node | Generic container | `node:…` / v2 dot-separated IDs |
+| Idea, Decision, Concept | Brainstorm → locked choice → glossary | `idea:i001`, `dec:d001`, or v2 IDs |
+| Session | AI working session | `meta.session.YYYY-MM-DD.*` |
+| Document | Registered project document | Per project / import |
+| Lesson* (Rule, Skill, Dev, CTO, QA) | Role-scoped lessons | Per schema |
+| Engine, Flow, Entity, Feature, … | Product & DDD graph | `dev.infra.engine.trustgate.a1b2c3d4` (v2 style) |
+| Invariant, BusinessRule, ErrorDomain, ErrorCase | Constraints & errors | Per schema (**ErrorCase** has dedicated viewer layout) |
+| TestKind, TestCase, TestSuite | Testing | TestCase: `*.test.<kind>.<digits>` via `generate_external_id` |
+| Wave, Task, CtoDevHandoff, QaCodeDevHandoff | Process & handoffs | … |
 
-**Full field definitions:** `docs/SCHEMA.md`.
+**Full enum:** `docs/SCHEMA.md` and the YAML packs; quick orientation: `gobp(query="overview:")`.
 
-### Edge Types (14 in `core_edges.yaml`)
+### Edge Types (15 in `core_edges.yaml`, v2)
 
-`relates_to`, `supersedes`, `implements`, `discovered_in`, `references`, `covers`, `depends_on`, `tested_by`, `of_kind`, `enforces`, `triggers`, `validates`, `produces` — plus any project extensions. **Details:** `docs/SCHEMA.md` section 3.
+Includes `relates_to`, `supersedes`, `implements`, `depends_on`, `references`, `covers`, `discovered_in`, `enforces`, `validated_by`, `of_kind`, `belongs_to`, `specified_in`, `affects`, `triggers`, `produces`, … — each edge may carry an optional **`reason`** string. **Details:** `docs/SCHEMA.md` section 3.
 
-### Per-node fields
-Every node can have:
-- `priority` — critical / high / medium / low
-- `code_refs` — list of code files implementing this node
-- `invariants` — hard constraints that must always be true
-- `status` — lifecycle state (ACTIVE, DEPRECATED, etc.)
+### Per-node fields (v2 highlights)
+
+In addition to legacy fields where still used:
+
+- **`group`** — Breadcrumb taxonomy (`Dev > Infrastructure > Engine`, …)
+- **`lifecycle`** — e.g. draft / specified / deprecated
+- **`read_order`** — foundational / important / reference / background (defaults per type)
+- **`description`** — `{info, code}` (human text + optional code block)
+- **`priority`** — still used where present (viewer may fall back for sizing)
+- **`status`** — session / handoff / legacy lifecycle where applicable
+- **`code_refs`**, **invariants** — where schema requires them
 
 ---
 

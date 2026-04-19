@@ -6,7 +6,9 @@
 **Depends on:** ARCHITECTURE.md / `GoBP_ARCHITECTURE.md` (must read first)
 **Audience:** Cursor implementing schema, AI agents validating data
 
-**Packaged schema files:** `gobp/schema/core_nodes.yaml` (**21** node types), `gobp/schema/core_edges.yaml` (**14** edge kinds). Validator loads YAML first; this document should stay aligned (use `gobp(query="validate: schema-docs")` to cross-check).
+**Packaged schema files:** `gobp/schema/core_nodes.yaml` (**93** node types, schema **v2** / `gobp_core_v2`), `gobp/schema/core_edges.yaml` (**15** edge kinds, optional **`reason`** on edges). Validator loads YAML first; this document should stay aligned (use `gobp(query="validate: schema-docs")` to cross-check).
+
+**Taxonomy fields (v2):** Most node types declare a default **`group`** (breadcrumb), **`lifecycle`**, **`read_order`**, and **`description`** as `{info, code}` — see `gobp/schema/core_nodes_v2.yaml` / merged `core_nodes.yaml` and `docs/GOBP_SCHEMA_REDESIGN_v2.1.md`.
 
 ---
 

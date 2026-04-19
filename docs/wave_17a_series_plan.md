@@ -254,5 +254,18 @@ find: group="Dev > Domain" type=Entity → combined filter
 
 ---
 
+## Tiến độ triển khai (cập nhật 2026-04-19)
+
+| Wave | Trạng thái | Ghi chú ngắn |
+|------|------------|----------------|
+| 17A01–17A03 | Đã giao (xem `CHANGELOG.md`) | Query v2 (`find`/`explore`/`get` modes), schema bridge |
+| 17A04 | Đã giao | Docs, agents, backfill scripts |
+| 17A05 | Đã giao | Batch parser (named params + multiline), auto `id`, TYPE_DEFAULTS Concept/ErrorDomain, viewer v2 |
+| 17A06+ | Theo brief / roadmap | Docs+MIHOS (17A07 plan), v.v. |
+
+Kế hoạch bảng dưới đây là **định hướng**; chi tiết đã ship nằm trong repo và `docs/README.md`.
+
+---
+
 *Wave 17A Series Plan v1.0 — 2026-04-19*
 ◈

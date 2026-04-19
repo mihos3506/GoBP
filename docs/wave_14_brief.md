@@ -1,5 +1,7 @@
 # WAVE 14 BRIEF — SCHEMA GOVERNANCE + PROTOCOL VERSIONING + ACCESS MODEL
 
+> **Archive note (2026-04-19):** Brief lịch sử trong chuỗi phát triển GoBP. Trạng thái **sản phẩm hiện tại** (schema v2, MCP một tool, v.v.) xem **`docs/README.md`** và **`CHANGELOG.md`**.
+
 **Wave:** 14
 **Title:** Schema governance, protocol versioning, read-only access model
 **Author:** CTO Chat (Claude Sonnet 4.6)

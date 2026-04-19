@@ -2,7 +2,7 @@
 **Version:** 2.1
 **Date:** 2026-04-19
 **Author:** CTO Chat
-**Status:** APPROVED — Wave 17A01 ready
+**Status:** APPROVED — **Implemented** in repo (schema v2 cutover, query engine, validator v2, viewer v2 panels — see `CHANGELOG.md` Waves 17A01–17A05 and `docs/README.md`).
 
 ---
 

@@ -1,6 +1,6 @@
 # ◈ GoBP ARCHITECTURE
 
-**File:** `D:\GoBP\docs\ARCHITECTURE.md`
+**File:** `D:\GoBP\docs\GoBP_ARCHITECTURE.md`
 **Version:** v0.1
 **Status:** draft, awaiting CEO approval
 **Depends on:** VISION.md (must read first)
@@ -42,9 +42,9 @@ GoBP is a layered system with clear separation:
                      ▼
 ┌─────────────────────────────────────────────────────────┐
 │  Core Engine (gobp/core/)                               │
-│  - graph.py   : GraphIndex (in-memory)                  │
+│  - graph.py   : GraphIndex (in-memory; optional DB backing) │
 │  - loader.py  : YAML/MD file loader                     │
-│  - validator.py: Schema enforcement                     │
+│  - validator.py / validator_v2.py : Schema enforcement (v2 prod) │
 │  - mutator.py : Write operations with history           │
 └────────────────────┬────────────────────────────────────┘
                      │ File I/O
@@ -60,7 +60,7 @@ GoBP is a layered system with clear separation:
 
 **Key architectural decisions:**
 - Files are source of truth (P3 in VISION)
-- Core is file-based, no database
+- Core is file-based; **PostgreSQL** is an optional index when `GOBP_DB_URL` is set (see `gobp/core/graph.py` / loader paths)
 - MCP server is a thin adapter over core
 - AI never touches files directly — always via MCP
 - Humans can inspect files but don't edit them normally
@@ -69,7 +69,7 @@ GoBP is a layered system with clear separation:
 
 ## 2. NODE TYPES (packaged core schema)
 
-Every piece of knowledge in GoBP is a node. The packaged file `gobp/schema/core_nodes.yaml` defines **21** core node types (schema v2)—including e.g. `TestKind`, `TestCase`, `Engine`, `Flow`, `Wave`, `CtoDevHandoff`, `QaCodeDevHandoff`, and more. **Authoritative field lists:** `docs/SCHEMA.md`. Project-specific types may be added via schema extensions.
+Every piece of knowledge in GoBP is a node. The packaged file `gobp/schema/core_nodes.yaml` defines **93** core node types (schema **v2**)—covering product graph, security, persistence, frontend, code, constraints, errors, tests, meta, lessons, etc. **Authoritative field lists:** `docs/SCHEMA.md` and the YAML packs. Project-specific extensions may add types via additional schema files where supported.
 
 The subsections below (2.1 onward) are a **narrative introduction** to an older subset; they do not enumerate every type. When in doubt, read `SCHEMA.md` and `core_nodes.yaml`.
 

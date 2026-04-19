@@ -37,8 +37,9 @@ Project has no docs, no code, just an idea. Founder wants to start capturing tho
 
 **GoBP init:**
 ```bash
-gobp init --empty
+python -m gobp.cli init
 ```
+(Use your project root; creates `.gobp/` with schema **v2** seed — see `gobp/core/init.py`.)
 
 **Timeline:** Founder uses GoBP from day 1 of project. Every brainstorm, every decision captured live.
 
@@ -51,10 +52,8 @@ Project has specification docs and some code. Founder wants GoBP to help organiz
 - Some decisions from chat history worth capturing
 - Starts with 50-500 nodes after import
 
-**GoBP init:**
-```bash
-gobp init --from-docs <docs_folder>
-```
+**GoBP init / import:**
+Use **`import:`** MCP actions and/or document pipelines described in `MCP_TOOLS.md` — there is no separate `gobp init --from-docs` CLI flag in the minimal installer; automation uses **`gobp(query="import: …")`** and batch writes with **`session_id`**.
 
 **Timeline:** One-time import (1-4 hours), then live capture going forward.
 
@@ -69,10 +68,7 @@ Project has full docs, full codebase, active development. Founder wants GoBP for
 - Historical decisions reconstructed from git log, commit messages, PR descriptions
 - Starts with 500-5000 nodes after import
 
-**GoBP init:**
-```bash
-gobp init --from-docs <docs_folder> --scan-code <code_folder>
-```
+**Import approach:** Same as state 2 — combine **`import:`**, **`batch:`**, and project-specific scripts; there is no single bundled `gobp init --scan-code` CLI in core. Use CEO-approved tooling or extend `gobp/cli` if you add a project wrapper.
 
 **Timeline:** Longer import (4-16 hours), mixing auto-extraction and AI-assisted proposal.
 

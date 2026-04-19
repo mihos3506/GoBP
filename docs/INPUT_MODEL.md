@@ -8,6 +8,8 @@
 
 **MCP entrypoint (v2):** the server exposes a single tool, `gobp`, with a structured `query` string (`overview:`, `find:…`, `create:…`, `batch …`, …). Prose below sometimes uses legacy names (`find()`, `node_upsert()`, `session_log`) for readability; implement them as the corresponding `gobp(query="…")` actions (see `docs/MCP_TOOLS.md`).
 
+**Batch `create:` (current):** Lines like `create: Decision: Name | short text what="…" why="…"` attach **named fields** to the node; plain text before the first `key=` becomes `description`. Multiline values in quotes are supported. Omitting **`id`** is allowed — the write path assigns a **v2 id** from name + group (see `gobp/mcp/tools/write.py`). This matches how CEOs import decisions and error domains without hand-authoring IDs.
+
 ---
 
 ## 0. CORE PRINCIPLE

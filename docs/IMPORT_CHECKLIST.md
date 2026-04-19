@@ -67,6 +67,11 @@
 
 ---
 
+## Batch syntax (Wave 17A05+)
+
+- [ ] **`create: Type: Name | …`** may append **named fields**: `what="…"`, `fix_guide="line1\nline2"`, `id=my.fixed.id` (optional). Plain text before the first `key=` becomes **`description`**.
+- [ ] **`id`** can be omitted for many types — the server assigns a **v2** id from **name + group** (do not hand-roll IDs unless the Brief requires a fixed id).
+
 ## Post-import verify (schema v2)
 
 - [ ] **`explore: node_id`** — **breadcrumb** matches intended **group** path.

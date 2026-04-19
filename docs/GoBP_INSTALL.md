@@ -1,5 +1,7 @@
 # ◈ GoBP INSTALL
 
+**Snapshot (2026-04):** Schema **v2** (**93** node types in packaged YAML), single MCP tool **`gobp`**, file-first **`.gobp/`** + optional **`GOBP_DB_URL`**. Index of all docs: **`docs/README.md`**.
+
 ## Requirements
 
 ```

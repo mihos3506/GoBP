@@ -5,6 +5,16 @@ Format: [Wave N — Title] with date, what was added/changed/fixed.
 
 ---
 
+## [Docs] — Project snapshot refresh — 2026-04-19
+
+### Changed
+
+- **`docs/README.md`** — Bilingual index + table: schema v2 (93/15), MCP, storage, batch, viewer, tests.
+- **`docs/VISION.md`**, **`docs/ARCHITECTURE.md`**, **`docs/GoBP_ARCHITECTURE.md`**, **`docs/SCHEMA.md`**, **`docs/MCP_TOOLS.md`**, **`docs/GoBP_PRODUCT.md`**, **`docs/INPUT_MODEL.md`**, **`docs/IMPORT_MODEL.md`**, **`docs/INSTALL.md`**, **`docs/GoBP_INSTALL.md`**, **`docs/IMPORT_CHECKLIST.md`**, **`docs/GoBP_AI_USER_GUIDE.md`**, **`docs/GOBP_SCHEMA_REDESIGN_v2.1.md`**, **`docs/wave_17a_series_plan.md`** — Aligned with current repo (v2 taxonomy, single `gobp` tool, optional PostgreSQL, viewer v2, Wave 17A05 batch behavior).
+- **`docs/wave_14_brief.md`** — Archive pointer to current docs.
+
+---
+
 ## [Wave 17A05] — Bug Fixes + Viewer v2 — 2026-04-19
 
 ### Fixed
