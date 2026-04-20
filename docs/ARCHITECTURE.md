@@ -79,7 +79,7 @@ AI không bao giờ đọc/ghi files trực tiếp — luôn qua MCP
 ```
 < 5,000 nodes (TIER 1):
   PostgreSQL: recommended nhưng optional
-  Fallback: SQLite FTS5 (.gobp/index.db)
+  Fallback: file-backed `.gobp/` only; optional PostgreSQL mirror via `GOBP_DB_URL`
   In-memory GraphIndex: full metadata + adjacency lists
   File: source of truth (nếu không có PostgreSQL)
 
@@ -559,6 +559,16 @@ def extract_pyramid(full_text: str) -> tuple[str, str]:
 ---
 
 ## 9. QUERY RESULT CACHE
+
+### 9.0 — Derived index (PostgreSQL v3)
+
+GoBP uses **PostgreSQL v3** as an optional derived index for fast queries when `GOBP_DB_URL` is set. **File-only mode** works without a database; populate the database from disk with `gobp rebuild` / `gobp.core.db.rebuild_index` when needed.
+
+### 9.1 — Legacy PostgreSQL layout (removed, Wave R1)
+
+Earlier releases kept an older **PostgreSQL** table layout in `gobp.core.db` (wide `nodes` rows with `type`, `fts_content`, legacy `edges` with `id`, etc.) in addition to schema v3. That compatibility layer was **removed in Wave R1** because it was unused at runtime and conflicted with v3-only operations.
+
+**Migration:** Use a disposable database and run `rebuild_index` (or the CLI rebuild path) so the schema is v3 and rows match files under `.gobp/`.
 
 ```python
 class QueryCache:

@@ -5,6 +5,28 @@ Format: [Wave N — Title] with date, what was added/changed/fixed.
 
 ---
 
+## [Wave R1] — Storage & legacy cleanup — 2026-04-20
+
+### Removed
+
+- Legacy PostgreSQL layout helpers in `gobp.core.db`: `init_schema`, `_node_to_row`, `upsert_node`, `delete_node`, `upsert_edge`, `delete_edges_for_node`, `query_nodes_by_type`, `query_nodes_fts`, `query_nodes_substring`, `query_edges_from`, `query_edges_to`, and constants `DB_FILENAME` / `SCHEMA_VERSION`.
+- Automatic DB init / rebuild from `GraphIndex.load_from_disk` (use `rebuild_index` / CLI when a PG mirror must be refreshed).
+
+### Added
+
+- `TYPE_CHECKING` annotations for psycopg2 connections in `gobp.core.db` (optional `pip install -e ".[postgres]"` for IDE stubs).
+- `gobp.mcp.pg_sync.maybe_delete_node_v3` for file deletes that should mirror to the MCP-held v3 connection.
+
+### Changed
+
+- `gobp.core.fs_mutator` — file writes no longer call legacy DB upserts; PostgreSQL updates go through existing `maybe_upsert_*` / `maybe_delete_node_v3` when the MCP server has a v3 connection.
+
+### Documentation
+
+- `docs/ARCHITECTURE.md`: Tier 1 fallback text; Section 9.0 / 9.1 on v3 derived index and legacy removal.
+
+---
+
 ## [Housekeeping] — Trim non-core scripts — 2026-04-20
 
 ### Removed
