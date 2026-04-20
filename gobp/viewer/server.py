@@ -153,6 +153,7 @@ def _load_graph_data(project_root: Path) -> dict[str, Any]:
                 "to": to_id,        # for detail panel relations
                 "type": edge_type,
                 "reason": edge.get("reason", ""),
+                "code": edge.get("code", ""),
             })
             seen.add(key)
 

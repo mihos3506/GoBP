@@ -234,6 +234,8 @@ def test_edges_have_both_formats(multi_viewer_server) -> None:
             assert "target" in link
             assert "from" in link
             assert "to" in link
+            assert "reason" in link
+            assert "code" in link
 
 
 def test_launcher_find_projects_json() -> None:

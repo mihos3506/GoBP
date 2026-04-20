@@ -171,6 +171,7 @@ def _validate_typed_entity(
             "to",
             "type",
             "reason",
+            "code",
             "created_at",
             "section",
             "lines",

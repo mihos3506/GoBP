@@ -15,10 +15,17 @@ def _esc(s: object) -> str:
 
 
 def _desc_info_code(node: dict[str, Any]) -> tuple[str, str]:
+    """Prose vs code: v3 uses top-level ``code``; v2 object uses description.info/code."""
     raw = node.get("description")
+    top_code = str(node.get("code", "") or "").strip()
     if isinstance(raw, dict):
-        return str(raw.get("info", "") or ""), str(raw.get("code", "") or "")
-    return str(raw or ""), ""
+        info = str(raw.get("info", "") or "")
+        code = str(raw.get("code", "") or "").strip()
+        if not code and top_code:
+            code = top_code
+        return info, code
+    info = str(raw or "")
+    return info, top_code
 
 
 def render_standard_panel(node: dict[str, Any]) -> str:

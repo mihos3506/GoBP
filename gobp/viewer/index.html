@@ -1200,8 +1200,39 @@ function splitReasonParts(raw) {
   return { desc: s.trim(), code: '' };
 }
 
-function renderEdgeReasonPanels(reason) {
-  const rp = splitReasonParts(reason);
+/**
+ * Edge panels: prefer separate ``reason`` + ``code`` from graph/PG (two fields).
+ * Legacy: single ``reason`` string → splitReasonParts (--- / JSON).
+ */
+function renderEdgeReasonPanels(edge) {
+  const e = edge || {};
+  const reasonField = e.reason;
+  const codeField = e.code;
+  const hasSplitCode =
+    codeField != null
+    && String(codeField).trim() !== ''
+    && String(codeField).trim() !== String(reasonField || '').trim();
+
+  if (hasSplitCode) {
+    const desc = reasonField != null ? String(reasonField).trim() : '';
+    const code = String(codeField).trim();
+    let html = '';
+    if (desc) {
+      html += `
+      <div class="edge-panel edge-panel--desc">
+        <div class="edge-panel-title">DESCRIPTION</div>
+        <div class="edge-panel-body">${esc(desc)}</div>
+      </div>`;
+    }
+    html += `
+      <div class="edge-panel edge-panel--code">
+        <div class="edge-panel-title">CODE</div>
+        <pre class="edge-panel-body"><code>${esc(code)}</code></pre>
+      </div>`;
+    return html;
+  }
+
+  const rp = splitReasonParts(reasonField);
   let html = '';
   if (rp.desc) {
     html += `
@@ -1302,7 +1333,7 @@ function renderEdges(nodeId, allEdges, allNodes) {
     const otherName = otherNode
       ? (otherNode.name || otherId)
       : (e.to_name || e.from_name || otherId);
-    const reasonPanels = renderEdgeReasonPanels(e.reason);
+    const reasonPanels = renderEdgeReasonPanels(e);
     return `
         <div class="edge-item">
             <div class="edge-header">

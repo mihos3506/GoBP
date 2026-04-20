@@ -10,7 +10,7 @@
 name:        {tên mô tả rõ ràng}
 group:       {breadcrumb đầy đủ}
 description: {plain text — mô tả đầy đủ}
-code:        {optional — snippet kỹ thuật}
+code:        {optional — snippet kỹ thuật; lưu riêng description vs code trong PG (desc_* / code)}
 history[]:   [{description, code}]   # append-only, không sửa không xóa
 ```
 
@@ -35,8 +35,10 @@ history[]:   [{description, code}]   # append-only, không sửa không xóa
 from:    {node}
 to:      {node}
 reason:  {plain text — tại sao kết nối này tồn tại}
-code:    {optional}
+code:    {optional — snippet kỹ thuật; lưu riêng reason trong DB/PG để AI chỉ đọc field cần}
 ```
+
+PostgreSQL v3: bảng `edges` có hai cột **`reason`** và **`code`** (tách bạch; FTS `reason_vec` chỉ index `reason`).
 
 Edge type do hệ thống tự xác định — người nhập không khai báo.
 
