@@ -1,12 +1,12 @@
 # WAVE J BRIEF — IMPLEMENTED FIELD
 
 **Wave:** J  
-**Title:** Thêm `implemented` field vào GoBP schema — boolean status cho nodes  
+**Title:** implemented field + GraphIndex resilient loading  
 **Author:** CTO Chat (Claude Sonnet 4.6)  
 **Date:** 2026-04-20  
 **For:** Cursor (sequential execution) + Claude CLI (audit)  
 **Status:** READY FOR EXECUTION  
-**Task count:** 4 atomic tasks  
+**Task count:** 5 atomic tasks  
 
 ---
 
@@ -327,7 +327,12 @@ Ghi chú implemented:
 - `implemented` column trong PostgreSQL nodes table
 - Migration: `ALTER TABLE nodes ADD COLUMN IF NOT EXISTS implemented`
 - Warning khi `implemented=true` nhưng `code` field trống
-- `tests/test_wave_j.py`: 7 tests
+- GraphIndex resilient loading: skip broken files thay vì crash
+- `tests/test_wave_j.py`: 8 tests
+
+### Fixed
+- `GraphIndex.load_from_disk()`: 1 file YAML lỗi không còn crash toàn bộ write path
+- `edit:/delete:/create:` hoạt động bình thường dù có file .md bị corrupt
 
 ### Changed
 - `docs/SCHEMA.md` Template 1: thêm implemented field
@@ -337,6 +342,97 @@ Ghi chú implemented:
 **Commit message:**
 ```
 Wave J Task 4: tests/test_wave_j.py + SCHEMA.md + CHANGELOG
+```
+
+---
+
+## TASK 5 — GraphIndex: Resilient file loading
+
+**Files to modify:** `gobp/core/graph.py`
+
+**Root cause:**
+```
+_load_nodes() và _load_edges() hiện tại:
+  Gặp 1 file lỗi (YAML corrupt, encoding, missing field)
+  → throw Exception → GraphIndex.load_from_disk() crash
+  → Toàn bộ write path fail (edit:/delete:/create:)
+  → Dù chỉ 1 file bị hỏng
+
+Fix: skip file lỗi + log warning → tiếp tục load
+```
+
+**Re-read `_load_nodes()` và `_load_edges()` trong graph.py trước.**
+
+**Fix `_load_nodes()`:**
+
+```python
+def _load_nodes(self, nodes_dir: Path) -> None:
+    if not nodes_dir.exists():
+        return
+    for f in sorted(nodes_dir.glob("*.md")):
+        try:
+            node = load_node_file(f)
+            if node:
+                self._add_node(node)
+        except Exception as e:
+            logger.warning(
+                "GraphIndex: skip broken node file %s: %s",
+                f.name, e
+            )
+```
+
+**Fix `_load_edges()`:**
+
+```python
+def _load_edges(self, edges_dir: Path) -> None:
+    if not edges_dir.exists():
+        return
+    for f in sorted(edges_dir.glob("*.yaml")):
+        try:
+            edges = load_edge_file(f)
+            for edge in (edges or []):
+                self._add_edge(edge)
+        except Exception as e:
+            logger.warning(
+                "GraphIndex: skip broken edge file %s: %s",
+                f.name, e
+            )
+```
+
+**Acceptance criteria:**
+- 1 file .md có YAML lỗi → chỉ node đó bị skip
+- Các nodes khác vẫn load bình thường
+- edit:/delete:/create: hoạt động dù có file lỗi
+- Warning log hiển thị tên file bị skip
+- Tests confirm resilient behavior
+
+**Test thêm vào test_wave_j.py:**
+
+```python
+def test_load_from_disk_skips_broken_file(tmp_path):
+    """GraphIndex skips broken node files instead of crashing."""
+    nodes_dir = tmp_path / '.gobp' / 'nodes'
+    nodes_dir.mkdir(parents=True)
+
+    # Valid node file
+    valid_node = nodes_dir / 'valid_node.md'
+    valid_node.write_text('---\ntype: Spec\nid: spec.valid\nname: Valid Node\ngroup: Document > Spec\ndescription: Valid\n---\n')
+
+    # Broken node file
+    broken_node = nodes_dir / 'broken_node.md'
+    broken_node.write_text('---\ntype: Spec\ndescription: Role: broken yaml\n---\n')
+
+    # Should not crash
+    from gobp.core.graph import GraphIndex
+    index = GraphIndex.load_from_disk(tmp_path)
+
+    # Valid node loaded, broken skipped
+    assert index.get_node('spec.valid') is not None
+```
+
+**Commit message:**
+```
+Wave J Task 5: graph.py — resilient _load_nodes/_load_edges, skip broken files
 ```
 
 ---
@@ -376,9 +472,10 @@ Read gobp/core/db.py (create_schema_v3, upsert_node_v3).
 Read docs/SCHEMA.md.
 Read waves/wave_j_brief.md (this file).
 
-Execute Tasks 1 → 4 sequentially.
+Execute Tasks 1 → 5 sequentially.
 Task 3: Verify PG column exists after migration.
-Task 4: pytest tests/test_wave_j.py → 7 passed.
+Task 4: pytest tests/test_wave_j.py → 8 passed.
+Task 5: Verify broken file skip bằng test_load_from_disk_skips_broken_file.
 End: pytest tests/ -q --tb=no → 0 new failures.
 ```
 
@@ -387,7 +484,8 @@ End: pytest tests/ -q --tb=no → 0 new failures.
 Task 1: core_nodes.yaml có implemented field + Meta exclusion
 Task 2: coerce_implemented() + validate_implemented() đúng spec
 Task 3: PG column implemented BOOLEAN DEFAULT FALSE
-Task 4: 7 tests pass, SCHEMA.md + CHANGELOG đúng
+Task 4: 8 tests pass, SCHEMA.md + CHANGELOG đúng
+Task 5: _load_nodes/_load_edges skip broken files, warning logged
 BLOCKING: Bất kỳ fail → STOP.
 ```
 
@@ -395,7 +493,7 @@ BLOCKING: Bất kỳ fail → STOP.
 ```powershell
 cd D:\GoBP
 git add waves/wave_j_brief.md
-git commit -m "Wave J Brief: implemented field — 4 tasks"
+git commit -m "Wave J Brief: implemented field + resilient loading — 5 tasks"
 git push origin main
 ```
 
