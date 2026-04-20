@@ -348,8 +348,9 @@ PROTOCOL_GUIDE = {
         "explore: Mi Hốt": "Vietnamese-aware search + neighborhood context in one call",
         "suggest: Payment Flow": "Keyword overlap — surfaces existing engines/entities to reuse",
         "suggest: auth login": "Finds related nodes from short context text",
-        "batch session_id='x' ops='create: Engine: A | desc\\nedge+: A --implements--> B'": (
-            "Unified batch: create/update/delete/retype/merge/edge ops (internally chunked); ops may mix multiple node types in one batch"
+        "batch session_id='x' ops='create: Engine: A | desc\\nedge+: Hub --implements--> B, C'": (
+            "Unified batch: create/update/delete/retype/merge/edge ops (internally chunked); "
+            "edge+/edge- allow comma-separated targets (one edge per target)"
         ),
         "quick: session_id='x' ops='Idea Name | category | wave | description'": (
             "Quick capture: one line per node, pipe-separated; auto-chunked like batch"
@@ -387,6 +388,9 @@ PROTOCOL_GUIDE = {
         "edge: testcase_a --covers--> flow_b": "TestCase coverage",
         "import: path/to/doc.md session_id='x'": "Propose doc import",
         "commit: imp:proposal-id": "Commit approved proposal",
+        "commit: imp:proposal-id dry_run=true session_id='x'": (
+            "Validate proposal only (same checks as commit); no writes or file moves"
+        ),
         "validate: <scope>": "Validate graph (all|nodes|edges)",
         "dedupe: edges": "Remove duplicate edges from file storage",
         "recompute: priorities session_id='x'": "Recompute all node priorities from graph",

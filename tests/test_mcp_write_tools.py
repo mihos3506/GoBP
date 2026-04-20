@@ -207,6 +207,29 @@ def test_session_log_start(populated_root):
     assert result["session_id"].startswith("meta.session.")
 
 
+def test_session_log_start_then_end_same_index_without_reload(populated_root):
+    """After ``start``, the same GraphIndex must see the new session for ``end``."""
+    index = _load_index(populated_root)
+    r1 = tools_write.session_log(
+        index,
+        populated_root,
+        {"action": "start", "actor": "t", "goal": "same-index session"},
+    )
+    assert r1.get("ok"), r1
+    sid = str(r1["session_id"])
+    assert index.get_node(sid) is not None
+    r2 = tools_write.session_log(
+        index,
+        populated_root,
+        {
+            "action": "end",
+            "session_id": sid,
+            "outcome": "closed for test",
+        },
+    )
+    assert r2.get("ok"), r2
+
+
 def test_session_log_end(populated_root):
     index = _load_index(populated_root)
     # End the existing test session
@@ -220,6 +243,30 @@ def test_session_log_end(populated_root):
         },
     )
     assert result["ok"] is True, result
+
+
+def test_session_log_end_twice_is_idempotent(populated_root):
+    index = _load_index(populated_root)
+    r0 = tools_write.session_log(
+        index,
+        populated_root,
+        {"action": "start", "actor": "t", "goal": "idempotent end test"},
+    )
+    assert r0.get("ok"), r0
+    sid = str(r0["session_id"])
+    r1 = tools_write.session_log(
+        index,
+        populated_root,
+        {"action": "end", "session_id": sid, "outcome": "first close"},
+    )
+    assert r1.get("ok"), r1
+    r2 = tools_write.session_log(
+        index,
+        populated_root,
+        {"action": "end", "session_id": sid, "outcome": "second close ignored"},
+    )
+    assert r2.get("ok"), r2
+    assert r2.get("action") == "skipped"
 
 
 def test_session_log_end_missing_outcome(populated_root):

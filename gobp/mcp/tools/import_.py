@@ -17,6 +17,26 @@ from gobp.core.fs_mutator import _atomic_write, coerce_and_validate_node, create
 from gobp.core.validator import validate_edge
 
 
+def _dry_run_flag(val: Any) -> bool:
+    """Coerce ``dry_run`` query/tool args to bool (matches read tools / MCP server)."""
+    if val is True:
+        return True
+    if val is False or val is None:
+        return False
+    return str(val).strip().lower() in ("true", "1", "yes", "on")
+
+
+def _import_edge_endpoints(edge: dict[str, Any]) -> tuple[str | None, str | None]:
+    """Normalize ``from``/``to`` vs ``from_id``/``to_id`` for import validation."""
+    fr = edge.get("from") or edge.get("from_id")
+    to = edge.get("to") or edge.get("to_id")
+    if fr is not None:
+        fr = str(fr).strip() or None
+    if to is not None:
+        to = str(to).strip() or None
+    return fr, to
+
+
 def import_proposal(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> dict[str, Any]:
     """AI proposes a batch import from a source file. Stored as pending proposal.
 
@@ -120,8 +140,11 @@ def import_commit(index: GraphIndex, project_root: Path, args: dict[str, Any]) -
     """Commit an approved import proposal atomically.
 
     Input: proposal_id, accept (all|partial|reject), accepted_node_ids (if partial),
-           accepted_edge_ids (if partial), overrides (optional), session_id
-    Output: ok, nodes_created, edges_created, errors
+           accepted_edge_ids (if partial), overrides (optional), session_id,
+           dry_run (optional): when true, run the same validation as commit but do not
+           write nodes/edges or move the proposal file (preview only).
+    Output: ok, nodes_created, edges_created, errors; on dry_run success also
+           ``dry_run``, ``nodes_would_create``, ``edges_would_create``.
 
     Atomicity: if any validation fails, ALL rolled back, nothing written.
     """
@@ -141,6 +164,8 @@ def import_commit(index: GraphIndex, project_root: Path, args: dict[str, Any]) -
     if not session:
         return {"ok": False, "error": f"Session not found: {session_id}"}
 
+    dry_run = _dry_run_flag(args.get("dry_run", False))
+
     # Load proposal
     proposals_dir = project_root / ".gobp" / "proposals"
     pending_file = proposals_dir / f"{proposal_id.replace(':', '_')}.pending.yaml"
@@ -155,6 +180,17 @@ def import_commit(index: GraphIndex, project_root: Path, args: dict[str, Any]) -
         return {"ok": False, "error": f"Failed to load proposal: {e}"}
 
     if accept == "reject":
+        if dry_run:
+            return {
+                "ok": True,
+                "dry_run": True,
+                "would_reject": True,
+                "nodes_created": 0,
+                "edges_created": 0,
+                "nodes_would_create": 0,
+                "edges_would_create": 0,
+                "errors": [],
+            }
         # Move to rejected
         rejected_file = proposals_dir / f"{proposal_id.replace(':', '_')}.rejected.yaml"
         pending_file.rename(rejected_file)
@@ -171,7 +207,11 @@ def import_commit(index: GraphIndex, project_root: Path, args: dict[str, Any]) -
             proposals_dir,
             accept,
             args,
+            dry_run=dry_run,
         )
+
+    if dry_run:
+        return _execute_import_commit()
 
     from gobp.core import db as db_mod
     from gobp.core.import_lock import acquire_import_lock
@@ -204,6 +244,8 @@ def _import_commit_body(
     proposals_dir: Path,
     accept: str,
     args: dict[str, Any],
+    *,
+    dry_run: bool = False,
 ) -> dict[str, Any]:
     """Apply validated import proposal (nodes, edges, rename pending file)."""
     # Select nodes and edges based on accept mode
@@ -249,10 +291,55 @@ def _import_commit_body(
     for edge in all_edges:
         result = validate_edge(edge, edges_schema)
         if not result.ok:
-            errors.append({"edge": f"{edge.get('from')} -> {edge.get('to')}", "errors": result.errors})
+            ef, et = _import_edge_endpoints(edge)
+            errors.append({"edge": f"{ef} -> {et}", "errors": result.errors})
+
+    index_snapshot = GraphIndex.load_from_disk(project_root)
+    proposal_ids = {
+        str(n["id"]).strip() for n in all_nodes if str(n.get("id", "")).strip()
+    }
+    for edge in all_edges:
+        fid, tid = _import_edge_endpoints(edge)
+        if not fid or not tid:
+            errors.append(
+                {
+                    "edge": repr(edge),
+                    "errors": ["edge is missing from/to (or from_id/to_id)"],
+                }
+            )
+            continue
+        for role, uid in (("from", fid), ("to", tid)):
+            if uid in proposal_ids:
+                continue
+            if not index_snapshot.get_node(uid):
+                errors.append(
+                    {
+                        "edge": f"{fid} -> {tid}",
+                        "errors": [f"{role} endpoint not found on graph: {uid}"],
+                    }
+                )
 
     if errors:
-        return {"ok": False, "nodes_created": 0, "edges_created": 0, "errors": errors}
+        out: dict[str, Any] = {
+            "ok": False,
+            "nodes_created": 0,
+            "edges_created": 0,
+            "errors": errors,
+        }
+        if dry_run:
+            out["dry_run"] = True
+        return out
+
+    if dry_run:
+        return {
+            "ok": True,
+            "dry_run": True,
+            "nodes_created": 0,
+            "edges_created": 0,
+            "nodes_would_create": len(all_nodes),
+            "edges_would_create": len(all_edges),
+            "errors": [],
+        }
 
     # All validation passed. Now write atomically.
     # If any write fails partway, we return partial success + errors.

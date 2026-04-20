@@ -14,6 +14,7 @@
 4. Tạo edges đúng semantic theo edge policy
 5. Query hiệu quả ở từng tình huống
 6. Nguyên tắc batch — khi nào gộp, khi nào tách
+7. Ví dụ copy-paste batch / edge / quick (§3.6)
 
 ---
 
@@ -202,7 +203,7 @@ gobp(query="create:Engine name='PaymentService' session_id='...'")
 Dùng khi: 2+ nodes liên quan nhau — đây là phương pháp chính
 Format: nodes TRƯỚC edges
 Token cost: ~100 tokens per batch call (summary only)
-Auto-chunk: GoBP tự chia nếu >50 ops
+Auto-chunk: GoBP tự chia theo chunk nội bộ (mặc định ~200 ops/chunk)
 
 gobp(query="batch session_id='...' ops='
   create: Engine: PaymentService | Handles payments. Validates balance
@@ -211,23 +212,37 @@ gobp(query="batch session_id='...' ops='
     Each row is 1 payment attempt. Owned by PaymentService.
   create: ErrorCase: Payment Timeout | When payment processor
     exceeds 10s timeout. group=Error > Payment severity=error
-  
-  edge: engine_id --depends_on--> table_id reason=reason
-  edge: errorcase_id --affects--> engine_id reason=reason
+
+  edge+: PaymentService --depends_on--> payments
+  edge+: Payment Timeout --affects--> PaymentService
 '")
 ```
+
+Trong `batch`, cạnh dùng tiền tố **`edge+:`** (không phải `edge:`). Endpoint là **tên node** (như trong `create:`) hoặc **id** (`node:…`, `doc:…`); resolver khớp tên sau khi các `create:` phía trên đã chạy trong cùng batch.
+
+**Một node → nhiều cạnh cùng loại (fan-out):** tách target bằng dấu phẩy trên **một** dòng `edge+:`:
+
+```
+edge+: PaymentService --depends_on--> orders_audit, payments_archive
+```
+
+→ Mỗi target sau dấu phẩy là một cạnh `depends_on` riêng. `edge-:` cũng hỗ trợ nhiều target tương tự. `edge*:` (thay thế toàn bộ cạnh cùng type đi ra) vốn đã dùng danh sách phẩy; `edge~:` chỉ **một** target + hậu tố ` to=…`.
 
 ### 3.3 — quick: — capture nhanh
 
 ```
 Dùng khi: Capture nhanh nhiều ý tưởng, enrich sau
-Format: "Name | type | context | description"
+Format MCP: Name | mô tả (tối thiểu 2 phần); tùy chọn thêm category và wave —
+  Name | category | wave | description (tối đa 4 phần, pipe-separated)
+Mặc định mỗi dòng tạo node type **Node**; cột 2–3 (category, wave) được ghi vào nội dung,
+không tự gán type schema — muốn đúng ErrorCase / Invariant / Flow thì dùng `create:` trong
+`batch:` hoặc `retype:` / `edit:` sau quick.
 Token cost: minimal
 
 gobp(query="quick: session_id='...' ops='
-  Payment Timeout | ErrorCase | Wave 3 | Timeout in payment processing
-  Order Total Rule | Invariant | Wave 3 | Total must equal sum of items
-  Checkout Flow | Flow | Wave 3 | End-to-end checkout journey
+  Payment Timeout | Error | Wave 3 | Timeout in payment processing
+  Order Total Rule | Constraint | Wave 3 | Total must equal sum of items
+  Checkout Flow | Application | Wave 3 | End-to-end checkout journey
 '")
 
 Sau quick: → dùng get: để enrich từng node
@@ -260,6 +275,91 @@ gobp(query="upsert:Engine dedupe_key='name' name='PaymentService'
 → Update nếu đã có (theo dedupe_key)
 ```
 
+### 3.6 — Ví dụ thêm (copy-paste)
+
+**A — Fan-out: một `from`, nhiều `to`, cùng `edge_type`**
+
+```
+gobp(query="batch session_id='{SESSION}' ops='
+create: Engine: BillingCore | Orchestrates invoicing and settlement
+create: Table: invoices | Invoice header and line items
+create: Table: payments | Payment attempts and settlement rows
+create: Flow: MonthlyClose | Month-end billing close process
+edge+: BillingCore --depends_on--> invoices, payments
+edge+: MonthlyClose --implements--> BillingCore
+'")
+```
+
+**B — Nối tới node đã tồn tại bằng id (prefix `doc:`, `node:`, …)**
+
+```
+gobp(query="batch session_id='{SESSION}' ops='
+create: Entity: CustomerProfile | Customer master record and preferences
+edge+: CustomerProfile --depends_on--> doc:docs_domain_model_v1
+'")
+```
+
+**C — Hai bước: `suggest:` rồi mới `batch:` (tránh trùng dec:d011)**
+
+```
+gobp(query="suggest: NotificationService")
+→ Đọc suggestions; nếu không trùng thì tạo:
+
+gobp(query="batch session_id='{SESSION}' ops='
+create: Engine: NotificationService | Outbound email and push dispatch
+create: Feature: EmailDigest | Weekly digest subscription
+edge+: NotificationService --depends_on--> EmailDigest
+'")
+```
+
+**D — `quick:` tối thiểu 2 cột (chỉ Name + mô tả, type = Node)**
+
+```
+gobp(query="quick: session_id='{SESSION}' ops='
+Idempotency keys for webhooks | Store and verify idempotency keys on inbound callbacks
+'")
+```
+
+**E — Nhiều cạnh kiểu Test → Code (`covers`)**
+
+```
+gobp(query="batch session_id='{SESSION}' ops='
+create: Flow: UserLogin | Username password and MFA login path
+create: TestCase: LoginHappyPath | Successful login with valid credentials
+create: TestCase: LoginMfaPath | Login with MFA challenge success
+edge+: LoginHappyPath --covers--> UserLogin
+edge+: LoginMfaPath --covers--> UserLogin
+'")
+```
+
+**F — `edge*:` xóa mọi cạnh `implements` đi ra từ hub rồi gắn lại tập đích mới**
+
+```
+gobp(query="batch session_id='{SESSION}' ops='
+create: Engine: BillingCore | Billing orchestration service
+create: Spec: SpecBilling | Billing API and rate plans
+create: Spec: SpecLedger | Ledger posting and reconciliation
+edge*: BillingCore --implements--> SpecBilling, SpecLedger
+'")
+```
+*(Trong cùng batch: tạo hub + spec trước dòng `edge*:`; `edge*` xóa mọi cạnh `implements` hiện có từ `BillingCore` rồi tạo đúng một cạnh tới mỗi target trong danh sách.)*
+
+**G — `edge~:` đổi loại cạnh (một target)**
+
+```
+gobp(query="batch session_id='{SESSION}' ops='
+edge~: OrderService --relates_to--> orders to=depends_on
+'")
+```
+
+**H — `edge-:` gỡ nhiều cạnh cùng loại (danh sách phẩy)**
+
+```
+gobp(query="batch session_id='{SESSION}' ops='
+edge-: BillingCore --depends_on--> legacy_audit, deprecated_cache
+'")
+```
+
 ---
 
 ## PHẦN 4 — NGUYÊN TẮC BATCH
@@ -275,15 +375,17 @@ GỘP khi các nodes:
 
 VÍ DỤ đúng — gộp toàn bộ checkout domain:
   batch ops='
+    create: Spec: SpecCheckout | Checkout requirements overview
     create: Flow: Checkout Flow | ...
     create: Engine: OrderService | ...
     create: Table: orders | ...
     create: Invariant: Order Total Non-Negative | ...
     create: ErrorCase: Checkout Failed | ...
-    edge: flow --implements--> spec
-    edge: engine --depends_on--> table
-    edge: invariant --enforces--> table
+    edge+: Checkout Flow --implements--> SpecCheckout
+    edge+: OrderService --depends_on--> orders
+    edge+: Order Total Non-Negative --enforces--> orders
   '
+  (Tên bên phải `edge+:` phải khớp tên trong `create:` hoặc id có sẵn trên graph.)
 ```
 
 ### Khi nào tách batch
@@ -312,7 +414,8 @@ VÍ DỤ đúng — tách 2 domains:
 7. Test nodes (TestSuite, TestCase)
 8. EDGES — luôn ở cuối, sau tất cả nodes
 
-LÝ DO: edge: cần node tồn tại để resolve ID
+LÝ DO: `edge+:` resolve theo tên/id — các node đích phải đã được tạo ở các dòng
+`create:` phía trên (cùng batch) hoặc đã có trên đĩa
 ```
 
 ---
@@ -361,18 +464,30 @@ SAI — quá chung:
   reason="TestCheckout kiểm chứng happy path của CheckoutFlow"
 ```
 
-### Tạo edges — luôn dùng edge: riêng lẻ
+### Tạo edges — `edge:` (một lệnh MCP) vs `edge+:` (trong batch)
 
 ```
-ĐÚNG:
-  gobp(query="edge: from_id --depends_on--> to_id
-              reason='reason text'")
+Một cạnh đơn, đã có sẵn id (ví dụ sau get:/find:):
+  gobp(query="edge: node:engine_1 --depends_on--> node:table_2
+              reason='PaymentEngine cần payments table để lưu giao dịch'")
 
-SAI — batch edge+ không resolve IDs:
-  batch ops='
-    edge+: from_id --depends_on--> to_id   ← không hoạt động
-  '
+Nhiều node + nhiều cạnh trong một lần gọi — dùng batch + edge+:
+  gobp(query="batch session_id='...' ops='
+    create: Engine: Alpha | ...
+    create: Engine: Beta | ...
+    edge+: Alpha --depends_on--> Beta
+    edge+: Hub --implements--> SpecA, SpecB
+  '")
 ```
+
+Lưu ý:
+
+- Trong batch chỉ dùng cú pháp dòng `edge+: From --type--> To` (hoặc `edge-:` / `edge*:` / `edge~:`).
+- `edge+:` resolve theo tên hiển thị hoặc id; có thể nối node vừa tạo trong cùng `ops`.
+- `reason=` trên cạnh chỉ có trên action `edge:` đơn; batch `edge+:` hiện không parse `reason` trên dòng
+  (cần lý do chi tiết → dùng `edge:` từng cạnh sau khi đã có id, hoặc quy trình chỉnh sau).
+
+Xem thêm **§3.6** cho ví dụ fan-out, `edge*:` / `edge~:` / `edge-:` và `quick:` tối giản.
 
 ---
 
@@ -514,7 +629,8 @@ Bước 3 — Import nodes theo batch:
   Thứ tự: Knowledge → Code → Constraint → Error → Test
 
 Bước 4 — Tạo edges:
-  Dùng edge: riêng lẻ (không batch edge+)
+  Trong cùng batch: các dòng `edge+:` sau các `create:` (và fan-out bằng dấu phẩy nếu cần)
+  Hoặc từng lệnh `edge:` riêng khi đã có id và cần `reason=` đầy đủ
   Theo đúng edge type từ EDGE_POLICY
 
 Bước 5 — Verify:
@@ -535,7 +651,7 @@ Bước 6 — Validate + End:
 | Lỗi | Nguyên nhân | Fix đúng |
 |-----|-------------|----------|
 | YAML corrupt khi rebuild | Description có `:`, `{`, `}` | Viết plain text, không dùng special chars |
-| edge+ không resolve ID | Dùng edge+ trong batch ops | Dùng edge: action riêng lẻ |
+| edge+ unresolved trong batch | Sai tên / chưa create node đích trước dòng edge | Đặt `create:` trước; khớp đúng tên hoặc dùng id; fan-out: `A --t--> B, C` |
 | Duplicate nodes | Không suggest: trước create: | Luôn suggest: trước khi tạo |
 | Score < 100 khi validate | Nodes thiếu description | Thêm description cho mọi node |
 | Session IN_PROGRESS tồn đọng | Quên session:end | session:end với outcome + handoff |
@@ -550,7 +666,7 @@ Bước 6 — Validate + End:
 □ Có session_id (session:start hoặc session:resume)
 □ Description: plain text, không có :, {, }, |, #, >, !
 □ Nodes trong batch: Knowledge → Code → Constraint → Error → Test → Edges
-□ Edges: dùng edge: riêng lẻ, có reason cụ thể
+□ Edges: trong batch dùng `edge+:` (đủ tên/id); hoặc `edge:` riêng khi cần reason= chi tiết
 □ implemented=false cho tất cả Spec/Feature chưa có code
 □ validate: metadata → score 100/100
 □ session:end với outcome đầy đủ + handoff cho session tiếp theo

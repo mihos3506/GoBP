@@ -678,9 +678,17 @@ async def dispatch(
                 from_node = index.get_node(from_id)
                 to_node = index.get_node(to_id)
                 if not from_node:
-                    result = {"ok": False, "error": f"Node not found: {from_id}"}
+                    result = {
+                        "ok": False,
+                        "error": f"Source node not found: {from_id}",
+                        "suggestion": "Create the node first (or use batch with create: lines before edge+)",
+                    }
                 elif not to_node:
-                    result = {"ok": False, "error": f"Node not found: {to_id}"}
+                    result = {
+                        "ok": False,
+                        "error": f"Target node not found: {to_id}",
+                        "suggestion": "Create the node first (or use batch with create: lines before edge+)",
+                    }
                 else:
                     from gobp.core.validator_v3 import auto_reason, validate_edge_type
 
@@ -837,6 +845,7 @@ async def dispatch(
                 "proposal_id": proposal_id,
                 "accept": params.get("accept", "all"),
                 "session_id": params.get("session_id", ""),
+                "dry_run": params.get("dry_run", False),
             }
             result = tools_import.import_commit(index, project_root, args)
 

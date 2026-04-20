@@ -174,8 +174,8 @@ class GraphIndex:
                     if result.ok:
                         self._edges.append(edge)
                         # Build edge indexes
-                        from_id = edge.get("from", "")
-                        to_id = edge.get("to", "")
+                        from_id = edge.get("from") or edge.get("from_id") or ""
+                        to_id = edge.get("to") or edge.get("to_id") or ""
                         edge_type = edge.get("type", "")
                         if from_id:
                             self._edges_from_idx[from_id].append(edge)
@@ -512,6 +512,49 @@ class GraphIndex:
             self._edges_by_type_idx[edge_type].append(edge)
         self._adjacency.add_edge(from_id, to_id, edge_type)
         return True
+
+    def register_persisted_node(self, node: dict[str, Any]) -> None:
+        """Register a node that was just written to disk (not a pending batch add).
+
+        Updates this index so ``get_node`` finds the node without a full
+        ``load_from_disk`` — e.g. after :func:`gobp.core.fs_mutator.create_node`
+        from :func:`gobp.mcp.tools.write.session_log` ``start``.
+
+        If ``id`` already exists, replaces the in-memory entry and refreshes type /
+        group / inverted indexes for that id.
+
+        Args:
+            node: Validated node dict including ``id`` and ``type``.
+
+        Raises:
+            ValueError: If ``id`` is missing.
+        """
+        data = dict(node)
+        node_id = str(data.get("id", "")).strip()
+        if not node_id:
+            raise ValueError("register_persisted_node requires node id")
+
+        if node_id in self._nodes:
+            old = self._nodes[node_id]
+            old_type = str(old.get("type", "Unknown"))
+            old_group = str(old.get("group", "") or "").strip()
+            if old_group:
+                self._remove_node_from_group_index(node_id, old_group)
+            if old_type in self._nodes_by_type_idx:
+                self._nodes_by_type_idx[old_type] = [
+                    n for n in self._nodes_by_type_idx[old_type] if n.get("id") != node_id
+                ]
+                if not self._nodes_by_type_idx[old_type]:
+                    del self._nodes_by_type_idx[old_type]
+            self._inverted.remove_node(node_id)
+
+        self._nodes[node_id] = data
+        ntype = str(data.get("type", "Unknown"))
+        self._nodes_by_type_idx.setdefault(ntype, []).append(data)
+        self._inverted.add_node(data)
+        g = str(data.get("group", "") or "").strip()
+        if g:
+            self._add_node_to_group_index(node_id, g)
 
     def remove_node_in_memory(self, node_id: str) -> bool:
         """Remove node from index; drop pending new-node entry if present."""

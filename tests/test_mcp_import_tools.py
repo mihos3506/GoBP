@@ -235,6 +235,213 @@ def test_commit_missing_proposal(populated_root):
     assert result["ok"] is False
 
 
+def test_commit_dry_run_invalid_includes_dry_run_flag(populated_root):
+    """Failed dry_run still reports dry_run=True so clients know no writes occurred."""
+    index = _load(populated_root)
+    prop_result = tools_import.import_proposal(
+        index,
+        populated_root,
+        {
+            "source_path": "docs/dry_bad_edge.md",
+            "proposal_type": "doc",
+            "ai_notes": "X",
+            "proposed_nodes": [_valid_node_dict("node:dry_bad_src", "Src")],
+            "proposed_edges": [
+                {
+                    "from": "node:dry_bad_src",
+                    "to": "node:no_such_dry_bad",
+                    "type": "relates_to",
+                }
+            ],
+            "confidence": "low",
+            "session_id": "session:2026-04-14_test",
+        },
+    )
+    proposal_id = prop_result["proposal_id"]
+    r = tools_import.import_commit(
+        _load(populated_root),
+        populated_root,
+        {
+            "proposal_id": proposal_id,
+            "accept": "all",
+            "session_id": "session:2026-04-14_test",
+            "dry_run": True,
+        },
+    )
+    assert r["ok"] is False
+    assert r.get("dry_run") is True
+    assert list((populated_root / ".gobp" / "proposals").glob("*.pending.yaml"))
+
+
+def test_commit_rejects_edge_to_missing_graph_node(populated_root):
+    """Edges must reference existing graph nodes unless the endpoint is in the proposal."""
+    index = _load(populated_root)
+    prop_result = tools_import.import_proposal(
+        index,
+        populated_root,
+        {
+            "source_path": "docs/edge.md",
+            "proposal_type": "doc",
+            "ai_notes": "X",
+            "proposed_nodes": [_valid_node_dict("node:edge_src", "Src")],
+            "proposed_edges": [
+                {
+                    "from": "node:edge_src",
+                    "to": "node:definitely_missing_neighbor",
+                    "type": "relates_to",
+                }
+            ],
+            "confidence": "low",
+            "session_id": "session:2026-04-14_test",
+        },
+    )
+    assert prop_result["ok"] is True
+    proposal_id = prop_result["proposal_id"]
+
+    index2 = _load(populated_root)
+    commit_result = tools_import.import_commit(
+        index2,
+        populated_root,
+        {
+            "proposal_id": proposal_id,
+            "accept": "all",
+            "session_id": "session:2026-04-14_test",
+        },
+    )
+    assert commit_result["ok"] is False
+    assert commit_result["nodes_created"] == 0
+    assert any(
+        "not found on graph" in str(e.get("errors", []))
+        for e in commit_result.get("errors", [])
+        if isinstance(e, dict)
+    )
+
+
+def test_commit_dry_run_valid_leaves_pending_and_creates_nothing(populated_root):
+    """dry_run=true runs validation only; proposal stays pending; graph unchanged."""
+    index = _load(populated_root)
+    prop_result = tools_import.import_proposal(
+        index,
+        populated_root,
+        {
+            "source_path": "docs/dry.md",
+            "proposal_type": "doc",
+            "ai_notes": "dry",
+            "proposed_nodes": [_valid_node_dict("node:dry_run_only", "Dry")],
+            "proposed_edges": [],
+            "confidence": "high",
+            "session_id": "session:2026-04-14_test",
+        },
+    )
+    assert prop_result["ok"] is True
+    proposal_id = prop_result["proposal_id"]
+
+    before_pending = list((populated_root / ".gobp" / "proposals").glob("*.pending.yaml"))
+    assert len(before_pending) == 1
+
+    index2 = _load(populated_root)
+    r = tools_import.import_commit(
+        index2,
+        populated_root,
+        {
+            "proposal_id": proposal_id,
+            "accept": "all",
+            "session_id": "session:2026-04-14_test",
+            "dry_run": True,
+        },
+    )
+    assert r["ok"] is True
+    assert r.get("dry_run") is True
+    assert r["nodes_created"] == 0
+    assert r["edges_created"] == 0
+    assert r.get("nodes_would_create") == 1
+    assert r.get("edges_would_create") == 0
+
+    assert list((populated_root / ".gobp" / "proposals").glob("*.pending.yaml")) == before_pending
+    assert not list((populated_root / ".gobp" / "proposals").glob("*.committed.yaml"))
+
+    index3 = _load(populated_root)
+    assert index3.get_node("node:dry_run_only") is None
+
+
+def test_commit_dry_run_then_commit_writes(populated_root):
+    """After a successful dry_run, a real commit on the same proposal still applies."""
+    index = _load(populated_root)
+    prop_result = tools_import.import_proposal(
+        index,
+        populated_root,
+        {
+            "source_path": "docs/dry2.md",
+            "proposal_type": "doc",
+            "ai_notes": "x",
+            "proposed_nodes": [_valid_node_dict("node:after_dry", "After dry")],
+            "proposed_edges": [],
+            "confidence": "high",
+            "session_id": "session:2026-04-14_test",
+        },
+    )
+    proposal_id = prop_result["proposal_id"]
+    index2 = _load(populated_root)
+    dry = tools_import.import_commit(
+        index2,
+        populated_root,
+        {
+            "proposal_id": proposal_id,
+            "accept": "all",
+            "session_id": "session:2026-04-14_test",
+            "dry_run": "true",
+        },
+    )
+    assert dry["ok"] is True and dry.get("dry_run") is True
+
+    index3 = _load(populated_root)
+    real = tools_import.import_commit(
+        index3,
+        populated_root,
+        {
+            "proposal_id": proposal_id,
+            "accept": "all",
+            "session_id": "session:2026-04-14_test",
+        },
+    )
+    assert real["ok"] is True
+    assert real["nodes_created"] == 1
+    assert _load(populated_root).get_node("node:after_dry") is not None
+
+
+def test_commit_dry_run_reject_does_not_move_file(populated_root):
+    index = _load(populated_root)
+    prop_result = tools_import.import_proposal(
+        index,
+        populated_root,
+        {
+            "source_path": "docs/dry_rej.md",
+            "proposal_type": "doc",
+            "ai_notes": "x",
+            "proposed_nodes": [_valid_node_dict("node:rej_dry", "R")],
+            "proposed_edges": [],
+            "confidence": "low",
+            "session_id": "session:2026-04-14_test",
+        },
+    )
+    proposal_id = prop_result["proposal_id"]
+    r = tools_import.import_commit(
+        _load(populated_root),
+        populated_root,
+        {
+            "proposal_id": proposal_id,
+            "accept": "reject",
+            "session_id": "session:2026-04-14_test",
+            "dry_run": True,
+        },
+    )
+    assert r["ok"] is True
+    assert r.get("dry_run") is True
+    assert r.get("would_reject") is True
+    assert list((populated_root / ".gobp" / "proposals").glob("*.pending.yaml"))
+    assert not list((populated_root / ".gobp" / "proposals").glob("*.rejected.yaml"))
+
+
 def test_commit_validation_failure(populated_root):
     index = _load(populated_root)
     # Proposal with invalid node (missing required fields)

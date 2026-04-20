@@ -44,7 +44,11 @@ def write_node(
     session_id: str = "",
     expected_updated_at: int | None = None,
 ) -> dict[str, Any]:
-    """Full write path for a single node."""
+    """Full write path for a single node.
+
+    When ``expected_updated_at`` is set (optimistic concurrency), ``id`` must be
+    present in ``node_data``. Identity-changing edits belong to :func:`edit_node`.
+    """
     # 1. auto_fix
     node = _validator.auto_fix(dict(node_data))
 
@@ -52,6 +56,17 @@ def write_node(
     errors = _validator.validate(node)
     if errors:
         return {"ok": False, "errors": errors}
+
+    # 2b. Optimistic updates must keep a stable id — otherwise a new id is generated
+    # from (name, group) and upsert creates a second row while the old node remains.
+    if expected_updated_at is not None and not str(node.get("id", "")).strip():
+        return {
+            "ok": False,
+            "errors": [
+                "id is required when expected_updated_at is set. "
+                "For renames that change identity (name/group/type), use edit: instead of write_node."
+            ],
+        }
 
     # 3. generate_id
     if not node.get("id"):

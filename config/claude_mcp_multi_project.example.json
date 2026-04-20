@@ -1,0 +1,22 @@
+{
+  "mcpServers": {
+    "gobp-dev": {
+      "type": "stdio",
+      "command": "D:/GoBP/venv/Scripts/python.exe",
+      "args": ["-m", "gobp.mcp.server"],
+      "env": {
+        "GOBP_PROJECT_ROOT": "D:/GoBP",
+        "GOBP_DB_URL": "postgresql://USER:PASSWORD@localhost/gobp"
+      }
+    },
+    "gobp-mihos": {
+      "type": "stdio",
+      "command": "D:/GoBP/venv/Scripts/python.exe",
+      "args": ["-m", "gobp.mcp.server"],
+      "env": {
+        "GOBP_PROJECT_ROOT": "D:/MIHOS-v1",
+        "GOBP_DB_URL": "postgresql://USER:PASSWORD@localhost/gobp_mihos"
+      }
+    }
+  }
+}

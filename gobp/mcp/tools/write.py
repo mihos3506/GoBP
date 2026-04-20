@@ -913,6 +913,12 @@ def session_log(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> 
         except Exception as e:
             return {"ok": False, "error": f"Write failed: {e}"}
 
+        try:
+            index.register_persisted_node(session_node)
+        except Exception:
+            # Index sync is best-effort; disk is source of truth — caller may reload.
+            pass
+
         return {
             "ok": True,
             "session_id": session_id,
@@ -931,12 +937,41 @@ def session_log(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> 
 
     existing = index.get_node(session_id)
     if not existing:
+        fresh = GraphIndex.load_from_disk(project_root)
+        existing = fresh.get_node(session_id)
+    if not existing:
         return {"ok": False, "error": f"Session not found: {session_id}"}
 
     updated: dict[str, Any] = dict(existing)
     updated["updated"] = now
 
     if action == "end":
+        status_now = str(existing.get("status", "") or "").strip().upper()
+        desc_blob = f"{existing.get('desc_full', '')!s}{existing.get('description', '')!s}"
+        if status_now == "COMPLETED":
+            return {
+                "ok": True,
+                "session_id": session_id,
+                "action": "skipped",
+                "note": "Session already COMPLETED",
+                "revision": _get_revision(session_id, project_root),
+            }
+        if "STALE_CLOSED" in desc_blob or "WATCHDOG CLOSED" in desc_blob:
+            return {
+                "ok": False,
+                "error": (
+                    "Session was auto-closed as stale; start a new session with "
+                    "session:start instead of session:end"
+                ),
+            }
+        if status_now and status_now != "IN_PROGRESS":
+            return {
+                "ok": False,
+                "error": (
+                    f"Cannot end session from status {existing.get('status')!r}; "
+                    "expected IN_PROGRESS"
+                ),
+            }
         outcome = args.get("outcome")
         if not outcome:
             return {"ok": False, "error": "outcome required for end action"}
@@ -958,6 +993,11 @@ def session_log(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> 
         update_node(project_root, updated, schema, actor="session_log")
     except Exception as e:
         return {"ok": False, "error": f"Write failed: {e}"}
+
+    try:
+        index.register_persisted_node(updated)
+    except Exception:
+        pass
 
     changed_fields = sorted(
         [k for k, v in updated.items() if existing.get(k) != v and k not in ("updated",)]
@@ -1359,42 +1399,70 @@ def batch_action(index: GraphIndex, project_root: Path, args: dict[str, Any]) ->
     
                 elif kind == "edge_add":
                     fid = _resolve_node_ref(idx, str(op.get("from_name", "")))
-                    tid = _resolve_node_ref(idx, str(op.get("targets", [""])[0]))
                     et = str(op.get("edge_type", "relates_to"))
-                    if not fid or not tid:
-                        errors.append(f"edge+: unresolved endpoint(s) in {op.get('raw')!r}")
+                    if not fid:
+                        errors.append(f"edge+: unresolved from in {op.get('raw')!r}")
                         continue
-                    try:
-                        added = idx.add_edge_in_memory(fid, tid, et)
-                    except ValueError as exc:
-                        errors.append(f"edge+: {exc}")
+                    targets = op.get("targets") or []
+                    if not targets:
+                        errors.append(f"edge+: missing target(s) in {op.get('raw')!r}")
                         continue
-                    if not added:
-                        skipped.append(
-                            {
-                                "op": "edge+",
-                                "reason": "duplicate edge",
-                                "from": fid,
-                                "to": tid,
-                                "type": et,
-                            }
-                        )
-                    else:
-                        tally[kind][0] += 1
+                    for tgt in targets:
+                        tid = _resolve_node_ref(idx, str(tgt).strip())
+                        if not tid:
+                            errors.append(
+                                f"edge+: unresolved target {tgt!r} in {op.get('raw')!r}"
+                            )
+                            continue
+                        try:
+                            added = idx.add_edge_in_memory(fid, tid, et)
+                        except ValueError as exc:
+                            errors.append(f"edge+: {exc}")
+                            continue
+                        if not added:
+                            skipped.append(
+                                {
+                                    "op": "edge+",
+                                    "reason": "duplicate edge",
+                                    "from": fid,
+                                    "to": tid,
+                                    "type": et,
+                                }
+                            )
+                        else:
+                            tally[kind][0] += 1
     
                 elif kind == "edge_remove":
                     fid = _resolve_node_ref(idx, str(op.get("from_name", "")))
-                    tid = _resolve_node_ref(idx, str(op.get("targets", [""])[0]))
                     et = str(op.get("edge_type", "relates_to"))
-                    if not fid or not tid:
-                        errors.append(f"edge-: unresolved endpoint(s) in {op.get('raw')!r}")
+                    if not fid:
+                        errors.append(f"edge-: unresolved from in {op.get('raw')!r}")
                         continue
-                    removed = remove_edge_from_disk(project_root, fid, tid, et, actor="batch_action")
-                    if removed == 0:
-                        warnings.append(
-                            {"op": "edge-", "note": "edge not found", "from": fid, "to": tid, "type": et}
+                    targets_rm = op.get("targets") or []
+                    if not targets_rm:
+                        errors.append(f"edge-: missing target(s) in {op.get('raw')!r}")
+                        continue
+                    for tgt in targets_rm:
+                        tid = _resolve_node_ref(idx, str(tgt).strip())
+                        if not tid:
+                            errors.append(
+                                f"edge-: unresolved target {tgt!r} in {op.get('raw')!r}"
+                            )
+                            continue
+                        removed = remove_edge_from_disk(
+                            project_root, fid, tid, et, actor="batch_action"
                         )
-                    tally[kind][0] += 1
+                        if removed == 0:
+                            warnings.append(
+                                {
+                                    "op": "edge-",
+                                    "note": "edge not found",
+                                    "from": fid,
+                                    "to": tid,
+                                    "type": et,
+                                }
+                            )
+                        tally[kind][0] += 1
                     working_index = GraphIndex.load_from_disk(project_root)
     
                 elif kind == "edge_ret_type":

@@ -82,6 +82,18 @@ def test_validate_v3_invalid_errorcase_severity() -> None:
     assert any("severity" in i["issue"].lower() for i in out["issues"])
 
 
+def test_validate_v3_accepts_severity_single_letter() -> None:
+    """F / E / W / I stored in DB must not be flagged as invalid."""
+    conn = MagicMock()
+    cur = MagicMock()
+    conn.cursor.return_value.__enter__.return_value = cur
+    cur.fetchall.side_effect = [[], [], [], [], []]
+    cur.fetchone.return_value = (5,)
+
+    out = read_v3.validate_v3(conn)
+    assert not any("severity" in i["issue"].lower() for i in out["issues"])
+
+
 def test_validate_v3_stale_session_warning() -> None:
     conn = MagicMock()
     cur = MagicMock()

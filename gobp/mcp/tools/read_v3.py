@@ -665,7 +665,7 @@ def validate_v3(conn: Any) -> dict[str, Any]:
 
     Checks:
       1. Nodes có đủ required fields (name, group_path, desc_full không rỗng)
-      2. ErrorCase nodes có severity hợp lệ (fatal/error/warning/info)
+      2. Nodes dưới nhóm Error có ``severity`` hợp lệ (từ đầy đủ hoặc chữ F/E/W/I)
       3. Edges có from_id và to_id tồn tại (FK integrity)
       4. Không có orphan nodes (nodes không có edges và group != Meta)
       5. Sessions không có IN_PROGRESS quá 24h (stale)
@@ -700,20 +700,24 @@ def validate_v3(conn: Any) -> dict[str, Any]:
                 }
             )
 
-        # Check 2: ErrorCase severity
+        # Check 2: severity under Error* groups (words or single-letter F/E/W/I)
         cur.execute(
             """
             SELECT id, severity FROM nodes
-            WHERE group_path LIKE 'Error%%'
-              AND (severity IS NULL OR severity = ''
-                   OR severity NOT IN ('fatal', 'error', 'warning', 'info'))
+            WHERE group_path LIKE 'Error >%'
+              AND NOT (
+                    severity IS NULL
+                 OR trim(severity) = ''
+                 OR lower(trim(severity)) IN ('fatal', 'error', 'warning', 'info')
+                 OR upper(trim(severity)) IN ('F', 'E', 'W', 'I')
+                  )
             """
         )
         for row in cur.fetchall():
             issues.append(
                 {
                     "node_id": row[0],
-                    "issue": f"ErrorCase has invalid severity: '{row[1]}'",
+                    "issue": f"ErrorCase has invalid severity: {row[1]!r}",
                     "severity": "error",
                 }
             )

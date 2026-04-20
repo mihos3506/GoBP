@@ -22,10 +22,11 @@ from gobp.mcp.tools.maintain import validate
 
 
 def edge_duplicate_stats(index: GraphIndex) -> dict[str, Any]:
-    triples = [
-        (e.get("from", ""), e.get("type", ""), e.get("to", ""))
-        for e in index.all_edges()
-    ]
+    triples = []
+    for e in index.all_edges():
+        ef = str(e.get("from") or e.get("from_id") or "")
+        et = str(e.get("to") or e.get("to_id") or "")
+        triples.append((ef, str(e.get("type", "")), et))
     counts = Counter(triples)
     duplicates = [
         {"from": f, "type": t, "to": to, "count": c}

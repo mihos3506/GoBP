@@ -137,6 +137,25 @@ def test_write_node_conflict_warning(tmp_path: Path) -> None:
     assert r.get("conflict_warning", {}).get("conflict") is True
 
 
+def test_write_node_rejects_expected_updated_at_without_id(tmp_path: Path) -> None:
+    gobp_dir = tmp_path / ".gobp"
+    node = {
+        "name": "Renamed",
+        "group": "Dev > Test",
+        "description": "x",
+    }
+    r = write_node(
+        node,
+        gobp_dir,
+        conn=None,
+        session_id="s1",
+        expected_updated_at=42,
+    )
+    assert r.get("ok") is False
+    assert "errors" in r
+    assert any("id is required" in err for err in r["errors"])
+
+
 def test_write_node_expected_match_no_warning(tmp_path: Path) -> None:
     gobp_dir = tmp_path / ".gobp"
     node = _minimal_node()

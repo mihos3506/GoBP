@@ -8,8 +8,8 @@ prefix before the first colon):
 - ``delete:`` — ``<node_id>``
 - ``retype:`` — ``<node_id> new_type=Engine``
 - ``merge:`` — ``keep=<id> absorb=<id>``
-- ``edge+:`` / ``edge-:`` / ``edge~:`` / ``edge*:`` — ``From --type--> To`` (``edge*`` allows
-  comma-separated targets; ``edge~`` supports `` to=newtype`` suffix).
+- ``edge+:`` / ``edge-:`` / ``edge*:`` — ``From --type--> To`` (comma-separated ``To`` list:
+  one edge per target, same ``edge_type``). ``edge~`` — single target plus `` to=newtype`` suffix.
 """
 
 from __future__ import annotations
@@ -249,7 +249,10 @@ def parse_batch_line(line: str) -> dict[str, Any]:
         from_name = em.group(1).strip()
         edge_type = em.group(2).strip()
         to_spec = em.group(3).strip()
-        targets = [t.strip() for t in to_spec.split(",")] if prefix == "edge*" else [to_spec]
+        if prefix == "edge~":
+            targets = [to_spec.strip()]
+        else:
+            targets = [t.strip() for t in to_spec.split(",") if t.strip()]
         if not targets or not all(targets):
             return {"kind": "error", "message": f"{prefix}: missing target(s)", "raw": raw}
         return {

@@ -6,7 +6,7 @@ owner: null
 project_id: gobp
 project_name: GoBP
 project_description: Graph of Brainstorm Project — AI team memory layer
-schema_version: 2
+schema_version: 3
 id_groups:
   core:
     types:

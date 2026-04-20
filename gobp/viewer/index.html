@@ -437,6 +437,13 @@
     <button type="button" onclick="toggleMCPPanel()" style="background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:14px">✕</button>
   </div>
   <h2 style="font-size:16px;margin-bottom:16px">⚙ MCP Config Generator</h2>
+  <p class="hint" style="font-size:10px;color:var(--text-fade);line-height:1.45;margin:-8px 0 14px">
+    Each MCP server must use its own <code style="font-size:10px">GOBP_PROJECT_ROOT</code> and its own
+    <code style="font-size:10px">GOBP_DB_URL</code>. If two projects point at the same Postgres database,
+    they share the same <code style="font-size:10px">nodes</code>/<code style="font-size:10px">edges</code> rows (schema v3 has no per-project column).
+    Create a second database (e.g. <code style="font-size:10px">gobp_mihos</code>), set the URL here, then start MCP once so
+    <code style="font-size:10px">create_schema_v3</code> can run on that DB.
+  </p>
 
   <div class="mcp-field">
     <label>PROJECT ROOT</label>
@@ -730,6 +737,7 @@ async function loadGraph(root) {
         '0 nodes — graph is empty. This viewer reads .gobp/ on disk (not MCP). ' +
         'Run: python -m gobp.cli init (or add nodes) in this project root.';
     }
+    await refreshMcpPanelIfOpen();
   } catch(e) {
     document.getElementById('loading').style.display = 'none';
     document.getElementById('status-left').textContent = 'Error: ' + e.message;
@@ -1034,6 +1042,32 @@ function makeSprite(text) {
 
 let mcpTab = 'cli';
 
+/** Load /api/config for ``CURRENT_ROOT`` and refresh MCP generator fields + snippet. */
+async function applyMcpDefaultsFromConfig() {
+  const cfgUrl = CURRENT_ROOT
+    ? `/api/config?root=${encodeURIComponent(CURRENT_ROOT)}`
+    : '/api/config';
+  try {
+    const cfg = await fetch(cfgUrl).then((r) => r.json());
+    document.getElementById('mcp-root').value = cfg.project_root || '';
+    document.getElementById('mcp-name').value = cfg.project_name || '';
+    document.getElementById('mcp-db').value = cfg.suggested_db || '';
+    document.getElementById('mcp-python').value = cfg.python_path || '';
+    document.getElementById('mcp-dbhost').value =
+      cfg.db_host || 'postgresql://postgres:***@localhost';
+    generateMCP();
+  } catch (e) {
+    console.error('Failed to load config:', e);
+  }
+}
+
+/** When the project switcher changes root, update MCP snippet if the panel is open. */
+async function refreshMcpPanelIfOpen() {
+  const panel = document.getElementById('mcp-panel');
+  if (!panel || panel.style.display !== 'block') return;
+  await applyMcpDefaultsFromConfig();
+}
+
 async function toggleMCPPanel() {
   const panel = document.getElementById('mcp-panel');
   const detail = document.getElementById('detail');
@@ -1042,20 +1076,7 @@ async function toggleMCPPanel() {
     panel.style.display = 'block';
     detail.classList.remove('visible');
 
-    const cfgUrl = CURRENT_ROOT
-      ? `/api/config?root=${encodeURIComponent(CURRENT_ROOT)}`
-      : '/api/config';
-    try {
-      const cfg = await fetch(cfgUrl).then(r => r.json());
-      document.getElementById('mcp-root').value = cfg.project_root || '';
-      document.getElementById('mcp-name').value = cfg.project_name || '';
-      document.getElementById('mcp-db').value = cfg.suggested_db || '';
-      document.getElementById('mcp-python').value = cfg.python_path || '';
-      document.getElementById('mcp-dbhost').value = cfg.db_host || 'postgresql://postgres:***@localhost';
-      generateMCP();
-    } catch (e) {
-      console.error('Failed to load config:', e);
-    }
+    await applyMcpDefaultsFromConfig();
   } else {
     panel.style.display = 'none';
   }

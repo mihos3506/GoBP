@@ -173,6 +173,13 @@ def test_parse_batch_edge_add() -> None:
     assert p["kind"] == "edge_add"
     assert p["from_name"] == "FromNode"
     assert p["edge_type"] == "depends_on"
+    assert p["targets"] == ["ToNode"]
+
+
+def test_parse_batch_edge_add_multiple_targets() -> None:
+    p = parse_batch_line("edge+: Hub --implements--> EngineA, EngineB, EngineC")
+    assert p["kind"] == "edge_add"
+    assert p["targets"] == ["EngineA", "EngineB", "EngineC"]
 
 
 def test_parse_batch_edge_colon_in_node_ids() -> None:
@@ -249,6 +256,43 @@ def test_batch_edge_add_by_name(proj: Path) -> None:
     r = asyncio.run(dispatch(f"batch session_id='{sid}' ops='{ops}'", index, proj))
     assert r["ok"]
     assert r["errors"] == []
+
+
+def test_batch_edge_add_multiple_targets_one_line(proj: Path) -> None:
+    """One edge+ line can fan out to many nodes (comma-separated targets)."""
+    sid = _sid(proj)
+    ops = (
+        "create: Engine: HubEng | hub\n"
+        "create: Engine: LeafA | a\n"
+        "create: Engine: LeafB | b\n"
+        "edge+: HubEng --depends_on--> LeafA, LeafB"
+    )
+    index = GraphIndex.load_from_disk(proj)
+    r = asyncio.run(
+        dispatch(f"batch session_id='{sid}' ops='{ops}'", index, proj),
+    )
+    assert r["ok"], r
+    assert r.get("errors") == []
+    fresh = GraphIndex.load_from_disk(proj)
+    hub_id = _resolve_name(fresh, "HubEng")
+    a_id = _resolve_name(fresh, "LeafA")
+    b_id = _resolve_name(fresh, "LeafB")
+    assert hub_id and a_id and b_id
+    outs = fresh.get_edges_from(hub_id)
+    types_to = {(e.get("type"), e.get("to")) for e in outs}
+    assert ("depends_on", a_id) in types_to
+    assert ("depends_on", b_id) in types_to
+
+
+def _resolve_name(index: GraphIndex, name: str) -> str | None:
+    from gobp.core.search import normalize_text
+
+    key = normalize_text(name).replace(" ", "")
+    for n in index.all_nodes():
+        nk = normalize_text(str(n.get("name", ""))).replace(" ", "")
+        if nk == key:
+            return str(n.get("id"))
+    return None
 
 
 @pytest.mark.slow

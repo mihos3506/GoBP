@@ -16,6 +16,17 @@ from gobp.core.fs_mutator import coerce_and_validate_node
 from gobp.core.validator import validate_edge
 
 
+def _edge_endpoints(edge: dict[str, Any]) -> tuple[str | None, str | None]:
+    """Return ``(from_id, to_id)`` whether the edge uses ``from``/``to`` or ``from_id``/``to_id``."""
+    from_id = edge.get("from") or edge.get("from_id")
+    to_id = edge.get("to") or edge.get("to_id")
+    if from_id is not None:
+        from_id = str(from_id).strip() or None
+    if to_id is not None:
+        to_id = str(to_id).strip() or None
+    return from_id, to_id
+
+
 @lru_cache(maxsize=1)
 def _cached_schemas() -> tuple[dict[str, Any], dict[str, Any]]:
     """Load and cache node/edge schemas for validate calls."""
@@ -77,7 +88,8 @@ def validate(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> dic
     if scope in ("all", "edges"):
         for edge in index.all_edges():
             result = validate_edge(edge, edges_schema)
-            edge_desc = f"{edge.get('from', '?')} -> {edge.get('to', '?')} ({edge.get('type', '?')})"
+            ef, et = _edge_endpoints(edge)
+            edge_desc = f"{ef or '?'} -> {et or '?'} ({edge.get('type', '?')})"
             for err in result.errors:
                 issues.append(
                     {
@@ -100,8 +112,7 @@ def validate(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> dic
     # Reference check: edge endpoints must exist as nodes
     if scope in ("all", "references"):
         for edge in index.all_edges():
-            from_id = edge.get("from")
-            to_id = edge.get("to")
+            from_id, to_id = _edge_endpoints(edge)
             if from_id and not index.get_node(from_id):
                 issues.append(
                     {

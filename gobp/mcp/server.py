@@ -3,9 +3,9 @@
 Exposes GoBP graph data to MCP-capable AI clients (Cursor, Claude Desktop,
 Claude CLI, Continue, etc.) via standard MCP protocol over stdio.
 
-Server loads .gobp/ data at startup for warm-up; each `gobp()` call reloads
-the graph from disk so long-lived MCP processes always see the latest writes
-(sessions, imports, etc.). Single tool `gobp()` accepts the
+Server keeps a module-level :class:`~gobp.core.graph.GraphIndex` cache guarded by a
+lock; writes invalidate or refresh the cache so long-lived MCP processes stay
+consistent. Single tool `gobp()` accepts the
 query protocol (v2): reads/writes, `version:`, schema governance
 (`validate: schema-docs` / `schema-tests` / `metadata`), response tiers
 (`find`/`get`/`related` with `mode=summary|brief|full`), `get_batch:`,
@@ -26,6 +26,7 @@ import json
 import logging
 import os
 import sys
+import threading
 import time as _time
 from collections import defaultdict as _defaultdict
 from pathlib import Path
@@ -173,34 +174,38 @@ def _load_index(project_root: Path) -> GraphIndex:
 _cached_index: GraphIndex | None = None
 _cache_loaded_at: float = 0.0
 _cache_project_root: Path | None = None
+_cache_lock = threading.Lock()
 
 
 def get_cached_index(project_root: Path) -> GraphIndex:
     """Return cached :class:`GraphIndex`, loading from disk only on miss or project change."""
     global _cached_index, _cache_loaded_at, _cache_project_root
     root = project_root.resolve()
-    if _cached_index is None or _cache_project_root != root:
-        _cached_index = _load_index(root)
-        _cache_loaded_at = _time.time()
-        _cache_project_root = root
-    return _cached_index
+    with _cache_lock:
+        if _cached_index is None or _cache_project_root != root:
+            _cached_index = _load_index(root)
+            _cache_loaded_at = _time.time()
+            _cache_project_root = root
+        return _cached_index
 
 
 def invalidate_cache() -> None:
     """Clear cached index so the next :func:`get_cached_index` reloads from disk."""
     global _cached_index
-    _cached_index = None
+    with _cache_lock:
+        _cached_index = None
 
 
 def update_cache(index: GraphIndex, project_root: Path | None = None) -> None:
     """Replace the cache with an updated in-memory index (e.g. after batch flush)."""
     global _cached_index, _cache_loaded_at, _cache_project_root
-    _cached_index = index
-    _cache_loaded_at = _time.time()
-    if project_root is not None:
-        _cache_project_root = project_root.resolve()
-    elif getattr(index, "_gobp_root", None):
-        _cache_project_root = Path(index._gobp_root).resolve()
+    with _cache_lock:
+        _cached_index = index
+        _cache_loaded_at = _time.time()
+        if project_root is not None:
+            _cache_project_root = project_root.resolve()
+        elif getattr(index, "_gobp_root", None):
+            _cache_project_root = Path(index._gobp_root).resolve()
 
 
 # Global server instance and index (loaded on startup)
@@ -298,7 +303,8 @@ async def list_tools() -> list[types.Tool]:
                             "'session:start actor=\\'…\\' goal=\\'…\\' role=\\'observer|contributor|admin\\'' | "
                             "'create:…' | 'upsert:…' | 'edge: …' | 'import: …' | "
                             "'recompute: priorities session_id=\\'…\\'' (not dry_run). "
-                            "Read-only still allows 'recompute: priorities dry_run=true'. "
+                            "Read-only still allows 'recompute: priorities dry_run=true' "
+                            "and 'commit: … dry_run=true'. "
                             "Other: 'validate: all' | 'extract: lessons'."
                         ),
                     }
@@ -327,14 +333,17 @@ async def call_tool(
     action, node_type, params = parse_query(query)
 
     if _READ_ONLY and action in _READ_ONLY_ACTIONS:
-        result = _inject_protocol({
-            "ok": False,
-            "error": f"Read-only mode: '{action}' is a write action.",
-            "hint": "Set GOBP_READ_ONLY=false (or unset) to enable writes.",
-            "read_only": True,
-            "blocked_action": action,
-        })
-        return [types.TextContent(type="text", text=json.dumps(result, ensure_ascii=False))]
+        if action == "commit" and _query_truthy(params.get("dry_run", False)):
+            pass
+        else:
+            result = _inject_protocol({
+                "ok": False,
+                "error": f"Read-only mode: '{action}' is a write action.",
+                "hint": "Set GOBP_READ_ONLY=false (or unset) to enable writes.",
+                "read_only": True,
+                "blocked_action": action,
+            })
+            return [types.TextContent(type="text", text=json.dumps(result, ensure_ascii=False))]
 
     if _READ_ONLY and action == "recompute" and not _query_truthy(params.get("dry_run", False)):
         result = _inject_protocol({
@@ -406,7 +415,12 @@ async def call_tool(
                 and isinstance(result, dict)
                 and result.get("dry_run") is not True
             )
-            graph_reload = action in WRITE_ACTIONS or reload_recompute
+            commit_preview = (
+                action == "commit"
+                and isinstance(result, dict)
+                and result.get("dry_run") is True
+            )
+            graph_reload = (action in WRITE_ACTIONS or reload_recompute) and not commit_preview
             if graph_reload:
                 if action != "batch":
                     invalidate_cache()
@@ -418,6 +432,7 @@ async def call_tool(
                     pass
     except Exception as e:
         error = True
+        logger.exception("gobp tool failure action=%s query=%r", action, query)
         try:
             from gobp.mcp.hooks import on_error
 
