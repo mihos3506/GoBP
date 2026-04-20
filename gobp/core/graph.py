@@ -13,7 +13,6 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Any
 
-from gobp.core import db as _db
 from gobp.core.id_config import generate_external_id
 from gobp.core.indexes import AdjacencyIndex, InvertedIndex
 from gobp.core.loader import load_edge_file, load_node_file, load_schema
@@ -75,6 +74,9 @@ class GraphIndex:
         self._adjacency = AdjacencyIndex()
         # group path prefix -> node ids (schema v2 top-down queries, Wave 17A03)
         self._group_index: dict[str, list[str]] = {}
+        # ``load_groups`` result for :meth:`compute_priority_score` (config rarely changes per index).
+        self._priority_groups_cache: dict[str, dict[str, Any]] | None = None
+        self._priority_groups_cache_root: Path | None = None
 
     @classmethod
     def load_from_disk(cls, gobp_root: Path) -> "GraphIndex":
@@ -122,15 +124,6 @@ class GraphIndex:
 
         index._inverted.build(list(index._nodes.values()))
         index._adjacency.build(index._edges)
-
-        # Build SQLite index if not exists
-        try:
-            _db.init_schema(gobp_root)
-            if not _db.index_exists(gobp_root):
-                _db.rebuild_index(gobp_root, index)
-        except Exception:
-            # SQLite failure is non-fatal â€” in-memory index still works
-            pass
 
         index._build_group_index()
         return index
@@ -411,7 +404,17 @@ class GraphIndex:
         if not node:
             return 0
 
-        groups = load_groups(self._gobp_root) if self._gobp_root else None
+        root = self._gobp_root
+        if root is None:
+            groups = None
+        else:
+            if (
+                self._priority_groups_cache is None
+                or self._priority_groups_cache_root != root
+            ):
+                self._priority_groups_cache = load_groups(root)
+                self._priority_groups_cache_root = root
+            groups = self._priority_groups_cache
         incoming = len(self.get_edges_to(node_id))
         outgoing = len(self.get_edges_from(node_id))
         node_type = node.get("type", "Node")
