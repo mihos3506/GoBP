@@ -8,6 +8,7 @@ This class provides fast lookup via Python dicts.
 from __future__ import annotations
 
 import json as _json
+import logging
 from collections import defaultdict
 from pathlib import Path
 from typing import Any
@@ -18,6 +19,8 @@ from gobp.core.indexes import AdjacencyIndex, InvertedIndex
 from gobp.core.loader import load_edge_file, load_node_file, load_schema
 from gobp.core.fs_mutator import coerce_and_validate_node
 from gobp.core.validator import validate_edge
+
+logger = logging.getLogger(__name__)
 
 
 PRIORITY_THRESHOLDS: list[tuple[int, str]] = [
@@ -136,7 +139,7 @@ class GraphIndex:
         """Load all node markdown files from nodes_dir into the index."""
         if not nodes_dir.exists() or not nodes_dir.is_dir():
             return
-        for node_file in nodes_dir.glob("**/*.md"):
+        for node_file in sorted(nodes_dir.glob("**/*.md")):
             try:
                 node = load_node_file(node_file)
                 if self._gobp_root is None:
@@ -155,14 +158,15 @@ class GraphIndex:
                     self._load_errors.append(
                         f"{node_file}: validation failed: {result.errors}"
                     )
-            except (ValueError, FileNotFoundError) as e:
+            except Exception as e:
+                logger.warning("skip corrupted node file %s: %s", node_file.name, e)
                 self._load_errors.append(f"{node_file}: {e}")
 
     def _load_edges(self, edges_dir: Path) -> None:
         """Load all edge YAML files from edges_dir into the index."""
         if not edges_dir.exists() or not edges_dir.is_dir():
             return
-        for edge_file in edges_dir.glob("**/*.yaml"):
+        for edge_file in sorted(edges_dir.glob("**/*.yaml")):
             try:
                 edges = load_edge_file(edge_file)
                 for edge in edges:
@@ -183,7 +187,8 @@ class GraphIndex:
                         self._load_errors.append(
                             f"{edge_file}: edge validation failed: {result.errors}"
                         )
-            except (ValueError, FileNotFoundError) as e:
+            except Exception as e:
+                logger.warning("skip corrupted edge file %s: %s", edge_file.name, e)
                 self._load_errors.append(f"{edge_file}: {e}")
 
     @property

@@ -51,6 +51,37 @@ def serialize_node(node: dict[str, Any]) -> str:
     )
 
 
+def serialize_frontmatter(node: dict[str, Any]) -> str:
+    """Serialize node fields to YAML safely (special chars escaped by PyYAML)."""
+    fm: dict[str, Any] = {}
+    field_order = [
+        "type",
+        "id",
+        "name",
+        "group",
+        "description",
+        "code",
+        "implemented",
+        "status",
+        "priority",
+        "created_at",
+        "updated_at",
+    ]
+    for key in field_order:
+        if key in node and node[key] is not None:
+            fm[key] = node[key]
+    for key, val in node.items():
+        if key not in fm and val is not None:
+            fm[key] = val
+    return yaml.dump(
+        fm,
+        allow_unicode=True,
+        default_flow_style=False,
+        sort_keys=False,
+        width=10000,
+    )
+
+
 def deserialize_node(content: str) -> dict[str, Any]:
     """Parse YAML node file body to dict."""
     data = yaml.safe_load(content)
