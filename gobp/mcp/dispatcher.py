@@ -648,8 +648,9 @@ async def dispatch(
         elif action == "edge":
             from_id = params.get("from", "")
             to_id = params.get("to", "")
-            edge_type = params.get("edge_type", "relates_to")
+            edge_type = params.get("edge_type", "depends_on")
             reason = params.get("reason", "")
+            code = params.get("code", "")
 
             if not from_id or not to_id:
                 result = {
@@ -681,10 +682,40 @@ async def dispatch(
                 elif not to_node:
                     result = {"ok": False, "error": f"Node not found: {to_id}"}
                 else:
+                    from gobp.core.validator_v3 import auto_reason, validate_edge_type
+
+                    reason_provided = bool(str(reason).strip())
+                    validation = validate_edge_type(
+                        str(from_node.get("type", "")),
+                        str(to_node.get("type", "")),
+                        str(edge_type),
+                        reason=str(reason),
+                    )
+                    if not reason_provided:
+                        reason = auto_reason(
+                            str(from_node.get("name", from_id)),
+                            str(to_node.get("name", to_id)),
+                            str(edge_type),
+                        )
+
                     try:
+                        warnings: list[str] = []
+                        if validation.get("warning"):
+                            warnings.append(str(validation["warning"]))
+                        if validation.get("needs_reason") and not reason_provided:
+                            warnings.append(
+                                "enforces from Constraint requires short reason; auto template applied"
+                            )
+
                         result = create_edge(
                             gobp_root=project_root,
-                            edge=edge,
+                            edge={
+                                "from": from_id,
+                                "to": to_id,
+                                "type": edge_type,
+                                "reason": reason,
+                                "code": code,
+                            },
                             schema=edges_schema,
                             actor="gobp-dispatcher",
                             edge_file_name="semantic_edges.yaml",
@@ -696,7 +727,10 @@ async def dispatch(
                                 "type": edge_type,
                                 "to": to_id,
                                 "to_name": to_node.get("name", ""),
+                                "reason": reason,
                             }
+                            if warnings:
+                                result["warning"] = "; ".join(warnings)
                     except Exception as e:
                         result = {"ok": False, "error": str(e)}
 

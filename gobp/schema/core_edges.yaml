@@ -1,41 +1,120 @@
-# GoBP Core Edge Types v2 — per-edge YAML (see docs/SCHEMA.md «MÔ HÌNH THỐNG NHẤT»):
-#   reason — full prose for the relationship (same role as node desc_full)
-#   code   — optional technical snippet (same role as node code)
-# Reference: docs/GOBP_SCHEMA_REDESIGN_v2.1.md, waves/wave_17a01_brief.md Task 2
-# Validator v1 still uses core_edges.yaml until cutover.
-
 schema_version: "2.0"
 version: "2.0"
-schema_name: "gobp_core_edges_v2"
+schema_name: "gobp_edge_policy_v1"
 
 edge_types:
-  specified_in:
-    description: "Node được đặc tả trong Document"
-  references:
-    description: "Node tham chiếu đến node khác"
-  implements:
-    description: "Node implement spec/interface"
-  depends_on:
-    description: "Node phụ thuộc vào node khác"
-  relates_to:
-    description: "Mối liên hệ chung"
-  enforces:
-    description: "Constraint áp dụng cho node"
-  validated_by:
-    description: "Node được validate bởi Engine/TestCase"
-  covers:
-    description: "TestCase cover node"
-  belongs_to:
-    description: "Node thuộc về group/suite"
-  of_kind:
-    description: "TestCase thuộc TestKind"
-  supersedes:
-    description: "Node mới thay thế node cũ"
   discovered_in:
-    description: "Node được tạo trong Session"
-  affects:
-    description: "Node ảnh hưởng đến node khác"
+    description: "Node duoc tao ra trong session nao (provenance)"
+    traverse_priority: skip
+    reason_required: false
+    reason_template: null
+  depends_on:
+    description: "from can to de dung vung / hoat dong dung"
+    traverse_priority: high
+    reason_required: false
+    reason_template: "{from_name} can {to_name} de hoat dong dung."
+  implements:
+    description: "from hien thuc dac ta / contract cua to"
+    traverse_priority: high
+    reason_required: false
+    reason_template: "{from_name} hien thuc dac ta {to_name}."
+  enforces:
+    description: "Constraint ap rang buoc len Code hoac Test"
+    traverse_priority: medium
+    reason_required: true
+    reason_template: "{from_name} rang buoc {to_name}."
+  covers:
+    description: "Test bao phu Code / Constraint / Knowledge"
+    traverse_priority: low
+    reason_required: false
+    reason_template: "{from_name} kiem chung {to_name}."
+  # Legacy edge types kept for backward compatibility with existing data/tests.
+  relates_to:
+    description: "General relation (legacy fallback)"
+    traverse_priority: low
+    reason_required: false
+    reason_template: "{from_name} lien quan den {to_name}."
+  references:
+    description: "Reference relation"
+    traverse_priority: low
+    reason_required: false
+    reason_template: "{from_name} tham chieu {to_name}."
+  validated_by:
+    description: "Node duoc validate boi test/engine"
+    traverse_priority: low
+    reason_required: false
+    reason_template: "{from_name} duoc xac thuc boi {to_name}."
+  of_kind:
+    description: "TestCase thuoc TestKind"
+    traverse_priority: low
+    reason_required: false
+    reason_template: "{from_name} thuoc loai {to_name}."
+  belongs_to:
+    description: "Node thuoc group/suite"
+    traverse_priority: low
+    reason_required: false
+    reason_template: "{from_name} thuoc {to_name}."
+  supersedes:
+    description: "Node moi thay the node cu"
+    traverse_priority: medium
+    reason_required: false
+    reason_template: "{from_name} thay the {to_name}."
   triggers:
-    description: "Node trigger node khác"
+    description: "Node kich hoat node khac"
+    traverse_priority: low
+    reason_required: false
+    reason_template: "{from_name} kich hoat {to_name}."
   produces:
-    description: "Node produce output node"
+    description: "Node tao ra output node khac"
+    traverse_priority: low
+    reason_required: false
+    reason_template: "{from_name} tao ra {to_name}."
+  specified_in:
+    description: "Node duoc dac ta trong document"
+    traverse_priority: low
+    reason_required: false
+    reason_template: "{from_name} duoc dac ta trong {to_name}."
+  affects:
+    description: "Node anh huong den node khac"
+    traverse_priority: low
+    reason_required: false
+    reason_template: "{from_name} anh huong {to_name}."
+
+role_groups:
+  Knowledge:
+    node_types: [Document, Spec, Idea, Lesson, LessonRule, LessonDev, LessonQA, LessonCTO]
+  Code:
+    node_types: [Flow, Feature, Engine, UseCase, Command, Entity, ValueObject, Aggregate, Repository, APIContract, APIEndpoint, Module, Class, Function, Interface, ErrorCase, ErrorDomain]
+  Constraint:
+    node_types: [Invariant, BusinessRule, Precondition, Postcondition, Policy]
+  Test:
+    node_types: [TestSuite, TestKind, TestCase]
+  Meta:
+    node_types: [Session, Wave, Task, Reflection]
+
+matrix:
+  Knowledge:
+    Knowledge: depends_on
+    Code: implements
+    Constraint: depends_on
+    Test: covers
+    Meta: discovered_in
+  Code:
+    Knowledge: implements
+    Code: depends_on
+    Constraint: enforces
+    Test: covers
+    Meta: discovered_in
+  Constraint:
+    Knowledge: depends_on
+    Code: enforces
+    Meta: discovered_in
+  Test:
+    Knowledge: covers
+    Code: covers
+    Constraint: enforces
+    Test: depends_on
+    Meta: discovered_in
+  Meta:
+    Knowledge: depends_on
+    Meta: discovered_in

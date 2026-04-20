@@ -10,7 +10,10 @@ Validator đơn giản hơn v2 vì không có typed fields.
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
+
+import yaml
 
 # Group taxonomy từ SCHEMA.md
 # Dùng để infer group khi không có
@@ -101,6 +104,98 @@ _DEFAULT_GROUPS: dict[str, str] = {
 }
 
 _VALID_SEVERITIES = {"fatal", "error", "warning", "info"}
+VALID_EDGE_TYPES = {
+    "depends_on",
+    "implements",
+    "enforces",
+    "covers",
+    "discovered_in",
+}
+
+_EDGE_POLICY_CACHE: dict[str, Any] | None = None
+
+
+def _load_edge_policy() -> dict[str, Any]:
+    """Load edge policy from schema file once per process."""
+    global _EDGE_POLICY_CACHE
+    if _EDGE_POLICY_CACHE is not None:
+        return _EDGE_POLICY_CACHE
+    root = Path(__file__).resolve().parents[2]
+    policy_path = root / "gobp" / "schema" / "core_edges.yaml"
+    try:
+        data = yaml.safe_load(policy_path.read_text(encoding="utf-8")) or {}
+    except Exception:
+        data = {}
+    _EDGE_POLICY_CACHE = data
+    return data
+
+
+def _get_role_group(node_type: str) -> str | None:
+    """Return role group for a node type based on edge policy."""
+    policy = _load_edge_policy()
+    groups = policy.get("role_groups", {})
+    if not isinstance(groups, dict):
+        return None
+    for group, config in groups.items():
+        node_types = config.get("node_types", []) if isinstance(config, dict) else []
+        if isinstance(node_types, list) and node_type in node_types:
+            return str(group)
+    return None
+
+
+def validate_edge_type(
+    from_type: str,
+    to_type: str,
+    edge_type: str,
+    reason: str = "",
+) -> dict[str, Any]:
+    """Soft-validate edge type against role-group matrix."""
+    from_group = _get_role_group(from_type)
+    to_group = _get_role_group(to_type)
+
+    if edge_type not in VALID_EDGE_TYPES:
+        return {
+            "ok": True,
+            "warning": f"Unknown edge type: {edge_type}",
+            "needs_reason": False,
+        }
+    if not from_group or not to_group:
+        return {"ok": True, "warning": None, "needs_reason": False}
+
+    policy = _load_edge_policy()
+    matrix = policy.get("matrix", {}) if isinstance(policy, dict) else {}
+    expected = None
+    if isinstance(matrix, dict):
+        row = matrix.get(from_group, {})
+        if isinstance(row, dict):
+            expected = row.get(to_group)
+
+    warning = None
+    if expected and edge_type != expected:
+        warning = (
+            f"Edge {from_group}->{to_group} expected '{expected}', got '{edge_type}'"
+        )
+
+    needs_reason = (
+        edge_type == "enforces"
+        and from_group == "Constraint"
+        and not str(reason or "").strip()
+    )
+    if edge_type == "discovered_in" and to_group != "Meta":
+        warning = "discovered_in should target Meta group"
+
+    return {"ok": True, "warning": warning, "needs_reason": needs_reason}
+
+
+def auto_reason(from_name: str, to_name: str, edge_type: str) -> str:
+    """Generate default reason text from edge template."""
+    policy = _load_edge_policy()
+    edge_types = policy.get("edge_types", {}) if isinstance(policy, dict) else {}
+    spec = edge_types.get(edge_type, {}) if isinstance(edge_types, dict) else {}
+    tmpl = spec.get("reason_template") if isinstance(spec, dict) else None
+    if isinstance(tmpl, str):
+        return tmpl.replace("{from_name}", from_name).replace("{to_name}", to_name)
+    return ""
 
 
 class ValidatorV3:

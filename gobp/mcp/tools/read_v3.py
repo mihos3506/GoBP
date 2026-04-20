@@ -8,6 +8,15 @@ from typing import Any
 
 import yaml
 
+TRAVERSE_PRIORITY: dict[str, str] = {
+    "depends_on": "tier_1",
+    "implements": "tier_1",
+    "enforces": "tier_2",
+    "covers": "tier_2",
+    "discovered_in": "skip",
+    "references": "tier_2",
+}
+
 
 def _conn_v3(project_root: Path) -> tuple[Any, bool]:
     """Return ``(connection, is_v3)`` or ``(None, False)`` if unavailable."""
@@ -303,7 +312,7 @@ def context_action(
     task_description: str,
     max_nodes: int = 15,
 ) -> dict[str, Any]:
-    """context: task= — FTS seed + BFS depth 2 over edges with reason."""
+    """context: task= — FTS seed + priority BFS with token budget."""
     if not task_description.strip():
         return {"ok": False, "error": "task description is required"}
 
@@ -332,64 +341,20 @@ def context_action(
             "hint": "No matching context found. Try broader keywords.",
         }
 
-    seed_ids = [r[0] for r in seed_rows]
+    seed_ids = [str(r[0]) for r in seed_rows]
+    seed_nodes: list[dict[str, Any]] = [
+        {
+            "id": row[0],
+            "name": row[1],
+            "group": row[2],
+            "desc": row[3],
+            "relevance": "seed",
+        }
+        for row in seed_rows
+    ]
     cap = max(0, max_nodes - len(seed_rows))
-
-    with conn.cursor() as cur:
-        cur.execute(
-            """
-            WITH depth1 AS (
-                SELECT DISTINCT
-                    CASE WHEN e.from_id = ANY(%s) THEN e.to_id
-                         ELSE e.from_id END AS id
-                FROM edges e
-                WHERE (e.from_id = ANY(%s) OR e.to_id = ANY(%s))
-                  AND coalesce(e.reason, '') <> ''
-            ),
-            depth2 AS (
-                SELECT DISTINCT
-                    CASE WHEN e.from_id = d.id THEN e.to_id
-                         ELSE e.from_id END AS id
-                FROM edges e
-                JOIN depth1 d ON e.from_id = d.id OR e.to_id = d.id
-                WHERE coalesce(e.reason, '') <> ''
-            ),
-            expanded_ids AS (
-                SELECT id FROM depth1
-                UNION
-                SELECT id FROM depth2
-            )
-            SELECT DISTINCT n.id, n.name, n.group_path, n.desc_l2
-            FROM nodes n
-            WHERE n.id IN (SELECT id FROM expanded_ids)
-              AND NOT (n.id = ANY(%s))
-            LIMIT %s
-            """,
-            (seed_ids, seed_ids, seed_ids, seed_ids, cap),
-        )
-        expanded_rows = cur.fetchall()
-
-    nodes: list[dict[str, Any]] = []
-    for row in seed_rows:
-        nodes.append(
-            {
-                "id": row[0],
-                "name": row[1],
-                "group": row[2],
-                "desc": row[3],
-                "relevance": "seed",
-            }
-        )
-    for row in expanded_rows:
-        nodes.append(
-            {
-                "id": row[0],
-                "name": row[1],
-                "group": row[2],
-                "desc": row[3],
-                "relevance": "related",
-            }
-        )
+    related_nodes = _bfs_context(conn, seed_ids, cap, budget_tokens=500)
+    nodes = seed_nodes + related_nodes
 
     return {
         "ok": True,
@@ -397,7 +362,7 @@ def context_action(
         "nodes": nodes[:max_nodes],
         "summary": {
             "seed": len(seed_rows),
-            "related": len(expanded_rows),
+            "related": len(related_nodes),
             "total": min(len(nodes), max_nodes),
         },
         "hint": (
@@ -405,6 +370,134 @@ def context_action(
             "Related nodes are discovered via edges."
         ),
     }
+
+
+def _infer_edge_type_from_reason(reason: str) -> str:
+    """Best-effort edge type inference when DB edge type column is absent."""
+    txt = str(reason or "").lower()
+    if "hien thuc" in txt or "implements" in txt:
+        return "implements"
+    if "rang buoc" in txt or "enforces" in txt:
+        return "enforces"
+    if "kiem chung" in txt or "covers" in txt:
+        return "covers"
+    if "discovered_in" in txt or "session" in txt:
+        return "discovered_in"
+    if "depends_on" in txt or "phu thuoc" in txt:
+        return "depends_on"
+    return "references"
+
+
+def _fetch_node_for_context(conn: Any, node_id: str) -> dict[str, Any] | None:
+    """Load lightweight node payload used by context BFS."""
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT id, name, group_path, desc_l2
+            FROM nodes
+            WHERE id = %s
+            """,
+            (node_id,),
+        )
+        row = cur.fetchone()
+    if not row:
+        return None
+    return {
+        "id": row[0],
+        "name": row[1],
+        "group": row[2],
+        "desc": row[3] or "",
+        "relevance": "related",
+    }
+
+
+def _fetch_edges_for_context(conn: Any, node_id: str) -> list[dict[str, str]]:
+    """Fetch incident edges for BFS; supports schemas with/without ``type`` column."""
+    with conn.cursor() as cur:
+        try:
+            cur.execute(
+                """
+                SELECT from_id, to_id, type, reason
+                FROM edges
+                WHERE from_id = %s OR to_id = %s
+                """,
+                (node_id, node_id),
+            )
+            rows = cur.fetchall()
+            out: list[dict[str, str]] = []
+            for r in rows:
+                out.append(
+                    {
+                        "from": str(r[0]),
+                        "to": str(r[1]),
+                        "type": str(r[2] or ""),
+                        "reason": str(r[3] or ""),
+                    }
+                )
+            return out
+        except Exception:
+            cur.execute(
+                """
+                SELECT from_id, to_id, reason
+                FROM edges
+                WHERE from_id = %s OR to_id = %s
+                """,
+                (node_id, node_id),
+            )
+            rows = cur.fetchall()
+            out2: list[dict[str, str]] = []
+            for r in rows:
+                reason = str(r[2] or "")
+                out2.append(
+                    {
+                        "from": str(r[0]),
+                        "to": str(r[1]),
+                        "type": _infer_edge_type_from_reason(reason),
+                        "reason": reason,
+                    }
+                )
+            return out2
+
+
+def _bfs_context(
+    conn: Any,
+    seed_ids: list[str],
+    max_related: int,
+    budget_tokens: int = 500,
+) -> list[dict[str, Any]]:
+    """Priority BFS expansion from seed nodes following traverse policy."""
+    if max_related <= 0:
+        return []
+    visited = set(seed_ids)
+    queue = list(seed_ids)
+    related: list[dict[str, Any]] = []
+    tokens_used = 0
+
+    while queue and len(related) < max_related and tokens_used < budget_tokens:
+        current = queue.pop(0)
+        for edge in _fetch_edges_for_context(conn, current):
+            priority = TRAVERSE_PRIORITY.get(str(edge.get("type", "")), "skip")
+            if priority == "skip":
+                continue
+            other_id = edge.get("to") if edge.get("from") == current else edge.get("from")
+            if not other_id or other_id in visited:
+                continue
+            node = _fetch_node_for_context(conn, other_id)
+            visited.add(other_id)
+            if node is None:
+                continue
+            tokens_used += len(str(node.get("desc", ""))) // 4 + 20
+            if tokens_used > budget_tokens:
+                break
+            related.append(node)
+            if priority == "tier_1":
+                queue.insert(0, other_id)
+            else:
+                if tokens_used < int(budget_tokens * 0.7):
+                    queue.append(other_id)
+        if tokens_used >= budget_tokens:
+            break
+    return related
 
 
 def overview_v3(conn: Any, project_root: Path, full_interface: bool = False) -> dict[str, Any]:

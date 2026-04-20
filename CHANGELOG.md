@@ -5,6 +5,25 @@ Format: [Wave N — Title] with date, what was added/changed/fixed.
 
 ---
 
+## [Wave I] — Edge Policy Implementation — 2026-04-20
+
+### Added
+
+- `gobp/schema/core_edges.yaml`: 5 core edge types (`depends_on`, `implements`, `enforces`, `covers`, `discovered_in`) with policy metadata.
+- `gobp/schema/core_edges.yaml`: `role_groups` (5 groups) + matrix 5x5 for soft edge validation.
+- `gobp/core/validator_v3.py`: `validate_edge_type()` + `auto_reason()` template generation.
+- `gobp/mcp/dispatcher.py`: `edge:` handler wired with edge validation + auto-reason fill.
+- `gobp/mcp/tools/read_v3.py`: `context:` BFS now follows traverse priority.
+- `tests/test_wave_i.py`: 9 tests for edge policy behavior.
+
+### Changed
+
+- Default edge type in `edge:` creation is now `depends_on`.
+- `context:` prioritizes tier_1 (`depends_on`, `implements`) before tier_2.
+- `discovered_in` is skipped during context traversal.
+
+---
+
 ## [Wave G] — Code Refactor + Clean — 2026-04-19
 
 ### Removed
