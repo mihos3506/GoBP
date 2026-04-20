@@ -37,6 +37,8 @@ dev = [
 addopts = ["-m", "not slow"]
 markers = [
     "slow: marks tests as slow (batch 100+ nodes, > 5s, or perf benchmarks)",
+    "postgres_v3: tests that require PostgreSQL with schema v3 (set GOBP_DB_URL)",
+    "file_only: tests intended for file-backed graph only (no live DB assumptions)",
 ]
 
 [project.scripts]

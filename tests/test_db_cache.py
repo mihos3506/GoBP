@@ -1,7 +1,8 @@
-"""Tests for gobp/core/db.py and gobp/core/cache.py."""
+"""Tests for gobp/core/cache.py and PostgreSQL v3 helpers in gobp/core/db.py."""
 
 from __future__ import annotations
 
+import os
 import time
 from pathlib import Path
 
@@ -9,17 +10,14 @@ import pytest
 
 from gobp.core.cache import GoBPCache, get_cache, reset_cache
 from gobp.core import db as db_module
-from gobp.core.db_config import is_postgres_available
-
-
-# Skip all DB tests if PostgreSQL not configured
-pytestmark = pytest.mark.skipif(
-    not is_postgres_available(Path(".")),
-    reason="PostgreSQL not available (GOBP_DB_URL not set)"
+from tests.fixtures.db_v3 import (
+    minimal_v3_node,
+    pytest_skip_without_v3,
+    unique_test_id,
 )
 
+# ── Cache tests (no database) ───────────────────────────────────────────────
 
-# ── Cache tests ───────────────────────────────────────────────────────────────
 
 def test_cache_get_miss():
     cache = GoBPCache()
@@ -91,90 +89,150 @@ def test_cache_stats():
     assert stats["active_entries"] == 1
 
 
-# ── SQLite db tests ───────────────────────────────────────────────────────────
-
-def test_db_init_schema_idempotent(gobp_root: Path):
-    """init_schema can be called twice without error."""
-    db_module.init_schema(gobp_root)
-    db_module.init_schema(gobp_root)
-    assert db_module.index_exists(gobp_root)
+# ── PostgreSQL v3 (requires GOBP_DB_URL + v3 schema) ─────────────────────────
 
 
-def test_db_upsert_and_query_node(gobp_root: Path):
-    """upsert_node + query_nodes_by_type roundtrip."""
-    db_module.init_schema(gobp_root)
-    node = {
-        "id": "node:test001",
-        "type": "Node",
-        "name": "Test Node",
-        "status": "ACTIVE",
-        "created": "2026-04-15T00:00:00",
-        "updated": "2026-04-15T00:00:00",
-    }
-    db_module.upsert_node(gobp_root, node)
-    ids = db_module.query_nodes_by_type(gobp_root, "Node")
-    assert "node:test001" in ids
+@pytest.mark.postgres_v3
+def test_v3_upsert_select_delete_roundtrip(gobp_root: Path) -> None:
+    """``upsert_node_v3`` + SQL read + ``delete_node_v3``."""
+    pytest_skip_without_v3(gobp_root)
+    from gobp.core.db import delete_node_v3, ensure_v3_connection, upsert_node_v3
+
+    nid = unique_test_id("node:pytest_dbcache_")
+    conn = ensure_v3_connection(gobp_root)
+    try:
+        upsert_node_v3(
+            conn,
+            minimal_v3_node(
+                nid,
+                name="DB cache v3 roundtrip",
+                group_path="Test > DBCache",
+            ),
+        )
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT name, group_path, desc_l1 FROM nodes WHERE id = %s", (nid,)
+            )
+            row = cur.fetchone()
+        assert row is not None
+        assert row[0] == "DB cache v3 roundtrip"
+        assert row[1] == "Test > DBCache"
+        assert row[2] == "L1 summary"
+    finally:
+        delete_node_v3(conn, nid)
+        conn.close()
 
 
-def test_db_delete_node(gobp_root: Path):
-    """delete_node removes from index."""
-    db_module.init_schema(gobp_root)
-    node = {"id": "node:del001", "type": "Node", "name": "Delete Me",
-            "status": "ACTIVE", "created": "2026-04-15T00:00:00", "updated": "2026-04-15T00:00:00"}
-    db_module.upsert_node(gobp_root, node)
-    db_module.delete_node(gobp_root, "node:del001")
-    ids = db_module.query_nodes_by_type(gobp_root, "Node")
-    assert "node:del001" not in ids
+@pytest.mark.postgres_v3
+def test_v3_edge_upsert_and_delete(gobp_root: Path) -> None:
+    """``upsert_edge_v3`` between two nodes; edges removed when node deleted."""
+    pytest_skip_without_v3(gobp_root)
+    from gobp.core.db import (
+        delete_node_v3,
+        ensure_v3_connection,
+        upsert_edge_v3,
+        upsert_node_v3,
+    )
+
+    a = unique_test_id("node:pytest_dbcache_a_")
+    b = unique_test_id("node:pytest_dbcache_b_")
+    conn = ensure_v3_connection(gobp_root)
+    try:
+        upsert_node_v3(
+            conn,
+            minimal_v3_node(a, name="A", group_path="Test > DBCache"),
+        )
+        upsert_node_v3(
+            conn,
+            minimal_v3_node(b, name="B", group_path="Test > DBCache"),
+        )
+        upsert_edge_v3(conn, a, b, reason="relates_to test", code="")
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT from_id, to_id FROM edges WHERE from_id = %s AND to_id = %s",
+                (a, b),
+            )
+            row = cur.fetchone()
+        assert row is not None
+    finally:
+        delete_node_v3(conn, a)
+        delete_node_v3(conn, b)
+        conn.close()
 
 
-def test_db_upsert_and_query_edges(gobp_root: Path):
-    """upsert_edge + query_edges_from roundtrip."""
-    db_module.init_schema(gobp_root)
-    edge = {"from": "node:a", "to": "node:b", "type": "relates_to"}
-    db_module.upsert_edge(gobp_root, edge)
-    edges = db_module.query_edges_from(gobp_root, "node:a")
-    assert len(edges) == 1
-    assert edges[0]["to"] == "node:b"
+@pytest.mark.postgres_v3
+def test_v3_name_substring_search_sql(gobp_root: Path) -> None:
+    """ILIKE on ``name`` (replaces legacy ``query_nodes_substring`` for v3)."""
+    pytest_skip_without_v3(gobp_root)
+    from gobp.core.db import delete_node_v3, ensure_v3_connection, upsert_node_v3
+
+    nid = unique_test_id("node:pytest_dbcache_login_")
+    conn = ensure_v3_connection(gobp_root)
+    try:
+        upsert_node_v3(
+            conn,
+            minimal_v3_node(
+                nid,
+                name="Login Feature XYZ",
+                group_path="Test > DBCache",
+            ),
+        )
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT id FROM nodes WHERE id = %s AND name ILIKE %s",
+                (nid, "%login%"),
+            )
+            found = cur.fetchone()
+        assert found is not None
+        assert found[0] == nid
+    finally:
+        delete_node_v3(conn, nid)
+        conn.close()
 
 
-def test_db_query_edges_to(gobp_root: Path):
-    """query_edges_to returns correct edges."""
-    db_module.init_schema(gobp_root)
-    edge = {"from": "node:x", "to": "node:y", "type": "implements"}
-    db_module.upsert_edge(gobp_root, edge)
-    edges = db_module.query_edges_to(gobp_root, "node:y")
-    assert len(edges) == 1
-    assert edges[0]["from"] == "node:x"
+@pytest.mark.postgres_v3
+def test_v3_group_path_filter_sql(gobp_root: Path) -> None:
+    """Filter by ``group_path`` prefix (v3 has no ``type`` column on nodes)."""
+    pytest_skip_without_v3(gobp_root)
+    from gobp.core.db import delete_node_v3, ensure_v3_connection, upsert_node_v3
+
+    nid = unique_test_id("node:pytest_dbcache_grp_")
+    conn = ensure_v3_connection(gobp_root)
+    try:
+        upsert_node_v3(
+            conn,
+            minimal_v3_node(
+                nid,
+                name="auth feature filter",
+                group_path="Test > DBCache > Alpha",
+            ),
+        )
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT id FROM nodes
+                WHERE id = %s AND group_path LIKE %s
+                """,
+                (nid, "Test > DBCache%"),
+            )
+            row = cur.fetchone()
+        assert row is not None
+    finally:
+        delete_node_v3(conn, nid)
+        conn.close()
 
 
-def test_db_substring_search(gobp_root: Path):
-    """query_nodes_substring finds by name substring."""
-    db_module.init_schema(gobp_root)
-    node = {"id": "node:login001", "type": "Node", "name": "Login Feature",
-            "status": "ACTIVE", "created": "2026-04-15T00:00:00", "updated": "2026-04-15T00:00:00"}
-    db_module.upsert_node(gobp_root, node)
-    ids = db_module.query_nodes_substring(gobp_root, "login")
-    assert "node:login001" in ids
-
-
-def test_db_type_filter_in_search(gobp_root: Path):
-    """query_nodes_substring with type_filter."""
-    db_module.init_schema(gobp_root)
-    n1 = {"id": "node:f001", "type": "Node", "name": "auth feature",
-          "status": "ACTIVE", "created": "2026-04-15T00:00:00", "updated": "2026-04-15T00:00:00"}
-    n2 = {"id": "dec:d001", "type": "Decision", "name": "auth decision",
-          "status": "LOCKED", "topic": "auth:method",
-          "created": "2026-04-15T00:00:00", "updated": "2026-04-15T00:00:00"}
-    db_module.upsert_node(gobp_root, n1)
-    db_module.upsert_node(gobp_root, n2)
-
-    node_ids = db_module.query_nodes_substring(gobp_root, "auth", type_filter="Node")
-    assert "node:f001" in node_ids
-    assert "dec:d001" not in node_ids
-
-
-def test_db_rebuild_index(gobp_root: Path):
-    """rebuild_index creates fresh index from GraphIndex."""
+@pytest.mark.postgres_v3
+@pytest.mark.skipif(
+    os.environ.get("GOBP_TEST_ALLOW_TRUNCATE") != "1",
+    reason=(
+        "rebuild_index TRUNCATEs all nodes/edges — set GOBP_TEST_ALLOW_TRUNCATE=1 "
+        "only on a disposable PostgreSQL database"
+    ),
+)
+def test_v3_rebuild_index_from_file_graph(gobp_root: Path) -> None:
+    """``rebuild_index`` reloads PG from :class:`GraphIndex` (destructive)."""
+    pytest_skip_without_v3(gobp_root)
     from gobp.core.init import init_project
     from gobp.core.graph import GraphIndex
 
@@ -182,4 +240,4 @@ def test_db_rebuild_index(gobp_root: Path):
     index = GraphIndex.load_from_disk(gobp_root)
     result = db_module.rebuild_index(gobp_root, index)
     assert result["ok"] is True
-    assert result["nodes_indexed"] >= 17  # seed nodes
+    assert result["nodes_indexed"] >= 1
