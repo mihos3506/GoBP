@@ -140,38 +140,54 @@
     word-break: break-word;
     color: var(--text-dim);
   }
-  .edge-panel {
-    margin-top: 8px;
-    padding: 8px 10px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 6px;
-    background: rgba(0, 0, 0, 0.28);
+  .edge-toggle {
+    width: 16px;
+    flex-shrink: 0;
+    font-size: 10px;
+    color: #636d83;
+    cursor: pointer;
+    user-select: none;
+    transition: color 0.15s;
   }
-  .edge-panel:first-of-type { margin-top: 6px; }
-  .edge-panel--code {
-    border-color: rgba(255, 193, 7, 0.22);
-    background: rgba(0, 0, 0, 0.38);
+  .edge-toggle:hover { color: #f0883e; }
+  .edge-toggle--empty {
+    cursor: default;
+    color: #4a4a55;
   }
-  .edge-panel-title {
-    font-size: 9px;
-    font-weight: 600;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: #6e7681;
-    margin-bottom: 6px;
+  .edge-toggle--empty:hover { color: #4a4a55; }
+
+  .edge-expand {
+    margin-top: 6px;
+    margin-left: 22px;
+    padding: 8px;
+    background: #161b22;
+    border-radius: 4px;
+    border-left: 2px solid #30363d;
   }
-  .edge-panel-body {
+  .edge-reason-text {
     font-size: 12px;
+    color: #8b949e;
     line-height: 1.5;
-    color: var(--text-dim);
+    margin-bottom: 4px;
     white-space: pre-wrap;
     word-break: break-word;
   }
-  .edge-panel--code .edge-panel-body {
-    font-family: var(--mono);
+  .edge-code-block {
+    font-family: 'JetBrains Mono', 'Fira Code', var(--mono);
     font-size: 11px;
-    margin: 0;
-    color: var(--text-dim);
+    color: #e1e4e8;
+    margin: 4px 0 0;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
+  .edge-nav-hint {
+    margin-top: 10px;
+    font-size: 11px;
+    color: #3d4450;
+    font-style: italic;
+    padding-top: 8px;
+    border-top: 1px solid #21262d;
   }
 
   .detail-section { margin: 14px 0 0; padding-top: 10px; border-top: 1px solid var(--border); }
@@ -1201,10 +1217,10 @@ function splitReasonParts(raw) {
 }
 
 /**
- * Edge panels: ``reason`` = same role as node desc_full; ``code`` = same as node code.
- * Prefer separate fields from graph/API; else split legacy ``reason`` string.
+ * Prose + code strings for an edge (same rules as former expanded panels).
+ * ``reason`` ≈ desc_full; ``code`` matches node code.
  */
-function renderEdgeReasonPanels(edge) {
+function getEdgeDetailParts(edge) {
   const e = edge || {};
   const reasonField = e.reason;
   const codeField = e.code;
@@ -1214,41 +1230,36 @@ function renderEdgeReasonPanels(edge) {
     && String(codeField).trim() !== String(reasonField || '').trim();
 
   if (hasSplitCode) {
-    const desc = reasonField != null ? String(reasonField).trim() : '';
-    const code = String(codeField).trim();
-    let html = '';
-    if (desc) {
-      html += `
-      <div class="edge-panel edge-panel--desc">
-        <div class="edge-panel-title">DESCRIPTION</div>
-        <div class="edge-panel-body">${esc(desc)}</div>
-      </div>`;
-    }
-    html += `
-      <div class="edge-panel edge-panel--code">
-        <div class="edge-panel-title">CODE</div>
-        <pre class="edge-panel-body"><code>${esc(code)}</code></pre>
-      </div>`;
-    return html;
+    const reasonText = reasonField != null ? String(reasonField).trim() : '';
+    const codeText = String(codeField).trim();
+    return { reasonText, codeText };
   }
 
   const rp = splitReasonParts(reasonField);
-  let html = '';
-  if (rp.desc) {
-    html += `
-      <div class="edge-panel edge-panel--desc">
-        <div class="edge-panel-title">DESCRIPTION</div>
-        <div class="edge-panel-body">${esc(rp.desc)}</div>
-      </div>`;
+  return { reasonText: rp.desc, codeText: rp.code };
+}
+
+function edgeHasExpandableDetail(edge) {
+  const p = getEdgeDetailParts(edge);
+  return !!(p.reasonText || p.codeText);
+}
+
+function sanitizeEdgeDomId(s) {
+  return String(s).replace(/[^a-zA-Z0-9_-]/g, '_');
+}
+
+/** Toggle expanded reason/code under an edge row (Wave G Hotfix4). */
+function toggleEdgeDetail(expandId, toggleEl) {
+  const el = document.getElementById(expandId);
+  if (!el || !toggleEl) return;
+  const closed = el.style.display === 'none' || el.style.display === '';
+  if (closed) {
+    el.style.display = 'block';
+    toggleEl.textContent = '▼';
+  } else {
+    el.style.display = 'none';
+    toggleEl.textContent = '▶';
   }
-  if (rp.code) {
-    html += `
-      <div class="edge-panel edge-panel--code">
-        <div class="edge-panel-title">CODE</div>
-        <pre class="edge-panel-body"><code>${esc(rp.code)}</code></pre>
-      </div>`;
-  }
-  return html;
 }
 
 function renderHistory(node) {
@@ -1304,7 +1315,7 @@ function renderSeverityBadge(severity) {
   return `<span class="severity-badge" style="background:${c.bg};color:${c.text};border:1px solid ${c.border};padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;letter-spacing:0.5px;text-transform:uppercase;">${esc(String(severity).toUpperCase())}</span>`;
 }
 
-/** All edges touching nodeId (both directions). Includes discovered_in and other types. */
+/** All edges touching nodeId (both directions). Collapsed rows; expand for reason + code. */
 function renderEdges(nodeId, allEdges, allNodes) {
   const nodesById = {};
   (allNodes || []).forEach((n) => {
@@ -1325,7 +1336,8 @@ function renderEdges(nodeId, allEdges, allNodes) {
     </div>`;
   }
 
-  const items = related.map((e) => {
+  const idBase = sanitizeEdgeDomId(nodeId);
+  const items = related.map((e, idx) => {
     const f = e.from || e.source || e.from_id;
     const t = e.to || e.target || e.to_id;
     const otherId = (f === nodeId) ? t : f;
@@ -1333,13 +1345,26 @@ function renderEdges(nodeId, allEdges, allNodes) {
     const otherName = otherNode
       ? (otherNode.name || otherId)
       : (e.to_name || e.from_name || otherId);
-    const reasonPanels = renderEdgeReasonPanels(e);
+    const expandId = `edge-exp-${idBase}-${idx}`;
+    const parts = getEdgeDetailParts(e);
+    const hasDetail = edgeHasExpandableDetail(e);
+    const expandBlock = hasDetail
+      ? `
+        <div class="edge-expand" id="${expandId}" style="display:none">
+          ${parts.reasonText ? `<div class="edge-reason-text">${esc(parts.reasonText)}</div>` : ''}
+          ${parts.codeText ? `<pre class="edge-code-block"><code>${esc(parts.codeText)}</code></pre>` : ''}
+        </div>`
+      : '';
+    const toggleBtn = hasDetail
+      ? `<span class="edge-toggle" data-edge-expand-id="${escAttr(expandId)}" role="button" tabindex="0">▶</span>`
+      : '<span class="edge-toggle edge-toggle--empty" aria-hidden="true">·</span>';
     return `
         <div class="edge-item">
             <div class="edge-header">
+                ${toggleBtn}
                 <span class="edge-node-name" data-edge-nav="${escAttr(otherId)}">${esc(otherName)}</span>
             </div>
-            ${reasonPanels}
+            ${expandBlock}
         </div>`;
   }).join('');
 
@@ -1347,6 +1372,7 @@ function renderEdges(nodeId, allEdges, allNodes) {
     <div class="detail-section">
       <div class="detail-section-title">EDGES (${related.length})</div>
       ${items}
+      <div class="edge-nav-hint">▶ Click tên node để navigate · Click ▶ để xem reason + code</div>
     </div>`;
 }
 
@@ -1432,6 +1458,23 @@ function showDetail(node) {
   const content = document.getElementById('detail-content');
   content.innerHTML = html;
   document.getElementById('detail').classList.add('visible');
+
+  content.querySelectorAll('.edge-toggle[data-edge-expand-id]').forEach((btn) => {
+    const go = () => {
+      const eid = btn.getAttribute('data-edge-expand-id');
+      if (eid) toggleEdgeDetail(eid, btn);
+    };
+    btn.addEventListener('click', (ev) => {
+      ev.stopPropagation();
+      go();
+    });
+    btn.addEventListener('keydown', (ev) => {
+      if (ev.key === 'Enter' || ev.key === ' ') {
+        ev.preventDefault();
+        go();
+      }
+    });
+  });
 
   content.querySelectorAll('.rel-target[data-id], .edge-node-name[data-edge-nav]').forEach((el) => {
     el.addEventListener('click', () => {
