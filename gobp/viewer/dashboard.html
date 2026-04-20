@@ -74,6 +74,16 @@
       padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 13px;
     }
     .refresh-btn:hover { background: #30363d; }
+    #project-switcher {
+      background: #0f1117;
+      border: 1px solid #30363d;
+      color: #e1e4e8;
+      font-size: 13px;
+      border-radius: 6px;
+      padding: 6px 10px;
+      min-width: 220px;
+      margin-right: 10px;
+    }
   </style>
 </head>
 <body>
@@ -82,6 +92,7 @@
     <nav>
       <a href="/">Graph View</a>
       <a href="/dashboard">Dashboard</a>
+      <select id="project-switcher" title="Select project"></select>
       <button class="refresh-btn" onclick="loadDashboard()">↻ Refresh</button>
     </nav>
   </header>
@@ -89,11 +100,42 @@
     <div id="content"><div class="loading">Loading dashboard...</div></div>
   </div>
   <script>
-    async function loadDashboard() {
+    let PROJECTS = [];
+    let CURRENT_ROOT = null;
+
+    async function loadProjects() {
+      const sel = document.getElementById('project-switcher');
+      sel.innerHTML = '';
+      try {
+        const res = await fetch('/api/projects');
+        PROJECTS = await res.json();
+      } catch (_) {
+        PROJECTS = [];
+      }
+      if (!Array.isArray(PROJECTS) || PROJECTS.length === 0) {
+        PROJECTS = [{ name: 'Current Project', root: null }];
+      }
+      PROJECTS.forEach((p) => {
+        const opt = document.createElement('option');
+        opt.value = p.root || '';
+        opt.textContent = p.name || p.root || 'Project';
+        sel.appendChild(opt);
+      });
+      CURRENT_ROOT = PROJECTS[0].root || null;
+      sel.value = CURRENT_ROOT || '';
+      sel.addEventListener('change', (e) => {
+        const nextRoot = e.target.value || null;
+        CURRENT_ROOT = nextRoot;
+        loadDashboard(nextRoot);
+      });
+    }
+
+    async function loadDashboard(root = CURRENT_ROOT) {
       const content = document.getElementById('content');
       content.innerHTML = '<div class="loading">Loading...</div>';
       try {
-        const res = await fetch('/api/dashboard');
+        const url = root ? `/api/dashboard?root=${encodeURIComponent(root)}` : '/api/dashboard';
+        const res = await fetch(url);
         const data = await res.json();
         if (!data.ok) {
           content.innerHTML = `<div class="error-text">Error: ${data.error}</div>`;
@@ -135,7 +177,12 @@
         content.innerHTML = `<div class="error-text">Failed: ${err.message}</div>`;
       }
     }
-    loadDashboard();
+
+    async function bootDashboard() {
+      await loadProjects();
+      await loadDashboard(CURRENT_ROOT);
+    }
+    bootDashboard();
   </script>
 </body>
 </html>
