@@ -1,7 +1,6 @@
 """GoBP persistent index — PostgreSQL backend.
 
-Replaces SQLite with PostgreSQL for scale and concurrent access.
-Public API identical to SQLite version — callers unchanged.
+PostgreSQL schema v3 for scale and concurrent access.
 
 Connection: reads GOBP_DB_URL environment variable.
 Fallback: if PostgreSQL unavailable, operations are no-ops (in-memory index still works).
@@ -9,7 +8,6 @@ Fallback: if PostgreSQL unavailable, operations are no-ops (in-memory index stil
 Schema:
   nodes  — searchable node metadata with tsvector FTS
   edges  — edge relationships with indexes
-  meta   — key-value metadata
 """
 
 from __future__ import annotations
@@ -25,9 +23,6 @@ else:
     PgConnection = Any  # type: ignore[misc, assignment]
 
 logger = logging.getLogger("gobp.db")
-
-DB_FILENAME = "index.db"
-SCHEMA_VERSION = 2
 
 
 def _get_conn(gobp_root: Path) -> Any | None:
@@ -333,311 +328,6 @@ def get_node_updated_at(conn: PgConnection, node_id: str) -> int | None:
         return int(row[0]) if row else None
 
 
-def init_schema(gobp_root: Path) -> None:
-    """Create PostgreSQL schema if not exists. Idempotent."""
-    conn = _get_conn(gobp_root)
-    if conn is None:
-        return
-
-    try:
-        with conn:
-            with conn.cursor() as cur:
-                cur.execute(
-                    """
-                    CREATE TABLE IF NOT EXISTS nodes (
-                        id TEXT PRIMARY KEY,
-                        type TEXT NOT NULL,
-                        name TEXT NOT NULL DEFAULT '',
-                        status TEXT DEFAULT '',
-                        topic TEXT DEFAULT '',
-                        subject TEXT DEFAULT '',
-                        group_field TEXT DEFAULT '',
-                        scope TEXT DEFAULT '',
-                        priority TEXT DEFAULT 'medium',
-                        created TEXT DEFAULT '',
-                        updated TEXT DEFAULT '',
-                        fts_content TEXT DEFAULT '',
-                        fts_vector tsvector GENERATED ALWAYS AS (
-                            to_tsvector('english',
-                                coalesce(id,'') || ' ' ||
-                                coalesce(name,'') || ' ' ||
-                                coalesce(topic,'') || ' ' ||
-                                coalesce(subject,'') || ' ' ||
-                                coalesce(fts_content,''))
-                        ) STORED
-                    )
-                """
-                )
-                cur.execute(
-                    """
-                    CREATE TABLE IF NOT EXISTS edges (
-                        id TEXT PRIMARY KEY,
-                        from_id TEXT NOT NULL,
-                        to_id TEXT NOT NULL,
-                        type TEXT NOT NULL
-                    )
-                """
-                )
-                cur.execute(
-                    """
-                    CREATE TABLE IF NOT EXISTS meta (
-                        key TEXT PRIMARY KEY,
-                        value TEXT
-                    )
-                """
-                )
-                # Indexes
-                cur.execute("CREATE INDEX IF NOT EXISTS idx_nodes_type ON nodes(type)")
-                cur.execute("CREATE INDEX IF NOT EXISTS idx_nodes_status ON nodes(status)")
-                cur.execute("CREATE INDEX IF NOT EXISTS idx_nodes_topic ON nodes(topic)")
-                cur.execute("CREATE INDEX IF NOT EXISTS idx_nodes_priority ON nodes(priority)")
-                cur.execute("CREATE INDEX IF NOT EXISTS idx_edges_from ON edges(from_id)")
-                cur.execute("CREATE INDEX IF NOT EXISTS idx_edges_to ON edges(to_id)")
-                cur.execute("CREATE INDEX IF NOT EXISTS idx_edges_type ON edges(type)")
-                cur.execute("CREATE INDEX IF NOT EXISTS idx_nodes_fts ON nodes USING GIN(fts_vector)")
-
-                cur.execute(
-                    "INSERT INTO meta (key, value) VALUES (%s, %s) ON CONFLICT DO NOTHING",
-                    ("schema_version", str(SCHEMA_VERSION)),
-                )
-    finally:
-        conn.close()
-
-
-def _node_to_row(node: dict[str, Any]) -> dict[str, str]:
-    """Convert node dict to DB row dict."""
-    fts_parts = [
-        node.get("id", ""),
-        node.get("name", ""),
-        node.get("topic", ""),
-        node.get("subject", ""),
-        node.get("description", ""),
-        node.get("definition", ""),
-        node.get("usage_guide", ""),
-        node.get("group", ""),
-    ]
-    fts_content = " ".join(str(p) for p in fts_parts if p)
-
-    return {
-        "id": node.get("id", ""),
-        "type": node.get("type", ""),
-        "name": node.get("name", ""),
-        "status": node.get("status", ""),
-        "topic": node.get("topic", ""),
-        "subject": node.get("subject", ""),
-        "group_field": node.get("group", ""),
-        "scope": node.get("scope", ""),
-        "priority": node.get("priority", "medium"),
-        "created": node.get("created", ""),
-        "updated": node.get("updated", ""),
-        "fts_content": fts_content,
-    }
-
-
-def upsert_node(gobp_root: Path, node: dict[str, Any]) -> None:
-    """Insert or replace a node in the index."""
-    conn = _get_conn(gobp_root)
-    if conn is None:
-        return
-
-    row = _node_to_row(node)
-    try:
-        with conn:
-            with conn.cursor() as cur:
-                cur.execute(
-                    """
-                    INSERT INTO nodes
-                        (id, type, name, status, topic, subject, group_field,
-                         scope, priority, created, updated, fts_content)
-                    VALUES
-                        (%(id)s, %(type)s, %(name)s, %(status)s, %(topic)s,
-                         %(subject)s, %(group_field)s, %(scope)s, %(priority)s,
-                         %(created)s, %(updated)s, %(fts_content)s)
-                    ON CONFLICT (id) DO UPDATE SET
-                        type=EXCLUDED.type, name=EXCLUDED.name,
-                        status=EXCLUDED.status, topic=EXCLUDED.topic,
-                        subject=EXCLUDED.subject, group_field=EXCLUDED.group_field,
-                        scope=EXCLUDED.scope, priority=EXCLUDED.priority,
-                        created=EXCLUDED.created, updated=EXCLUDED.updated,
-                        fts_content=EXCLUDED.fts_content
-                """,
-                    row,
-                )
-    finally:
-        conn.close()
-
-
-def delete_node(gobp_root: Path, node_id: str) -> None:
-    """Remove a node from the index."""
-    conn = _get_conn(gobp_root)
-    if conn is None:
-        return
-    try:
-        with conn:
-            with conn.cursor() as cur:
-                cur.execute("DELETE FROM nodes WHERE id = %s", (node_id,))
-    finally:
-        conn.close()
-
-
-def upsert_edge(gobp_root: Path, edge: dict[str, Any]) -> None:
-    """Insert or replace an edge in the index."""
-    from_id = edge.get("from", "")
-    to_id = edge.get("to", "")
-    edge_type = edge.get("type", "")
-    edge_id = f"{from_id}__{edge_type}__{to_id}"
-
-    conn = _get_conn(gobp_root)
-    if conn is None:
-        return
-    try:
-        with conn:
-            with conn.cursor() as cur:
-                cur.execute(
-                    """
-                    INSERT INTO edges (id, from_id, to_id, type)
-                    VALUES (%s, %s, %s, %s)
-                    ON CONFLICT (id) DO UPDATE SET
-                        from_id=EXCLUDED.from_id,
-                        to_id=EXCLUDED.to_id,
-                        type=EXCLUDED.type
-                """,
-                    (edge_id, from_id, to_id, edge_type),
-                )
-    finally:
-        conn.close()
-
-
-def delete_edges_for_node(gobp_root: Path, node_id: str) -> None:
-    """Remove all edges where from_id or to_id matches node_id."""
-    conn = _get_conn(gobp_root)
-    if conn is None:
-        return
-    try:
-        with conn:
-            with conn.cursor() as cur:
-                cur.execute(
-                    "DELETE FROM edges WHERE from_id = %s OR to_id = %s",
-                    (node_id, node_id),
-                )
-    finally:
-        conn.close()
-
-
-def query_nodes_by_type(gobp_root: Path, node_type: str) -> list[str]:
-    """Return list of node IDs for a given type."""
-    conn = _get_conn(gobp_root)
-    if conn is None:
-        return []
-    try:
-        with conn.cursor() as cur:
-            cur.execute("SELECT id FROM nodes WHERE type = %s", (node_type,))
-            return [row[0] for row in cur.fetchall()]
-    finally:
-        conn.close()
-
-
-def query_nodes_fts(
-    gobp_root: Path, query: str, type_filter: str | None = None, limit: int = 20
-) -> list[str]:
-    """Full-text search nodes using PostgreSQL tsvector. Returns node IDs."""
-    conn = _get_conn(gobp_root)
-    if conn is None:
-        return []
-    try:
-        with conn.cursor() as cur:
-            if type_filter:
-                cur.execute(
-                    """
-                    SELECT id FROM nodes
-                    WHERE fts_vector @@ plainto_tsquery('english', %s)
-                    AND type = %s
-                    LIMIT %s
-                """,
-                    (query, type_filter, limit),
-                )
-            else:
-                cur.execute(
-                    """
-                    SELECT id FROM nodes
-                    WHERE fts_vector @@ plainto_tsquery('english', %s)
-                    LIMIT %s
-                """,
-                    (query, limit),
-                )
-            return [row[0] for row in cur.fetchall()]
-    except Exception:
-        return []
-    finally:
-        conn.close()
-
-
-def query_nodes_substring(
-    gobp_root: Path, query: str, type_filter: str | None = None, limit: int = 20
-) -> list[str]:
-    """Substring search nodes (fallback when FTS fails). Returns node IDs."""
-    conn = _get_conn(gobp_root)
-    if conn is None:
-        return []
-    try:
-        q = f"%{query}%"
-        with conn.cursor() as cur:
-            if type_filter:
-                cur.execute(
-                    """
-                    SELECT id FROM nodes
-                    WHERE (id ILIKE %s OR name ILIKE %s OR fts_content ILIKE %s)
-                    AND type = %s
-                    LIMIT %s
-                """,
-                    (q, q, q, type_filter, limit),
-                )
-            else:
-                cur.execute(
-                    """
-                    SELECT id FROM nodes
-                    WHERE id ILIKE %s OR name ILIKE %s OR fts_content ILIKE %s
-                    LIMIT %s
-                """,
-                    (q, q, q, limit),
-                )
-            return [row[0] for row in cur.fetchall()]
-    finally:
-        conn.close()
-
-
-def query_edges_from(gobp_root: Path, node_id: str) -> list[dict[str, str]]:
-    """Get all edges where from_id = node_id."""
-    conn = _get_conn(gobp_root)
-    if conn is None:
-        return []
-    try:
-        with conn.cursor() as cur:
-            cur.execute(
-                "SELECT from_id, to_id, type FROM edges WHERE from_id = %s",
-                (node_id,),
-            )
-            return [{"from": r[0], "to": r[1], "type": r[2]} for r in cur.fetchall()]
-    finally:
-        conn.close()
-
-
-def query_edges_to(gobp_root: Path, node_id: str) -> list[dict[str, str]]:
-    """Get all edges where to_id = node_id."""
-    conn = _get_conn(gobp_root)
-    if conn is None:
-        return []
-    try:
-        with conn.cursor() as cur:
-            cur.execute(
-                "SELECT from_id, to_id, type FROM edges WHERE to_id = %s",
-                (node_id,),
-            )
-            return [{"from": r[0], "to": r[1], "type": r[2]} for r in cur.fetchall()]
-    finally:
-        conn.close()
-
-
 def index_exists(gobp_root: Path) -> bool:
     """Return True if PostgreSQL schema exists and has nodes table."""
     conn = _get_conn(gobp_root)
@@ -664,8 +354,8 @@ def rebuild_index(gobp_root: Path, graph_index: Any) -> dict[str, Any]:
     """Rebuild PostgreSQL index from GraphIndex (loaded from files).
 
     Uses schema v3: ``TRUNCATE`` ``node_history``, ``edges``, ``nodes``, then
-    upsert from ``graph_index``. If the database was initialized with the legacy
-    v2 ``init_schema`` layout, :func:`create_schema_v3` is applied first.
+    upsert from ``graph_index``. If the database is not yet v3,
+    :func:`create_schema_v3` is applied first.
 
     Tables outside the v3 graph (e.g. import locks) are not dropped.
     """

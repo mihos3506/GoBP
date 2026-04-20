@@ -20,7 +20,6 @@ from typing import Any
 import yaml
 
 from gobp.core import cache as _cache_module
-from gobp.core import db as _db
 from gobp.core.history import append_event
 from gobp.core.loader import load_node_file, package_schema_dir, parse_frontmatter
 from gobp.core.validator import ValidationResult, validate_edge, validate_node
@@ -184,13 +183,6 @@ def create_node(
 
     _atomic_write(node_file, content)
 
-    # Write-through: update SQLite index
-    try:
-        _db.init_schema(gobp_root)
-        _db.upsert_node(gobp_root, node)
-    except Exception:
-        pass  # SQLite failure non-fatal
-
     # Invalidate cache
     try:
         _cache_module.get_cache().invalidate_all()
@@ -225,10 +217,6 @@ def create_nodes_batch(
 
     paths: list[Path] = []
     history_items: list[tuple[str, dict[str, Any], str]] = []
-    try:
-        _db.init_schema(gobp_root)
-    except Exception:
-        pass
     for node in nodes:
         result = coerce_and_validate_node(gobp_root, node, schema)
         if not result.ok:
@@ -249,10 +237,6 @@ def create_nodes_batch(
             "(Auto-generated node file. Edit the YAML above or add body content below.)\n"
         )
         _atomic_write(node_file, content)
-        try:
-            _db.upsert_node(gobp_root, node)
-        except Exception:
-            pass
         paths.append(node_file)
         history_items.append(
             (
@@ -323,13 +307,6 @@ def update_node(
 
     _atomic_write(node_file, content)
 
-    # Write-through: update SQLite index
-    try:
-        _db.init_schema(gobp_root)
-        _db.upsert_node(gobp_root, node)
-    except Exception:
-        pass  # SQLite failure non-fatal
-
     # Invalidate cache
     try:
         _cache_module.get_cache().invalidate_all()
@@ -397,8 +374,9 @@ def delete_node(
     _atomic_write(node_file, new_content)
 
     try:
-        _db.delete_node(gobp_root, node_id)
-        _db.delete_edges_for_node(gobp_root, node_id)
+        from gobp.mcp.pg_sync import maybe_delete_node_v3
+
+        maybe_delete_node_v3(gobp_root, node_id)
         _cache_module.get_cache().invalidate_all()
     except Exception:
         pass
@@ -490,9 +468,9 @@ def remove_node_from_disk(
     node_file.unlink()
 
     try:
-        _db.init_schema(gobp_root)
-        _db.delete_node(gobp_root, node_id)
-        _db.delete_edges_for_node(gobp_root, node_id)
+        from gobp.mcp.pg_sync import maybe_delete_node_v3
+
+        maybe_delete_node_v3(gobp_root, node_id)
         _cache_module.get_cache().invalidate_all()
     except Exception:
         pass
@@ -581,8 +559,6 @@ def create_edge(
     _atomic_write(edge_file, new_content)
 
     try:
-        _db.init_schema(gobp_root)
-        _db.upsert_edge(gobp_root, edge)
         _cache_module.get_cache().invalidate_all()
     except Exception:
         pass
@@ -667,9 +643,6 @@ def append_edges_batch(
     _atomic_write(edge_file, new_content)
 
     try:
-        _db.init_schema(gobp_root)
-        for edge in appended:
-            _db.upsert_edge(gobp_root, edge)
         _cache_module.get_cache().invalidate_all()
     except Exception:
         pass

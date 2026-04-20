@@ -41,6 +41,27 @@ def maybe_upsert_node_v3(gobp_root: Path, node: dict[str, Any]) -> None:
         logger.warning("PostgreSQL node upsert skipped (non-fatal): %s", e)
 
 
+def maybe_delete_node_v3(gobp_root: Path, node_id: str) -> None:
+    """Remove a node from PG v3 when the MCP process holds an open v3 connection.
+
+    Edges referencing the node are removed by ``ON DELETE CASCADE``.
+    """
+    _ = gobp_root
+    try:
+        from gobp.mcp import server as mcp_server
+
+        conn = getattr(mcp_server, "_pg_conn", None)
+        if conn is None:
+            return
+        from gobp.core.db import delete_node_v3, get_schema_version
+
+        if get_schema_version(conn) != "v3":
+            return
+        delete_node_v3(conn, str(node_id))
+    except Exception as e:
+        logger.warning("PostgreSQL node delete skipped (non-fatal): %s", e)
+
+
 def maybe_upsert_edge_v3(gobp_root: Path, edge: dict[str, Any]) -> None:
     """Upsert edge into PG v3 if the MCP process has an open v3 connection.
 
