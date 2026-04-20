@@ -611,65 +611,91 @@ def index_exists(gobp_root: Path) -> bool:
 
 
 def rebuild_index(gobp_root: Path, graph_index: Any) -> dict[str, Any]:
-    """Rebuild PostgreSQL index from scratch using GraphIndex data."""
+    """Rebuild PostgreSQL index from GraphIndex (loaded from files).
+
+    Uses schema v3: ``TRUNCATE`` ``node_history``, ``edges``, ``nodes``, then
+    upsert from ``graph_index``. If the database was initialized with the legacy
+    v2 ``init_schema`` layout, :func:`create_schema_v3` is applied first.
+
+    Tables outside the v3 graph (e.g. import locks) are not dropped.
+    """
     conn = _get_conn(gobp_root)
     if conn is None:
         return {
             "ok": False,
-            "message": "PostgreSQL not available — set GOBP_DB_URL env var",
+            "message": "No PostgreSQL connection - set GOBP_DB_URL",
             "nodes_indexed": 0,
             "edges_indexed": 0,
         }
 
     try:
-        with conn:
-            with conn.cursor() as cur:
-                # Clear existing data
-                cur.execute("TRUNCATE TABLE nodes, edges RESTART IDENTITY CASCADE")
+        if get_schema_version(conn) != "v3":
+            create_schema_v3(conn)
 
-                # Insert all nodes
-                nodes_indexed = 0
-                for node in graph_index.all_nodes():
-                    row = _node_to_row(node)
-                    cur.execute(
-                        """
-                        INSERT INTO nodes
-                            (id, type, name, status, topic, subject, group_field,
-                             scope, priority, created, updated, fts_content)
-                        VALUES
-                            (%(id)s, %(type)s, %(name)s, %(status)s, %(topic)s,
-                             %(subject)s, %(group_field)s, %(scope)s, %(priority)s,
-                             %(created)s, %(updated)s, %(fts_content)s)
-                        ON CONFLICT (id) DO NOTHING
-                    """,
-                        row,
-                    )
-                    nodes_indexed += 1
+        with conn.cursor() as cur:
+            cur.execute(
+                "TRUNCATE node_history, edges, nodes RESTART IDENTITY CASCADE"
+            )
+        conn.commit()
 
-                # Insert all edges
-                edges_indexed = 0
-                for edge in graph_index.all_edges():
-                    from_id = edge.get("from", "")
-                    to_id = edge.get("to", "")
-                    edge_type = edge.get("type", "")
-                    edge_id = f"{from_id}__{edge_type}__{to_id}"
-                    cur.execute(
-                        """
-                        INSERT INTO edges (id, from_id, to_id, type)
-                        VALUES (%s, %s, %s, %s)
-                        ON CONFLICT (id) DO NOTHING
-                    """,
-                        (edge_id, from_id, to_id, edge_type),
-                    )
-                    edges_indexed += 1
+        from gobp.core.pyramid import pyramid_from_node
+
+        all_nodes_list = (
+            graph_index.all_nodes()
+            if hasattr(graph_index, "all_nodes")
+            else []
+        )
+        nodes_count = 0
+        for node in all_nodes_list:
+            try:
+                enriched = dict(node)
+                if (
+                    not str(enriched.get("desc_l1", "") or "").strip()
+                    or not str(enriched.get("desc_l2", "") or "").strip()
+                ):
+                    l1, l2 = pyramid_from_node(enriched)
+                    if not str(enriched.get("desc_l1", "") or "").strip():
+                        enriched["desc_l1"] = l1
+                    if not str(enriched.get("desc_l2", "") or "").strip():
+                        enriched["desc_l2"] = l2
+                upsert_node_v3(conn, enriched)
+                nodes_count += 1
+            except Exception as e:
+                logger.warning(
+                    "rebuild_index: skip node %s: %s",
+                    node.get("id", "?"),
+                    e,
+                )
+
+        all_edges_list = (
+            graph_index.all_edges()
+            if hasattr(graph_index, "all_edges")
+            else []
+        )
+        edges_count = 0
+        for edge in all_edges_list:
+            try:
+                from_id = str(edge.get("from") or edge.get("from_id", "") or "")
+                to_id = str(edge.get("to") or edge.get("to_id", "") or "")
+                reason = str(edge.get("reason", "") or "")
+                code = str(edge.get("code", "") or "")
+                if from_id and to_id:
+                    upsert_edge_v3(conn, from_id, to_id, reason, code)
+                    edges_count += 1
+            except Exception as e:
+                logger.warning("rebuild_index: skip edge %s: %s", edge, e)
 
         return {
             "ok": True,
-            "nodes_indexed": nodes_indexed,
-            "edges_indexed": edges_indexed,
-            "message": f"Index rebuilt: {nodes_indexed} nodes, {edges_indexed} edges",
+            "message": f"Rebuilt {nodes_count} nodes, {edges_count} edges",
+            "nodes_indexed": nodes_count,
+            "edges_indexed": edges_count,
         }
     except Exception as e:
+        try:
+            conn.rollback()
+        except Exception:
+            pass
         return {
             "ok": False,
             "message": f"Rebuild failed: {e}",
@@ -677,4 +703,7 @@ def rebuild_index(gobp_root: Path, graph_index: Any) -> dict[str, Any]:
             "edges_indexed": 0,
         }
     finally:
-        conn.close()
+        try:
+            conn.close()
+        except Exception:
+            pass
