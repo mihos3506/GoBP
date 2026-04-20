@@ -173,6 +173,40 @@ def get_schema_version(conn: Any) -> str:
         return "v3" if cur.fetchone() else "v2"
 
 
+def ensure_v3_connection(gobp_root: Path) -> Any:
+    """Return an open PostgreSQL connection whose schema is v3.
+
+    Intended for CLI / maintenance scripts that must not run in file-only
+    mode. The caller **must** ``close()`` the connection when finished.
+
+    Raises:
+        RuntimeError: if ``GOBP_DB_URL`` is missing, the connection fails,
+            or the database is not schema v3.
+    """
+    conn = _get_conn(gobp_root)
+    if conn is None:
+        raise RuntimeError(
+            "PostgreSQL v3 required: set GOBP_DB_URL and ensure the server is "
+            f"reachable (project root: {gobp_root})"
+        )
+    try:
+        if get_schema_version(conn) != "v3":
+            conn.close()
+            raise RuntimeError(
+                "PostgreSQL is reachable but schema is not v3 "
+                "(expected desc_l1 on nodes). Initialize v3 before running this tool."
+            )
+        return conn
+    except RuntimeError:
+        raise
+    except Exception as e:
+        try:
+            conn.close()
+        except Exception:
+            pass
+        raise RuntimeError(f"PostgreSQL v3 connection check failed: {e}") from e
+
+
 def _node_desc_full_v3(node: dict[str, Any]) -> str:
     """Full description text for schema v3 ``desc_full`` column."""
     if node.get("desc_full") is not None:

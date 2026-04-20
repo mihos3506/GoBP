@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 """Sync Wave graph: materialize Wave nodes from briefs, link briefs, link feats.
 
+**Requires PostgreSQL v3** (``GOBP_DB_URL``): verifies the DB before mutating YAML,
+then calls :func:`gobp.core.db.rebuild_index` so the v3 mirror matches files.
+
 For every ``waves/wave_<slug>_brief.md``:
   - Ensure a ``Wave`` node ``wave:<slug>`` exists (``wave_<slug>.md``).
   - Ensure a ``Document`` node exists with ``source_path: waves/wave_<slug>_brief.md``
@@ -12,17 +15,21 @@ Maps ``feat:*`` IDs to owning waves by prefix (w4_, wcore_, mcp_, …).
 Idempotent: safe to re-run.
 
 Run from repo root:
-    D:/GoBP/venv/Scripts/python.exe scripts/link_wave_briefs_and_features.py
+    GOBP_DB_URL=... PYTHONUTF8=1 python scripts/link_wave_briefs_and_features.py
 """
 
 from __future__ import annotations
 
 import hashlib
 import re
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
 import yaml
+
+from gobp.core.db import ensure_v3_connection, rebuild_index
+from gobp.core.graph import GraphIndex
 
 ROOT = Path(__file__).resolve().parents[1]
 NODES_DIR = ROOT / ".gobp" / "nodes"
@@ -234,6 +241,9 @@ spec_source: {rel}
 
 
 def main() -> None:
+    conn = ensure_v3_connection(ROOT)
+    conn.close()
+
     all_ids, doc_by_slug, source_paths = load_node_ids_and_docs()
 
     for slug, brief_path in iter_brief_files():
@@ -286,15 +296,22 @@ def main() -> None:
 
     if not new_edges:
         print("No new edges to add (already linked).")
-        return
+    else:
+        edges.extend(new_edges)
+        EDGES_FILE.write_text(
+            yaml.dump(edges, default_flow_style=False, allow_unicode=True, sort_keys=False),
+            encoding="utf-8",
+        )
+        print(f"Appended {len(new_edges)} edges to {EDGES_FILE}")
 
-    edges.extend(new_edges)
-    EDGES_FILE.write_text(
-        yaml.dump(edges, default_flow_style=False, allow_unicode=True, sort_keys=False),
-        encoding="utf-8",
-    )
-    print(f"Appended {len(new_edges)} edges to {EDGES_FILE}")
+    idx = GraphIndex.load_from_disk(ROOT)
+    rb = rebuild_index(ROOT, idx)
+    print(f"PostgreSQL v3 mirror: {rb.get('message', rb)}")
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except RuntimeError as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        raise SystemExit(1) from exc

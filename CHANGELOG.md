@@ -15,6 +15,13 @@ Format: [Wave N — Title] with date, what was added/changed/fixed.
 
 **Still in repo for GoBP ops:** `scripts/data_integrity_audit.py`, `scripts/import_testcases.py`, `scripts/link_wave_briefs_and_features.py`. **`tests/fixtures/mihos_fixture.py`** stays — it is the shared pytest graph fixture (name is historical only).
 
+### Operational scripts — PostgreSQL v3 only (2026-04-20)
+
+- `gobp.core.db.ensure_v3_connection()` — scripts must not run file-only.
+- `scripts/data_integrity_audit.py` — audit uses `validate_v3` + SQL counts (no `GraphIndex`-only path).
+- `scripts/link_wave_briefs_and_features.py` — requires v3, then `rebuild_index` after YAML edits.
+- `scripts/import_testcases.py` — requires v3; `ROOT` from `GOBP_PROJECT_ROOT` or repo parent (no hardcoded drive).
+
 ---
 
 ## [Wave I] — Edge Policy Implementation — 2026-04-20

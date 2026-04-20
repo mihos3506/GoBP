@@ -1,16 +1,32 @@
 """
 Import all TestCase nodes across waves into GoBP.
-Usage: GOBP_DB_URL=... PYTHONUTF8=1 python scripts/import_testcases.py
+
+Requires **PostgreSQL v3** (``GOBP_DB_URL``). Project root defaults to the
+repository containing this script; override with ``GOBP_PROJECT_ROOT``.
+
+Usage::
+
+    GOBP_DB_URL=... PYTHONUTF8=1 python scripts/import_testcases.py
 """
 import asyncio
+import os
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
+from gobp.core.db import ensure_v3_connection
 from gobp.core.graph import GraphIndex
 from gobp.mcp.dispatcher import dispatch
 
-ROOT = Path("D:/GoBP")
+
+def _project_root() -> Path:
+    env = os.environ.get("GOBP_PROJECT_ROOT")
+    if env:
+        return Path(env).resolve()
+    return Path(__file__).resolve().parents[1]
+
+
+ROOT = _project_root()
 SID = ""  # will be set after session:start
 
 ok_count = 0
@@ -542,6 +558,9 @@ CATALOG = [
 
 async def main():
     global SID
+    conn = ensure_v3_connection(ROOT)
+    conn.close()
+
     index = reload()
 
     # ── 0. Start a fresh session ──────────────────────────────────────────────
@@ -639,4 +658,9 @@ async def main():
     print(f"Session end: {'OK' if r_end.get('ok') else r_end.get('error')}")
 
 
-asyncio.run(main())
+if __name__ == "__main__":
+    try:
+        asyncio.run(main())
+    except RuntimeError as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        raise SystemExit(1) from exc

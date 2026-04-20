@@ -359,3 +359,12 @@ def test_dispatch_edit_ok(tmp_project_with_v3_node: tuple[Path, str, str]) -> No
         node_file_path(root / ".gobp", nid).read_text(encoding="utf-8")
     )
     assert "Patched via dispatch" in str(loaded.get("description", ""))
+
+
+def test_ensure_v3_connection_raises_without_database() -> None:
+    from gobp.core import db as db_mod
+
+    root = Path("/nonexistent/gobp_project")
+    with patch.object(db_mod, "_get_conn", return_value=None):
+        with pytest.raises(RuntimeError, match="PostgreSQL v3 required"):
+            db_mod.ensure_v3_connection(root)
