@@ -1055,14 +1055,6 @@ function descParts(node) {
   return { info: String(d || ''), code: '' };
 }
 
-function filterRelationshipEdges(edges) {
-  return edges.filter((edge) => {
-    const edgeType = (edge.type || edge.relationship || '').toUpperCase();
-    if (edgeType === 'DISCOVERED_IN') return false;
-    return true;
-  });
-}
-
 function renderCodeBlock(code) {
   if (!code || !String(code).trim()) return '';
   return `
@@ -1147,54 +1139,55 @@ function renderSeverityBadge(severity) {
   return `<span class="severity-badge" style="background:${c.bg};color:${c.text};border:1px solid ${c.border};padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;letter-spacing:0.5px;text-transform:uppercase;">${esc(String(severity).toUpperCase())}</span>`;
 }
 
-function renderEdges(edgeRows) {
-  if (!edgeRows || edgeRows.length === 0) {
+/** All edges touching nodeId (both directions). Includes discovered_in and other types. */
+function renderEdges(nodeId, allEdges, allNodes) {
+  const nodesById = {};
+  (allNodes || []).forEach((n) => {
+    if (n && n.id) nodesById[n.id] = n;
+  });
+
+  const related = (allEdges || []).filter((e) => {
+    const f = e.from || e.source || e.from_id;
+    const t = e.to || e.target || e.to_id;
+    return f === nodeId || t === nodeId;
+  });
+
+  if (!related.length) {
     return `
     <div class="detail-section">
       <div class="detail-section-title">EDGES</div>
       <div class="no-edges">No connections</div>
     </div>`;
   }
-  const edgeItems = edgeRows.map((edge) => {
-    const direction = edge.direction || '→';
-    const oid = edge.other_id || '';
-    const otherName = edge.other_name || 'Unknown';
-    const reason = edge.reason != null ? String(edge.reason).trim() : '';
+
+  const items = related.map((e) => {
+    const f = e.from || e.source || e.from_id;
+    const t = e.to || e.target || e.to_id;
+    const otherId = (f === nodeId) ? t : f;
+    const otherNode = nodesById[otherId];
+    const otherName = otherNode
+      ? (otherNode.name || otherId)
+      : (e.to_name || e.from_name || otherId);
+    const reason = e.reason != null ? String(e.reason).trim() : '';
     return `
         <div class="edge-item">
             <div class="edge-header">
-                <span class="edge-direction">${direction}</span>
-                <span class="edge-node-name" data-edge-nav="${escAttr(oid)}">${esc(otherName)}</span>
+                <span class="edge-node-name" data-edge-nav="${escAttr(otherId)}">${esc(otherName)}</span>
             </div>
             ${reason ? `<div class="edge-reason">${esc(reason)}</div>` : ''}
         </div>`;
   }).join('');
+
   return `
     <div class="detail-section">
-      <div class="detail-section-title">EDGES (${edgeRows.length})</div>
-      ${edgeItems}
+      <div class="detail-section-title">EDGES (${related.length})</div>
+      ${items}
     </div>`;
 }
 
 function showDetail(node) {
   const mcpPanel = document.getElementById('mcp-panel');
   if (mcpPanel) mcpPanel.style.display = 'none';
-  const edges = GRAPH_DATA.edges || GRAPH_DATA.links || [];
-  const nodesById = {};
-  GRAPH_DATA.nodes.forEach((n) => {
-    nodesById[n.id] = n;
-  });
-
-  const out = [];
-  const inc = [];
-  filterRelationshipEdges(edges).forEach((e) => {
-    const f = e.from || e.source;
-    const t = e.to || e.target;
-    const reason = e.reason != null ? String(e.reason) : '';
-    if (f === node.id) out.push({ type: e.type, id: t, reason });
-    if (t === node.id) inc.push({ type: e.type, id: f, reason });
-  });
-
   function breadcrumbHtml(n) {
     const g = (n.group || '').trim();
     if (!g) return '';
@@ -1269,21 +1262,8 @@ function showDetail(node) {
     html += renderCodeSection(node);
   }
 
-  const edgeRows = [
-    ...out.map((r) => ({
-      direction: '→',
-      other_id: r.id,
-      other_name: nodesById[r.id]?.name || r.id,
-      reason: r.reason,
-    })),
-    ...inc.map((r) => ({
-      direction: '←',
-      other_id: r.id,
-      other_name: nodesById[r.id]?.name || r.id,
-      reason: r.reason,
-    })),
-  ];
-  html += renderEdges(edgeRows.slice(0, 80));
+  const edges = GRAPH_DATA.edges || GRAPH_DATA.links || [];
+  html += renderEdges(node.id, edges, GRAPH_DATA.nodes);
   html += renderHistory(node);
 
   const content = document.getElementById('detail-content');
