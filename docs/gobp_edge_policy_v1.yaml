@@ -1,0 +1,216 @@
+# GoBP EDGE POLICY v1
+# 5 role groups × 5 core edge types
+# reason_mode: template | required_short | none
+# Date: 2026-04-20
+
+schema_version: "1.0"
+
+# ─────────────────────────────────────────
+# ROLE GROUPS
+# ─────────────────────────────────────────
+role_groups:
+  Knowledge:
+    includes: [Document, Spec, Idea, Lesson, LessonRule, LessonDev, LessonQA, LessonCTO]
+    description: "Tài liệu + đặc tả + bài học — nguồn tri thức"
+
+  Code:
+    includes: [Flow, Feature, Engine, UseCase, Command, Entity, ValueObject, Aggregate,
+               Repository, APIContract, APIEndpoint, Module, Class, Function, Interface,
+               ErrorCase, ErrorDomain]
+    description: "Code domain + infrastructure + error — hiện thực"
+    note: "ErrorCase/ErrorDomain nằm trong Code nhưng giữ error_severity field riêng"
+
+  Constraint:
+    includes: [Invariant, BusinessRule, Precondition, Postcondition, Policy]
+    description: "Ràng buộc bất biến — luật không thể vi phạm"
+
+  Test:
+    includes: [TestSuite, TestKind, TestCase]
+    description: "Kiểm chứng — bao phủ Code và Constraint"
+
+  Meta:
+    includes: [Session, Wave, Task, Reflection]
+    description: "Provenance — không dùng để traverse kỹ thuật"
+
+# ─────────────────────────────────────────
+# CORE EDGE TYPES
+# ─────────────────────────────────────────
+edge_types:
+  depends_on:
+    meaning: "from cần to để đứng vững / hoạt động đúng"
+    traverse_priority: high
+    default_reason_template: "{from} cần {to} để hoạt động đúng."
+
+  implements:
+    meaning: "from hiện thực đặc tả / contract của to"
+    traverse_priority: high
+    default_reason_template: "{from} hiện thực đặc tả {to}."
+
+  enforces:
+    meaning: "Constraint áp ràng buộc lên Code hoặc Test"
+    traverse_priority: medium
+    default_reason_template: "{from} ràng buộc {to}."
+
+  covers:
+    meaning: "Test bao phủ Code / Constraint / Knowledge"
+    traverse_priority: low
+    default_reason_template: "{from} kiểm chứng {to}."
+
+  discovered_in:
+    meaning: "Node được tạo ra trong session nào (provenance)"
+    traverse_priority: skip
+    default_reason_template: null
+    note: "Không dùng để quyết định đọc sâu — chỉ audit trail"
+
+# ─────────────────────────────────────────
+# MATRIX 5×5
+# from_group → to_group: allowed edge + reason_mode
+# reason_mode:
+#   template       = dùng default_reason_template, không cần nhập
+#   required_short = cần ghi 1 câu ngắn (mơ hồ / ràng buộc đặc thù)
+#   none           = không áp dụng / skip
+# ─────────────────────────────────────────
+matrix:
+  Knowledge:
+    Knowledge:
+      edge: depends_on
+      reason_mode: template
+      note: "Spec A phụ thuộc Spec B làm nền tảng"
+    Code:
+      edge: implements
+      reason_mode: template
+      note: "Code hiện thực Knowledge → chiều from=Code, to=Knowledge; ngược lại dùng specified_in (alias implements)"
+    Constraint:
+      edge: depends_on
+      reason_mode: template
+    Test:
+      edge: covers       # hiếm — Knowledge được test trực tiếp
+      reason_mode: template
+    Meta:
+      edge: discovered_in
+      reason_mode: none
+
+  Code:
+    Knowledge:
+      edge: implements
+      reason_mode: template
+    Code:
+      edge: depends_on
+      reason_mode: template
+    Constraint:
+      edge: enforces
+      reason_mode: required_short
+      note: "Constraint áp vào Code cụ thể — cần ghi rõ vi phạm sẽ làm gì"
+    Test:
+      edge: covers
+      reason_mode: template
+    Meta:
+      edge: discovered_in
+      reason_mode: none
+
+  Constraint:
+    Knowledge:
+      edge: depends_on
+      reason_mode: template
+      note: "Constraint được đặc tả trong Knowledge node nào"
+    Code:
+      edge: enforces
+      reason_mode: required_short
+      note: "Bắt buộc ghi ngắn: 'Nếu vi phạm → X'"
+    Constraint:
+      edge: null
+      reason_mode: none
+    Test:
+      edge: null
+      reason_mode: none
+    Meta:
+      edge: discovered_in
+      reason_mode: none
+
+  Test:
+    Knowledge:
+      edge: covers
+      reason_mode: template
+    Code:
+      edge: covers
+      reason_mode: template
+    Constraint:
+      edge: enforces
+      reason_mode: template
+      note: "Test enforce Constraint (kiểm chứng bất biến)"
+    Test:
+      edge: depends_on
+      reason_mode: template
+      note: "TestSuite → TestCase"
+    Meta:
+      edge: discovered_in
+      reason_mode: none
+
+  Meta:
+    Knowledge:
+      edge: depends_on
+      reason_mode: template
+      note: "Session/Wave reference doc làm bối cảnh"
+    Code:
+      edge: null
+      reason_mode: none
+    Constraint:
+      edge: null
+      reason_mode: none
+    Test:
+      edge: null
+      reason_mode: none
+    Meta:
+      edge: discovered_in
+      reason_mode: none
+
+# ─────────────────────────────────────────
+# TRAVERSE ALGORITHM (BFS)
+# ─────────────────────────────────────────
+traverse_policy:
+  tier_1_expand:
+    edges: [depends_on, implements]
+    read_depth: "desc_l2 của to node"
+    note: "Luôn mở rộng — đây là trục hiểu cốt lõi"
+
+  tier_2_expand:
+    edges: [enforces, covers]
+    read_depth: "desc_l1 của to node"
+    note: "Mở rộng nếu còn budget token"
+
+  skip:
+    edges: [discovered_in]
+    read_depth: "none"
+    note: "Không traverse — chỉ dùng cho audit"
+
+  full_document:
+    trigger: "get: node_id mode=full hoặc load từ source_path"
+    note: "Graph chỉ là map + desc_l1/l2. Full doc = bước riêng ngoài graph"
+
+# ─────────────────────────────────────────
+# VALIDATOR RULES (soft warnings, không fail)
+# ─────────────────────────────────────────
+validator:
+  - rule: "enforces edge từ Constraint → Code phải có reason"
+    severity: warning
+  - rule: "implements edge phải có to thuộc Knowledge group"
+    severity: warning
+  - rule: "discovered_in edge phải có to thuộc Meta group"
+    severity: error
+  - rule: "depends_on không được tạo vòng lặp (A → B → A)"
+    severity: error
+
+# ─────────────────────────────────────────
+# ERROR NODE FIELDS (giữ trong Code group)
+# ─────────────────────────────────────────
+error_node_fields:
+  error_severity: "fatal | error | warning | info"
+  note: "Dùng để filter lỗi mà không cần group riêng. ErrorCase vẫn ở Code group."
+
+# ─────────────────────────────────────────
+# STATUS
+# ─────────────────────────────────────────
+status: DRAFT
+author: "CTO Chat"
+date: "2026-04-20"
+next_step: "CEO review → Wave I implement vào GoBP schema + dispatcher"
