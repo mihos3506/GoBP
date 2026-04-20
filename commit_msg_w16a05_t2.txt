@@ -1,7 +1,0 @@
-Wave 16A05 Task 2: add MCP Generator panel to viewer
-
-- index.html: ⚙ MCP button in left panel
-- MCP panel: auto-fill from /api/config
-- Tabs: Claude CLI / Cursor / PowerShell configs
-- Copy button per tab
-- MCP key preview: gobp-{name}

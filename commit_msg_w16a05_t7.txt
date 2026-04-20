@@ -1,5 +1,0 @@
-Wave 16A05 Task 7: tests/test_wave16a05.py + full suite + CHANGELOG
-
-- ~16 tests: project identity, Task node, tasks: action, _suggest_db_name
-- 455+ tests passing
-- CHANGELOG: Wave 16A05 entry

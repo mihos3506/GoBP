@@ -1,6 +1,0 @@
-Wave 10B Task 3: dispatcher create action auto-generates node ID
-
-- _get_type_prefix(): maps NodeType to id prefix
-- create: action: auto-generates id:XXXXXX if not provided
-- Explicit id= still respected if provided
-- Fixes B4: AI had to manually specify IDs

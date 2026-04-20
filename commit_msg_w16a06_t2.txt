@@ -1,6 +1,0 @@
-Wave 16A06 Task 2: delete: + retype: actions
-
-- write.py: delete_node_action(), retype_node_action()
-- dispatcher.py: delete: + retype: routing
-- parser.py: PROTOCOL_GUIDE entries
-- retype: preserves all data + migrates edges to new ID

@@ -1,7 +1,0 @@
-Wave 10B Task 5: add edge creation to dispatcher
-
-- parse_query(): handle 'edge: from --type--> to' format
-- dispatch(): edge action validates nodes + creates semantic edge
-- Edges stored in .gobp/edges/semantic_edges.yaml
-- PROTOCOL_GUIDE updated with edge examples
-- Fixes B6: only discovered_in edges, now full semantic edges supported

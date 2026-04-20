@@ -1,6 +1,0 @@
-Wave 10B Task 2: fix Unicode encoding — allow_unicode=True in all YAML writes
-
-- mutator.py: all yaml.safe_dump() calls use allow_unicode=True
-- init.py: seed nodes use allow_unicode=True
-- All file writes use encoding='utf-8'
-- Fixes B2: Vietnamese text stored as escaped bytes

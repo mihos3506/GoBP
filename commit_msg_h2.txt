@@ -1,5 +1,0 @@
-Wave H Task 2: update docs/SCHEMA.md for schema v2
-
-- Add sections 2.7 Concept, 2.8 TestKind, 2.9 TestCase
-- Add sections 3.6 covers, 3.7 of_kind
-- Update type counts: nodes 6→9, edges 5→7

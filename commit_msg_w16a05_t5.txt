@@ -1,6 +1,0 @@
-Wave 16A05 Task 5: add tasks: action to dispatcher
-
-- tasks: returns filtered Task nodes by assignee + status
-- Default: PENDING tasks for cursor
-- Sorted by priority
-- PROTOCOL_GUIDE: 4 task queue entries

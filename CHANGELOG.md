@@ -5,6 +5,18 @@ Format: [Wave N — Title] with date, what was added/changed/fixed.
 
 ---
 
+## [Housekeeping] — Trim non-core scripts — 2026-04-20
+
+### Removed
+
+- One-off **Wave / MIHOS** tooling under `scripts/` (`wave16a*` smoke/bench/replay/backfill, `wave17a04_task5_backfill.py`, `mihos_*` GA and migration helpers).
+- `waves/mihos_ga_hardening_playbook.md` (external MIHOS-v1 runbook; scripts it referenced are gone).
+- Root **`commit_msg_*.txt`** paste buffers and **`examples/mihos_import_docs.sh`** (MIHOS-only shell).
+
+**Still in repo for GoBP ops:** `scripts/data_integrity_audit.py`, `scripts/import_testcases.py`, `scripts/link_wave_briefs_and_features.py`. **`tests/fixtures/mihos_fixture.py`** stays — it is the shared pytest graph fixture (name is historical only).
+
+---
+
 ## [Wave I] — Edge Policy Implementation — 2026-04-20
 
 ### Added

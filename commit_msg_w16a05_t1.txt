@@ -1,6 +1,0 @@
-Wave 16A05 Task 1: add /api/config endpoint to viewer/server.py
-
-- Returns project_root, project_name, python_path, suggested_db, mcp_key
-- _suggest_db_name(): D:/MIHOS-v1 → gobp_mihos, D:/GoBP → gobp
-- _get_python_path(): current Python executable
-- MCP Generator panel will call this on load

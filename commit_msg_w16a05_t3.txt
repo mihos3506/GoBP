@@ -1,5 +1,0 @@
-Wave 16A05 Task 3: project identity in config.yaml + overview:
-
-- init.py: project_name, project_id, project_description in config
-- read.py: overview: returns project.name, project.id, project.description
-- AI sees which project it's connected to from first overview: call

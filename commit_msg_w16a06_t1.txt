@@ -1,5 +1,0 @@
-Wave 16A06 Task 1: delete_node() in mutator + remove_node() in GraphIndex
-
-- core/graph.py: remove_node() removes node + cleans edge index
-- core/mutator.py: delete_node() deletes node file + edge files
-- Protected types: Session, Document cannot be deleted
