@@ -1,7 +1,7 @@
-# WAVE J BRIEF — IMPLEMENTED FIELD
+# WAVE J BRIEF — IMPLEMENTED FIELD + BUG FIXES
 
 **Wave:** J  
-**Title:** implemented field + GraphIndex resilient loading  
+**Title:** implemented field + 3 bug fixes trong write/read path  
 **Author:** CTO Chat (Claude Sonnet 4.6)  
 **Date:** 2026-04-20  
 **For:** Cursor (sequential execution) + Claude CLI (audit)  
@@ -12,22 +12,23 @@
 
 ## CONTEXT
 
-Hiện tại GoBP không có cách để AI biết một Spec/Feature node đã được
-implement trong code chưa. AI đọc node nhưng không biết:
-- Đây là plan chưa làm hay đã có code?
-- Code nằm ở đâu?
-
-**Giải pháp:** Thêm field `implemented` (boolean) vào schema.
+Wave J giải quyết 4 vấn đề:
 
 ```
-implemented: false   ← default, chưa có code
-implemented: true    ← đã implement, code field chứa file path
-```
+1. Schema thiếu implemented field
+   AI không biết Spec/Feature đã có code chưa
 
-**Đơn giản — chỉ Yes/No:**
-```
-false = planned, chưa có implementation
-true  = có implementation, đọc code field để biết đâu
+2. Bug: file_format.py ghi description không sanitize YAML
+   description chứa :, {, }, (, ) → file .md corrupt
+   Toàn bộ write path fail vì 1 file lỗi
+
+3. Bug: GraphIndex.load_from_disk() crash khi gặp 1 file lỗi
+   1 file .md bad → toàn bộ write operations fail
+   edit:/create:/delete: không dùng được
+
+4. Bug: edit:/delete: dùng file lookup khác get:/find:
+   get: tìm được node nhưng edit: không tìm được
+   Inconsistent behavior giữa read và write path
 ```
 
 ---
@@ -36,334 +37,150 @@ true  = có implementation, đọc code field để biết đâu
 
 | # | File |
 |---|---|
-| 1 | `gobp/schema/core_nodes.yaml` |
-| 2 | `gobp/core/validator_v3.py` |
-| 3 | `gobp/mcp/tools/write.py` — node create/upsert |
-| 4 | `gobp/mcp/tools/read_v3.py` — context: action |
-| 5 | `docs/SCHEMA.md` |
+| 1 | `gobp/core/file_format.py` — serialize/deserialize |
+| 2 | `gobp/core/graph.py` — _load_nodes, _load_edges |
+| 3 | `gobp/mcp/dispatcher.py` — edit: delete: handlers |
+| 4 | `gobp/schema/core_nodes.yaml` |
+| 5 | `gobp/core/validator_v3.py` |
+| 6 | `gobp/mcp/tools/read_v3.py` — get_node_v3 |
+| 7 | `docs/SCHEMA.md` |
 
 ---
 
-## TASK 1 — core_nodes.yaml: Thêm implemented field
+## TASK 1 — implemented field: schema + validator
 
-**File to modify:** `gobp/schema/core_nodes.yaml`
+**Files:** `gobp/schema/core_nodes.yaml`, `gobp/core/validator_v3.py`
 
-**Re-read file trước.**
-
-Thêm `implemented` vào base template (áp dụng cho mọi node type trừ Meta):
+### core_nodes.yaml — thêm implemented:
 
 ```yaml
 base_fields:
-  name:          {str, required}
-  group:         {str, required}
-  description:   {str, required}
-  code:          {str, optional}
-  implemented:   {bool, optional, default: false}
-  history:       {list, optional, append-only}
+  implemented:
+    type: bool
+    default: false
+    excluded_types: [Session, Wave, Task, Reflection]
+    note: "false = planned, true = has code implementation"
 ```
 
-**Không áp dụng cho:**
-```yaml
-excluded_from_implemented:
-  - Session
-  - Wave
-  - Task
-  - Reflection
-```
-
-**Acceptance criteria:**
-- `implemented` field có trong base template
-- Default value: `false`
-- Meta group nodes không có field này
-
-**Commit message:**
-```
-Wave J Task 1: core_nodes.yaml — add implemented boolean field
-```
-
----
-
-## TASK 2 — validator_v3.py: Validate + default implemented
-
-**File to modify:** `gobp/core/validator_v3.py`
-
-**Re-read validator_v3.py trước.**
+### validator_v3.py:
 
 ```python
-# Meta node types không cần implemented field
 META_TYPES = {'Session', 'Wave', 'Task', 'Reflection'}
 
 def coerce_implemented(node: dict) -> dict:
-    """
-    Auto-set implemented=False nếu chưa có.
-    Không apply cho Meta types.
-    """
-    node_type = node.get('type', '')
-    if node_type in META_TYPES:
+    """Auto-set implemented=False nếu chưa có. Skip Meta types."""
+    if node.get('type', '') in META_TYPES:
         return node
-    
     if 'implemented' not in node:
         node['implemented'] = False
     else:
-        # Coerce to bool
         node['implemented'] = bool(node['implemented'])
-    
     return node
 
-
 def validate_implemented(node: dict) -> list[str]:
-    """
-    Warnings:
-    - implemented=True nhưng code field trống → warning
-    """
-    warnings = []
-    node_type = node.get('type', '')
-    
-    if node_type in META_TYPES:
-        return warnings
-    
+    """Warning: implemented=True nhưng code field trống."""
+    if node.get('type', '') in META_TYPES:
+        return []
     if node.get('implemented') is True:
-        code = node.get('code', '')
-        if not code or not code.strip():
-            warnings.append(
-                f"Node '{node.get('name', '?')}': implemented=True "
-                f"nhưng code field trống. "
-                f"Nên thêm file path vào code field."
-            )
-    
-    return warnings
+        if not (node.get('code') or '').strip():
+            return [
+                f"Node '{node.get('name','?')}': "
+                f"implemented=True nhưng code field trống."
+            ]
+    return []
 ```
 
-Wire vào `coerce_and_validate_node()`:
+Wire vào `coerce_and_validate_node()`.
+
+**Commit message:**
+```
+Wave J Task 1: implemented field — schema + validator
+```
+
+---
+
+## TASK 2 — file_format.py: Fix YAML serialization
+
+**Root cause:** Description được ghi dạng raw string vào frontmatter.
+Nếu chứa `:`, `{`, `}`, `|`, `#`... → YAML parser lỗi → file corrupt
+→ GraphIndex.load_from_disk() fail → toàn bộ write path fail.
+
+**File to modify:** `gobp/core/file_format.py`
+
+**Re-read serialize_node() hoặc write_node_file() trước.**
+
+**Fix — dùng yaml.dump() thay vì string interpolation:**
+
 ```python
-def coerce_and_validate_node(node):
-    # ... existing validation ...
-    node = coerce_implemented(node)
-    warnings = validate_implemented(node)
-    # attach warnings to result
-    return node, warnings
+import yaml
+
+def serialize_frontmatter(node: dict) -> str:
+    """
+    Serialize node dict thành YAML frontmatter.
+    Dùng yaml.dump() — không dùng f-string/concatenation.
+    yaml.dump() tự handle escaping mọi ký tự đặc biệt.
+    """
+    fm = {}
+    field_order = [
+        'type', 'id', 'name', 'group', 'description',
+        'code', 'implemented', 'status', 'priority',
+        'created_at', 'updated_at'
+    ]
+    for key in field_order:
+        if key in node and node[key] is not None:
+            fm[key] = node[key]
+    # Include any extra fields
+    for key, val in node.items():
+        if key not in fm and val is not None:
+            fm[key] = val
+
+    return yaml.dump(
+        fm,
+        allow_unicode=True,
+        default_flow_style=False,
+        sort_keys=False,
+        width=10000,  # Prevent line wrapping
+    )
+
+
+def write_node_file(gobp_root: Path, node: dict) -> Path:
+    """Ghi node ra file .md với frontmatter luôn valid YAML."""
+    nodes_dir = gobp_root / '.gobp' / 'nodes'
+    nodes_dir.mkdir(parents=True, exist_ok=True)
+
+    filename = _node_id_to_filename(node['id'])
+    filepath = nodes_dir / filename
+
+    frontmatter = serialize_frontmatter(node)
+    content = f"---\n{frontmatter}---\n"
+
+    filepath.write_text(content, encoding='utf-8')
+    return filepath
 ```
 
 **Acceptance criteria:**
-- Node tạo mới không có `implemented` → auto-set `false`
-- Node `implemented=true` không có code → warning (non-blocking)
-- Meta nodes không bị touch
+- description chứa `:`, `{`, `}`, `(`, `)`, `|`, `#` → ghi xuống → load lại đúng
+- Round-trip test: write → read → description không thay đổi
+- Không còn YAML corrupt files từ write path
 
 **Commit message:**
 ```
-Wave J Task 2: validator_v3 — coerce + validate implemented field
+Wave J Task 2: file_format.py — yaml.dump() for safe YAML serialization
 ```
 
 ---
 
-## TASK 3 — PostgreSQL: Thêm implemented column
+## TASK 3 — graph.py: Resilient _load_nodes/_load_edges
 
-**File to modify:** `gobp/core/db.py`
+**Root cause:** `_load_nodes()` và `_load_edges()` bare loop —
+1 file lỗi → Exception propagate → load_from_disk() crash →
+write path hoàn toàn fail dù chỉ 1 file bị hỏng.
 
-**Re-read `create_schema_v3()` và `upsert_node_v3()` trước.**
+Task 2 ngăn tạo file lỗi mới.
+Task 3 handle legacy files đã bị hỏng từ trước.
+Cả 2 đều cần thiết.
 
-Thêm `implemented` column vào nodes table:
-
-```python
-# Trong create_schema_v3():
-CREATE TABLE IF NOT EXISTS nodes (
-    id          TEXT PRIMARY KEY,
-    name        TEXT NOT NULL,
-    group_path  TEXT,
-    desc_l1     TEXT,
-    desc_l2     TEXT,
-    desc_full   TEXT,
-    code        TEXT,
-    implemented BOOLEAN NOT NULL DEFAULT FALSE,  -- ← thêm
-    node_type   TEXT,
-    search_vec  TSVECTOR,
-    created_at  BIGINT,
-    updated_at  BIGINT
-);
-```
-
-Update `upsert_node_v3()`:
-```python
-def upsert_node_v3(conn, node: dict) -> None:
-    implemented = bool(node.get('implemented', False))
-    
-    with conn.cursor() as cur:
-        cur.execute("""
-            INSERT INTO nodes 
-                (id, name, group_path, desc_l1, desc_l2, desc_full,
-                 code, implemented, node_type, search_vec,
-                 created_at, updated_at)
-            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,
-                    to_tsvector('simple', %s),
-                    %s,%s)
-            ON CONFLICT (id) DO UPDATE SET
-                name        = EXCLUDED.name,
-                group_path  = EXCLUDED.group_path,
-                desc_l1     = EXCLUDED.desc_l1,
-                desc_l2     = EXCLUDED.desc_l2,
-                desc_full   = EXCLUDED.desc_full,
-                code        = EXCLUDED.code,
-                implemented = EXCLUDED.implemented,
-                node_type   = EXCLUDED.node_type,
-                search_vec  = EXCLUDED.search_vec,
-                updated_at  = EXCLUDED.updated_at
-        """, (
-            node['id'], node.get('name', ''),
-            node.get('group', ''),
-            node.get('desc_l1', ''), node.get('desc_l2', ''),
-            node.get('desc_full', node.get('description', '')),
-            node.get('code', ''),
-            implemented,
-            node.get('type', ''),
-            _build_search_text(node),
-            node.get('created_at', int(time.time())),
-            node.get('updated_at', int(time.time())),
-        ))
-    conn.commit()
-```
-
-**Migration:** Nếu table đã tồn tại, thêm column:
-```python
-def migrate_add_implemented(conn) -> None:
-    """Add implemented column if not exists."""
-    with conn.cursor() as cur:
-        cur.execute("""
-            ALTER TABLE nodes 
-            ADD COLUMN IF NOT EXISTS implemented BOOLEAN NOT NULL DEFAULT FALSE
-        """)
-    conn.commit()
-```
-
-Gọi `migrate_add_implemented()` trong `_init_postgresql_backend()` sau `create_schema_v3()`.
-
-**Acceptance criteria:**
-- Column `implemented` tồn tại trong nodes table
-- `implemented=false` khi không set
-- `upsert_node_v3` lưu đúng giá trị
-
-**Commit message:**
-```
-Wave J Task 3: db.py — add implemented column to nodes table
-```
-
----
-
-## TASK 4 — Tests + SCHEMA.md + CHANGELOG
-
-**Files:** `tests/test_wave_j.py` (mới), `docs/SCHEMA.md`, `CHANGELOG.md`
-
-**Tests:**
-
-```python
-"""Wave J: implemented field tests"""
-import pytest
-from gobp.core.validator_v3 import coerce_implemented, validate_implemented
-
-def test_default_implemented_false():
-    node = {'type': 'Spec', 'name': 'x', 'group': 'y'}
-    result = coerce_implemented(node)
-    assert result['implemented'] is False
-
-def test_implemented_true_preserved():
-    node = {'type': 'Engine', 'implemented': True, 'code': 'path/to/file.py'}
-    result = coerce_implemented(node)
-    assert result['implemented'] is True
-
-def test_implemented_true_no_code_warning():
-    node = {'type': 'Flow', 'name': 'x', 'implemented': True, 'code': ''}
-    warnings = validate_implemented(node)
-    assert len(warnings) == 1
-    assert 'code field' in warnings[0]
-
-def test_implemented_true_with_code_no_warning():
-    node = {'type': 'Engine', 'name': 'x', 'implemented': True, 'code': 'gobp/core/graph.py'}
-    warnings = validate_implemented(node)
-    assert len(warnings) == 0
-
-def test_meta_nodes_skip_implemented():
-    for meta_type in ['Session', 'Wave', 'Task', 'Reflection']:
-        node = {'type': meta_type, 'name': 'x'}
-        result = coerce_implemented(node)
-        assert 'implemented' not in result
-
-def test_coerce_truthy_values():
-    for val in [1, 'true', True]:
-        node = {'type': 'Spec', 'implemented': val}
-        result = coerce_implemented(node)
-        assert result['implemented'] is True
-
-def test_coerce_falsy_values():
-    for val in [0, False, None]:
-        node = {'type': 'Spec', 'implemented': val}
-        result = coerce_implemented(node)
-        assert result['implemented'] is False
-```
-
-**Update docs/SCHEMA.md** — thêm vào Template 1:
-
-```markdown
-## TEMPLATE 1 — MỌI NODE
-
-name:           {tên mô tả rõ ràng}
-group:          {breadcrumb đầy đủ}
-description:    {plain text — mô tả đầy đủ}
-code:           {optional — snippet kỹ thuật hoặc file path khi implemented=true}
-implemented:    {false (default) | true — đã có implementation trong code}
-history[]:      [{description, code}]   # append-only
-
-Ghi chú implemented:
-  false = planned, chưa có code implementation
-  true  = đã implement — code field nên chứa file path
-```
-
-**Update CHANGELOG.md** — prepend:
-
-```markdown
-## [Wave J] — Implemented Field — 2026-04-20
-
-### Added
-- `implemented` boolean field vào GoBP schema (default: false)
-- `coerce_implemented()` + `validate_implemented()` trong validator_v3.py
-- `implemented` column trong PostgreSQL nodes table
-- Migration: `ALTER TABLE nodes ADD COLUMN IF NOT EXISTS implemented`
-- Warning khi `implemented=true` nhưng `code` field trống
-- GraphIndex resilient loading: skip broken files thay vì crash
-- `tests/test_wave_j.py`: 8 tests
-
-### Fixed
-- `GraphIndex.load_from_disk()`: 1 file YAML lỗi không còn crash toàn bộ write path
-- `edit:/delete:/create:` hoạt động bình thường dù có file .md bị corrupt
-
-### Changed
-- `docs/SCHEMA.md` Template 1: thêm implemented field
-- Meta nodes (Session/Wave/Task/Reflection) không có implemented field
-```
-
-**Commit message:**
-```
-Wave J Task 4: tests/test_wave_j.py + SCHEMA.md + CHANGELOG
-```
-
----
-
-## TASK 5 — GraphIndex: Resilient file loading
-
-**Files to modify:** `gobp/core/graph.py`
-
-**Root cause:**
-```
-_load_nodes() và _load_edges() hiện tại:
-  Gặp 1 file lỗi (YAML corrupt, encoding, missing field)
-  → throw Exception → GraphIndex.load_from_disk() crash
-  → Toàn bộ write path fail (edit:/delete:/create:)
-  → Dù chỉ 1 file bị hỏng
-
-Fix: skip file lỗi + log warning → tiếp tục load
-```
-
-**Re-read `_load_nodes()` và `_load_edges()` trong graph.py trước.**
-
-**Fix `_load_nodes()`:**
+**File to modify:** `gobp/core/graph.py`
 
 ```python
 def _load_nodes(self, nodes_dir: Path) -> None:
@@ -376,14 +193,9 @@ def _load_nodes(self, nodes_dir: Path) -> None:
                 self._add_node(node)
         except Exception as e:
             logger.warning(
-                "GraphIndex: skip broken node file %s: %s",
-                f.name, e
+                "skip corrupted node file %s: %s", f.name, e
             )
-```
 
-**Fix `_load_edges()`:**
-
-```python
 def _load_edges(self, edges_dir: Path) -> None:
     if not edges_dir.exists():
         return
@@ -394,45 +206,193 @@ def _load_edges(self, edges_dir: Path) -> None:
                 self._add_edge(edge)
         except Exception as e:
             logger.warning(
-                "GraphIndex: skip broken edge file %s: %s",
-                f.name, e
+                "skip corrupted edge file %s: %s", f.name, e
             )
 ```
 
 **Acceptance criteria:**
-- 1 file .md có YAML lỗi → chỉ node đó bị skip
-- Các nodes khác vẫn load bình thường
-- edit:/delete:/create: hoạt động dù có file lỗi
-- Warning log hiển thị tên file bị skip
-- Tests confirm resilient behavior
+- 1 file .md YAML lỗi → chỉ node đó bị skip + warning logged
+- GraphIndex.load_from_disk() không crash
+- edit:/create:/delete: hoạt động bình thường
 
-**Test thêm vào test_wave_j.py:**
+**Commit message:**
+```
+Wave J Task 3: graph.py — resilient _load_nodes/_load_edges
+```
+
+---
+
+## TASK 4 — dispatcher.py: Unify edit:/delete: lookup
+
+**Root cause:** `edit:` và `delete:` lookup node từ GraphIndex (file).
+`get:` và `find:` lookup từ PostgreSQL.
+→ Node tồn tại trong PG, file corrupt → get: OK, edit: "Node not found".
+
+**File to modify:** `gobp/mcp/dispatcher.py`
+
+**Re-read edit: và delete: handlers trước.**
+
+Fix — thêm PG lookup trước GraphIndex fallback:
 
 ```python
+def _resolve_node(node_id: str, index, project_root: Path) -> dict | None:
+    """
+    Lookup node — PG trước, GraphIndex fallback.
+    Đảm bảo edit:/delete: nhất quán với get:/find:.
+    """
+    # Try PostgreSQL first (source of truth)
+    try:
+        from gobp.mcp.tools import read_v3 as _read_v3
+        conn_v, is_v3 = _read_v3._conn_v3(project_root)
+        if conn_v is not None and is_v3:
+            try:
+                node = _read_v3.get_node_v3(conn_v, node_id)
+                if node:
+                    return node
+            finally:
+                conn_v.close()
+    except Exception:
+        pass
+
+    # Fallback to GraphIndex
+    return index.get_node(node_id)
+```
+
+Dùng `_resolve_node()` trong cả `edit:` và `delete:` handlers:
+
+```python
+elif action == 'edit':
+    node_id = params.get('id', '')
+    node = _resolve_node(node_id, index, project_root)
+    if node is None:
+        result = {'ok': False, 'error': f'Node not found: {node_id}'}
+    else:
+        result = tools_write.node_edit(
+            index, project_root, {**params, '_existing_node': node}
+        )
+
+elif action == 'delete':
+    node_id = params.get('query', '')
+    node = _resolve_node(node_id, index, project_root)
+    if node is None:
+        result = {'ok': False, 'error': f'Node not found: {node_id}'}
+    else:
+        result = tools_write.node_delete(index, project_root, params)
+```
+
+**Acceptance criteria:**
+- `get: node_id` OK → `edit: id=node_id` phải OK
+- `get: node_id` OK → `delete: node_id` phải OK
+- Không còn asymmetry giữa read và write path
+
+**Commit message:**
+```
+Wave J Task 4: dispatcher — unify edit:/delete: lookup with PG like get:/find:
+```
+
+---
+
+## TASK 5 — Tests + docs + CHANGELOG
+
+**File mới:** `tests/test_wave_j.py`
+
+```python
+"""Wave J: implemented field + bug fixes"""
+import pytest
+
+def test_default_implemented_false():
+    from gobp.core.validator_v3 import coerce_implemented
+    node = {'type': 'Spec', 'name': 'x', 'group': 'y'}
+    assert coerce_implemented(node)['implemented'] is False
+
+def test_implemented_true_preserved():
+    from gobp.core.validator_v3 import coerce_implemented
+    node = {'type': 'Engine', 'implemented': True, 'code': 'path.py'}
+    assert coerce_implemented(node)['implemented'] is True
+
+def test_implemented_true_no_code_warning():
+    from gobp.core.validator_v3 import validate_implemented
+    node = {'type': 'Flow', 'name': 'x', 'implemented': True, 'code': ''}
+    assert len(validate_implemented(node)) == 1
+
+def test_implemented_true_with_code_no_warning():
+    from gobp.core.validator_v3 import validate_implemented
+    node = {'type': 'Engine', 'name': 'x', 'implemented': True, 'code': 'file.py'}
+    assert len(validate_implemented(node)) == 0
+
+def test_meta_nodes_skip_implemented():
+    from gobp.core.validator_v3 import coerce_implemented
+    for t in ['Session', 'Wave', 'Task', 'Reflection']:
+        node = coerce_implemented({'type': t, 'name': 'x'})
+        assert 'implemented' not in node
+
+def test_yaml_safe_description_colon():
+    """description với : phải round-trip đúng"""
+    from gobp.core.file_format import serialize_frontmatter
+    import yaml
+    desc = 'Role: Dev — execute: task'
+    node = {'type': 'Spec', 'id': 'x', 'name': 'x',
+            'group': 'y', 'description': desc}
+    parsed = yaml.safe_load(serialize_frontmatter(node))
+    assert parsed['description'] == desc
+
+def test_yaml_safe_description_braces():
+    """description với {, } phải round-trip đúng"""
+    from gobp.core.file_format import serialize_frontmatter
+    import yaml
+    desc = 'Config: {key: value} format'
+    node = {'type': 'Spec', 'id': 'x', 'name': 'x',
+            'group': 'y', 'description': desc}
+    parsed = yaml.safe_load(serialize_frontmatter(node))
+    assert parsed['description'] == desc
+
 def test_load_from_disk_skips_broken_file(tmp_path):
-    """GraphIndex skips broken node files instead of crashing."""
+    """GraphIndex skips corrupted node files instead of crashing."""
     nodes_dir = tmp_path / '.gobp' / 'nodes'
     nodes_dir.mkdir(parents=True)
-
-    # Valid node file
-    valid_node = nodes_dir / 'valid_node.md'
-    valid_node.write_text('---\ntype: Spec\nid: spec.valid\nname: Valid Node\ngroup: Document > Spec\ndescription: Valid\n---\n')
-
-    # Broken node file
-    broken_node = nodes_dir / 'broken_node.md'
-    broken_node.write_text('---\ntype: Spec\ndescription: Role: broken yaml\n---\n')
-
-    # Should not crash
+    (nodes_dir / 'valid.md').write_text(
+        '---\ntype: Spec\nid: spec.valid\nname: Valid\n'
+        'group: Document > Spec\ndescription: Valid node\n---\n'
+    )
+    (nodes_dir / 'broken.md').write_text(
+        '---\ntype: Spec\ndescription: Role: broken yaml here\n---\n'
+    )
     from gobp.core.graph import GraphIndex
     index = GraphIndex.load_from_disk(tmp_path)
-
-    # Valid node loaded, broken skipped
     assert index.get_node('spec.valid') is not None
+```
+
+**docs/SCHEMA.md** — update Template 1:
+
+```markdown
+## TEMPLATE 1 — MỌI NODE
+
+name:           {tên mô tả rõ ràng}
+group:          {breadcrumb đầy đủ}
+description:    {plain text — không dùng ký tự đặc biệt :, {, }, |, #}
+code:           {optional — snippet hoặc file path khi implemented=true}
+implemented:    {false (default) | true}
+history[]:      [{description, code}]
+```
+
+**CHANGELOG.md** — prepend:
+
+```markdown
+## [Wave J] — implemented field + Bug Fixes — 2026-04-20
+
+### Added
+- implemented boolean field (default: false)
+- Warning khi implemented=true nhưng code field trống
+
+### Fixed
+- file_format.py: yaml.dump() thay string interpolation — không còn YAML corrupt
+- graph.py: _load_nodes/_load_edges skip corrupted files thay vì crash
+- dispatcher.py: edit:/delete: lookup PG trước — nhất quán với get:/find:
 ```
 
 **Commit message:**
 ```
-Wave J Task 5: graph.py — resilient _load_nodes/_load_edges, skip broken files
+Wave J Task 5: tests + SCHEMA.md + CHANGELOG — Wave J complete
 ```
 
 ---
@@ -442,21 +402,7 @@ Wave J Task 5: graph.py — resilient _load_nodes/_load_edges, skip broken files
 ```powershell
 $env:GOBP_DB_URL = "postgresql://postgres:Hieu%408283%40@localhost/gobp"
 
-# Tests
 D:/GoBP/venv/Scripts/python.exe -m pytest tests/test_wave_j.py -v
-
-# Verify column exists in PG
-D:/GoBP/venv/Scripts/python.exe -c "
-import psycopg2
-conn = psycopg2.connect('postgresql://postgres:Hieu%408283%40@localhost/gobp')
-cur = conn.cursor()
-cur.execute(\"SELECT column_name, data_type FROM information_schema.columns WHERE table_name='nodes' AND column_name='implemented'\")
-print(cur.fetchall())
-conn.close()
-"
-# Expected: [('implemented', 'boolean')]
-
-# Fast suite
 D:/GoBP/venv/Scripts/python.exe -m pytest tests/ -q --tb=no
 ```
 
@@ -466,26 +412,29 @@ D:/GoBP/venv/Scripts/python.exe -m pytest tests/ -q --tb=no
 
 ### Cursor
 ```
+Read gobp/core/file_format.py.
+Read gobp/core/graph.py.
+Read gobp/mcp/dispatcher.py (edit:, delete:).
 Read gobp/schema/core_nodes.yaml.
 Read gobp/core/validator_v3.py.
-Read gobp/core/db.py (create_schema_v3, upsert_node_v3).
-Read docs/SCHEMA.md.
+Read gobp/mcp/tools/read_v3.py (get_node_v3, _conn_v3).
 Read waves/wave_j_brief.md (this file).
 
 Execute Tasks 1 → 5 sequentially.
-Task 3: Verify PG column exists after migration.
-Task 4: pytest tests/test_wave_j.py → 8 passed.
-Task 5: Verify broken file skip bằng test_load_from_disk_skips_broken_file.
+Task 2: Round-trip test — write node với : trong description → load lại đúng.
+Task 3: Load GraphIndex với 1 file YAML lỗi → không crash.
+Task 4: get: node_id OK → edit: id=node_id OK.
+Task 5: pytest tests/test_wave_j.py → 8 passed.
 End: pytest tests/ -q --tb=no → 0 new failures.
 ```
 
 ### Claude CLI Audit
 ```
-Task 1: core_nodes.yaml có implemented field + Meta exclusion
-Task 2: coerce_implemented() + validate_implemented() đúng spec
-Task 3: PG column implemented BOOLEAN DEFAULT FALSE
-Task 4: 8 tests pass, SCHEMA.md + CHANGELOG đúng
-Task 5: _load_nodes/_load_edges skip broken files, warning logged
+Task 1: implemented field đúng schema + coerce/validate đúng spec
+Task 2: yaml.dump() được dùng — không còn string interpolation/f-string
+Task 3: try/except trong _load_nodes/_load_edges + logger.warning
+Task 4: _resolve_node() helper tồn tại + edit:/delete: dùng nó
+Task 5: 8 tests pass, SCHEMA.md + CHANGELOG đúng
 BLOCKING: Bất kỳ fail → STOP.
 ```
 
@@ -493,12 +442,11 @@ BLOCKING: Bất kỳ fail → STOP.
 ```powershell
 cd D:\GoBP
 git add waves/wave_j_brief.md
-git commit -m "Wave J Brief: implemented field + resilient loading — 5 tasks"
+git commit -m "Wave J Brief: implemented field + 3 bug fixes — 5 tasks"
 git push origin main
 ```
 
 ---
 
-*Wave J Brief — Implemented Field*  
-*2026-04-20 — CTO Chat*  
+*Wave J Brief — 2026-04-20 — CTO Chat*  
 ◈
