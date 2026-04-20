@@ -98,7 +98,7 @@ def find_v3(
     WITH q AS (SELECT plainto_tsquery('simple', %s) AS query),
     seed AS (
         SELECT {sel_cols},
-               ts_rank_cd(n.search_vec, q.query, ARRAY[0.5, 1.0, 2.0, 3.0]) AS rank
+               ts_rank_cd(n.search_vec, q.query) AS rank
         FROM nodes n, q
         WHERE n.search_vec @@ q.query
           AND (%s::text IS NULL OR n.group_path LIKE %s)
@@ -313,8 +313,7 @@ def context_action(
         cur.execute(
             """
             SELECT n.id, n.name, n.group_path, n.desc_l2,
-                   ts_rank_cd(n.search_vec, sq.q,
-                              ARRAY[0.5, 1.0, 2.0, 3.0]) AS rank
+                   ts_rank_cd(n.search_vec, sq.q) AS rank
             FROM nodes n,
                  (SELECT plainto_tsquery('simple', %s) AS q) sq
             WHERE n.search_vec @@ sq.q
@@ -500,8 +499,7 @@ def explore_v3(conn: Any, keyword: str) -> dict[str, Any]:
             FROM nodes n,
                  (SELECT plainto_tsquery('simple', %s) AS q) sq
             WHERE n.search_vec @@ sq.q
-            ORDER BY ts_rank_cd(n.search_vec, sq.q,
-                                ARRAY[0.5, 1.0, 2.0, 3.0]) DESC
+            ORDER BY ts_rank_cd(n.search_vec, sq.q) DESC
             LIMIT 1
             """,
             (keyword.strip(),),
