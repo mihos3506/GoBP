@@ -1,4 +1,4 @@
-"""Tests for gobp.core.mutator module."""
+"""Tests for gobp.core.fs_mutator (file-backed mutator)."""
 
 from pathlib import Path
 
@@ -6,7 +6,7 @@ import pytest
 import yaml
 
 from gobp.core.history import read_events
-from gobp.core.mutator import (
+from gobp.core.fs_mutator import (
     create_edge,
     create_node,
     delete_edge,

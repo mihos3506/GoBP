@@ -16,7 +16,7 @@ from gobp.core import db as _db
 from gobp.core.id_config import generate_external_id
 from gobp.core.indexes import AdjacencyIndex, InvertedIndex
 from gobp.core.loader import load_edge_file, load_node_file, load_schema
-from gobp.core.mutator import coerce_and_validate_node
+from gobp.core.fs_mutator import coerce_and_validate_node
 from gobp.core.validator import validate_edge
 
 
@@ -40,7 +40,7 @@ class GraphIndex:
     """In-memory index of GoBP nodes and edges.
 
     Loads from .gobp/ folder at startup. Provides read-only query methods.
-    Write operations go through mutator.py (Wave 5).
+    Write operations go through :mod:`gobp.core.fs_mutator` (Wave G).
 
     Internal indexes for O(1) / O(k) lookups:
       _nodes          : id â†’ node dict
@@ -519,8 +519,8 @@ class GraphIndex:
         return self.remove_node(node_id)
 
     def save_new_nodes_to_disk(self, gobp_root: Path) -> dict[str, Any]:
-        """Write only nodes in ``_new_nodes`` via :func:`gobp.core.mutator.create_nodes_batch`."""
-        from gobp.core.mutator import create_nodes_batch
+        """Write only nodes in ``_new_nodes`` via :func:`gobp.core.fs_mutator.create_nodes_batch`."""
+        from gobp.core.fs_mutator import create_nodes_batch
 
         pending = [dict(n) for n in self._new_nodes.values()]
         self._new_nodes.clear()
@@ -535,8 +535,8 @@ class GraphIndex:
         return {"nodes_written": int(out.get("nodes_written", 0))}
 
     def save_new_edges_to_disk(self, gobp_root: Path) -> dict[str, Any]:
-        """Flush ``_new_edges`` via :func:`gobp.core.mutator.append_edges_batch` (one YAML write)."""
-        from gobp.core.mutator import append_edges_batch
+        """Flush ``_new_edges`` via :func:`gobp.core.fs_mutator.append_edges_batch` (one YAML write)."""
+        from gobp.core.fs_mutator import append_edges_batch
 
         pending = list(self._new_edges)
         self._new_edges.clear()

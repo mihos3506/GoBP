@@ -16,7 +16,7 @@ from gobp.mcp.dispatcher import dispatch, parse_query, _classify_doc_priority
 # -- Session ID tests ----------------------------------------------------------
 
 def test_session_id_length():
-    from gobp.core.mutator import _generate_session_id
+    from gobp.core.fs_mutator import _generate_session_id
     for _ in range(10):
         sid = _generate_session_id("Very long goal string that used to cause truncation issues in MIHOS Phase 2 import session")
         assert len(sid) == 33, f"Wrong length: {len(sid)}"
@@ -24,7 +24,7 @@ def test_session_id_length():
 
 
 def test_session_id_unique():
-    from gobp.core.mutator import _generate_session_id
+    from gobp.core.fs_mutator import _generate_session_id
     ids = {_generate_session_id() for _ in range(20)}
     assert len(ids) == 20  # all unique
 

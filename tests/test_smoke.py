@@ -34,7 +34,7 @@ def test_core_modules_importable():
         "gobp.core.graph",
         "gobp.core.loader",
         "gobp.core.validator",
-        "gobp.core.mutator",
+        "gobp.core.fs_mutator",
         "gobp.core.history",
     ]
     for module_name in modules:

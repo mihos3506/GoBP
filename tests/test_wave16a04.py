@@ -12,7 +12,7 @@ import yaml
 from gobp.core.graph import GraphIndex
 from gobp.core.id_config import generate_external_id, make_id_slug
 from gobp.core.init import init_project
-from gobp.core.mutator import create_edge
+from gobp.core.fs_mutator import create_edge
 from gobp.mcp.dispatcher import dispatch
 from gobp.mcp.parser import _normalize_type, parse_query
 

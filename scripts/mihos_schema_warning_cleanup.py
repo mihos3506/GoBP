@@ -15,7 +15,7 @@ from typing import Any
 
 from gobp.core.graph import GraphIndex
 from gobp.core.loader import load_schema, package_schema_dir
-from gobp.core.mutator import update_node
+from gobp.core.fs_mutator import update_node
 
 SAFE_REMOVE_FIELDS = {
     "legacy_id",

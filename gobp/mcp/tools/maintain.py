@@ -12,7 +12,7 @@ from functools import lru_cache
 from gobp.core.graph import GraphIndex
 from gobp.core.graph_algorithms import detect_cycles
 from gobp.core.loader import load_schema, package_schema_dir
-from gobp.core.mutator import coerce_and_validate_node
+from gobp.core.fs_mutator import coerce_and_validate_node
 from gobp.core.validator import validate_edge
 
 

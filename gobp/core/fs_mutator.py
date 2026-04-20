@@ -36,7 +36,7 @@ def coerce_and_validate_node(
     """Validate ``node`` against schema; v2/v3 use taxonomy validators."""
     sn = str(schema.get("schema_name", ""))
     if sn == "gobp_core_v2":
-        from gobp.core.validator import make_validator_v2
+        from gobp.core.validator_v2 import make_validator_v2
 
         schema_dir = gobp_root / "gobp" / "schema"
         if not (schema_dir / "core_nodes.yaml").exists():

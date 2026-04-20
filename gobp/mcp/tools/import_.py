@@ -13,7 +13,7 @@ import yaml
 
 from gobp.core.graph import GraphIndex
 from gobp.core.loader import load_schema, package_schema_dir
-from gobp.core.mutator import _atomic_write, coerce_and_validate_node, create_edge, create_node
+from gobp.core.fs_mutator import _atomic_write, coerce_and_validate_node, create_edge, create_node
 from gobp.core.validator import validate_edge
 
 

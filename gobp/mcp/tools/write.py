@@ -17,7 +17,7 @@ from gobp.core.id_config import generate_external_id
 from gobp.core.id_generator import generate_id
 from gobp.core.search import find_similar_nodes, normalize_text
 from gobp.core.loader import load_schema, package_schema_dir
-from gobp.core.mutator import (
+from gobp.core.fs_mutator import (
     coerce_and_validate_node,
     create_edge,
     create_node,
@@ -258,7 +258,7 @@ def _handle_lesson_skill_supersedes(
 ) -> list[str]:
     """Deprecate superseded skill, append new id to ``versions``, ensure ``supersedes`` edge.
 
-    :func:`gobp.core.mutator.create_edge` skips duplicate (from, to, type) — idempotent.
+    :func:`gobp.core.fs_mutator.create_edge` skips duplicate (from, to, type) — idempotent.
     """
     warnings: list[str] = []
     supersedes_id = str(node.get("supersedes") or "").strip()

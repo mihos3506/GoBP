@@ -12,7 +12,7 @@ from pathlib import Path
 
 from gobp.core.graph import GraphIndex
 from gobp.core.loader import load_schema, package_schema_dir
-from gobp.core.mutator import create_edge, create_node
+from gobp.core.fs_mutator import create_edge, create_node
 
 
 def _meta8(slug: str) -> str:
