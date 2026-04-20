@@ -16,7 +16,13 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    # Types only — ``pip install -e ".[postgres]"`` for IDE stubs; no runtime import.
+    from psycopg2.extensions import connection as PgConnection
+else:
+    PgConnection = Any  # type: ignore[misc, assignment]
 
 logger = logging.getLogger("gobp.db")
 
@@ -24,7 +30,7 @@ DB_FILENAME = "index.db"
 SCHEMA_VERSION = 2
 
 
-def _get_conn(gobp_root: Path):
+def _get_conn(gobp_root: Path) -> Any | None:
     """Get PostgreSQL connection for project root.
 
     Returns psycopg2 connection or None if PostgreSQL not available.
@@ -44,7 +50,7 @@ def _get_conn(gobp_root: Path):
         return None
 
 
-def create_schema_v3(conn: Any) -> None:
+def create_schema_v3(conn: PgConnection) -> None:
     """
     Create GoBP schema v3 tables.
 
@@ -161,7 +167,7 @@ def create_schema_v3(conn: Any) -> None:
     create_import_locks_table(conn)
 
 
-def get_schema_version(conn: Any) -> str:
+def get_schema_version(conn: PgConnection) -> str:
     """Return 'v3' if nodes table has desc_l1 column, else 'v2'."""
     with conn.cursor() as cur:
         cur.execute(
@@ -173,7 +179,7 @@ def get_schema_version(conn: Any) -> str:
         return "v3" if cur.fetchone() else "v2"
 
 
-def ensure_v3_connection(gobp_root: Path) -> Any:
+def ensure_v3_connection(gobp_root: Path) -> PgConnection:
     """Return an open PostgreSQL connection whose schema is v3.
 
     Intended for CLI / maintenance scripts that must not run in file-only
@@ -217,8 +223,14 @@ def _node_desc_full_v3(node: dict[str, Any]) -> str:
     return str(desc or "")
 
 
-def upsert_node_v3(conn: Any, node: dict[str, Any]) -> None:
-    """Upsert node into PostgreSQL schema v3."""
+def upsert_node_v3(conn: PgConnection, node: dict[str, Any]) -> None:
+    """Upsert one node row into PostgreSQL schema v3 (database only).
+
+    This is a low-level primitive: it does **not** write ``.gobp/nodes/*.md``.
+    The full write-through path (PG + file backup + history) lives in
+    :mod:`gobp.core.mutator_v3` (e.g. :func:`~gobp.core.mutator_v3.write_node`)
+    and in file-first flows that call :mod:`gobp.mcp.pg_sync` after disk writes.
+    """
     with conn.cursor() as cur:
         cur.execute(
             """
@@ -251,7 +263,7 @@ def upsert_node_v3(conn: Any, node: dict[str, Any]) -> None:
     conn.commit()
 
 
-def delete_node_v3(conn: Any, node_id: str) -> None:
+def delete_node_v3(conn: PgConnection, node_id: str) -> None:
     """Delete node (edges CASCADE)."""
     with conn.cursor() as cur:
         cur.execute("DELETE FROM nodes WHERE id = %s", (node_id,))
@@ -259,7 +271,7 @@ def delete_node_v3(conn: Any, node_id: str) -> None:
 
 
 def upsert_edge_v3(
-    conn: Any,
+    conn: PgConnection,
     from_id: str,
     to_id: str,
     reason: str = "",
@@ -284,7 +296,7 @@ def upsert_edge_v3(
     conn.commit()
 
 
-def delete_edge_v3(conn: Any, from_id: str, to_id: str) -> None:
+def delete_edge_v3(conn: PgConnection, from_id: str, to_id: str) -> None:
     """Delete one edge row."""
     with conn.cursor() as cur:
         cur.execute(
@@ -295,7 +307,7 @@ def delete_edge_v3(conn: Any, from_id: str, to_id: str) -> None:
 
 
 def append_history_v3(
-    conn: Any,
+    conn: PgConnection,
     node_id: str,
     description: str,
     code: str = "",
@@ -313,7 +325,7 @@ def append_history_v3(
     conn.commit()
 
 
-def get_node_updated_at(conn: Any, node_id: str) -> int | None:
+def get_node_updated_at(conn: PgConnection, node_id: str) -> int | None:
     """Return ``updated_at`` epoch seconds for optimistic locking."""
     with conn.cursor() as cur:
         cur.execute("SELECT updated_at FROM nodes WHERE id = %s", (node_id,))
