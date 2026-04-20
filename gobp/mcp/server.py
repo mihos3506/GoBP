@@ -40,6 +40,9 @@ from gobp.core.graph import GraphIndex
 
 logger = logging.getLogger("gobp.mcp.server")
 
+# Open PostgreSQL connection for v3 write-through (set by _init_postgresql_backend).
+_pg_conn: Any | None = None
+
 
 def _update_config_schema_version_int(gobp_root: Path, version: int) -> None:
     """Bump ``.gobp/config.yaml`` ``schema_version`` when PostgreSQL v3 is active."""
@@ -66,7 +69,16 @@ def _update_config_schema_version_int(gobp_root: Path, version: int) -> None:
 
 def _init_postgresql_backend(gobp_root: Path) -> None:
     """If ``GOBP_DB_URL`` resolves, ensure PostgreSQL schema v3 exists (see ``create_schema_v3``)."""
+    global _pg_conn
+
     from gobp.core.db import _get_conn, create_schema_v3, get_schema_version
+
+    if _pg_conn is not None:
+        try:
+            _pg_conn.close()
+        except Exception:
+            pass
+        _pg_conn = None
 
     conn = _get_conn(gobp_root)
     if conn is None:
@@ -79,13 +91,14 @@ def _init_postgresql_backend(gobp_root: Path) -> None:
             logger.info("PostgreSQL schema v3 initialized (create_schema_v3)")
         logger.info("GoBP running with PostgreSQL v3 backend")
         _update_config_schema_version_int(gobp_root, 3)
+        _pg_conn = conn
     except Exception as e:
         logger.warning("PostgreSQL v3 init failed, using file graph only: %s", e)
-    finally:
         try:
             conn.close()
         except Exception:
             pass
+        _pg_conn = None
 
 
 def _query_truthy(val: Any) -> bool:
