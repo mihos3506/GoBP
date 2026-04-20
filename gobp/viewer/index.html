@@ -1262,6 +1262,16 @@ function toggleEdgeDetail(expandId, toggleEl) {
   }
 }
 
+/** Open detail + focus for a node id (edge list navigation). */
+function selectNodeById(nodeId) {
+  const n = (GRAPH_DATA.nodes || []).find((x) => x.id === nodeId);
+  if (n) {
+    showDetail(n);
+  } else {
+    console.warn('Node not found in graph:', nodeId);
+  }
+}
+
 function renderHistory(node) {
   const history = node.history || [];
   if (!history.length) return '';
@@ -1477,13 +1487,10 @@ function showDetail(node) {
   });
 
   content.querySelectorAll('.rel-target[data-id], .edge-node-name[data-edge-nav]').forEach((el) => {
-    el.addEventListener('click', () => {
+    el.addEventListener('click', (ev) => {
+      if (el.hasAttribute('data-edge-nav')) ev.stopPropagation();
       const nid = el.getAttribute('data-id') || el.getAttribute('data-edge-nav');
-      const n = GRAPH_DATA.nodes.find((x) => x.id === nid);
-      if (n) {
-        showDetail(n);
-        focusNode(n);
-      }
+      if (nid) selectNodeById(nid);
     });
   });
   content.querySelectorAll('.v2-breadcrumb a[data-gpref]').forEach((a) => {
