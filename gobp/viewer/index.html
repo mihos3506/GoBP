@@ -102,6 +102,78 @@
   .v2-raw { font-size: 9px; background: rgba(0,0,0,0.25); padding: 8px; max-height: 180px; overflow: auto; white-space: pre-wrap; }
   .v2-k { font-size: 9px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--text-fade); margin-right: 6px; }
 
+  /* Framed blocks: prose vs code (nodes + edge reasons) */
+  .detail-panel {
+    margin: 12px 0;
+    padding: 12px 14px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: rgba(8, 10, 18, 0.72);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  }
+  .detail-panel--code {
+    border-color: rgba(255, 193, 7, 0.28);
+    background: rgba(0, 0, 0, 0.4);
+  }
+  .detail-panel-title {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: #8b949e;
+    margin-bottom: 8px;
+  }
+  .detail-panel-body--prose {
+    font-size: 12px;
+    line-height: 1.55;
+    color: var(--text);
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  .detail-panel-body--code {
+    margin: 0;
+    padding: 0;
+    font-family: var(--mono);
+    font-size: 11px;
+    line-height: 1.45;
+    white-space: pre-wrap;
+    word-break: break-word;
+    color: var(--text-dim);
+  }
+  .edge-panel {
+    margin-top: 8px;
+    padding: 8px 10px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    background: rgba(0, 0, 0, 0.28);
+  }
+  .edge-panel:first-of-type { margin-top: 6px; }
+  .edge-panel--code {
+    border-color: rgba(255, 193, 7, 0.22);
+    background: rgba(0, 0, 0, 0.38);
+  }
+  .edge-panel-title {
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #6e7681;
+    margin-bottom: 6px;
+  }
+  .edge-panel-body {
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--text-dim);
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  .edge-panel--code .edge-panel-body {
+    font-family: var(--mono);
+    font-size: 11px;
+    margin: 0;
+    color: var(--text-dim);
+  }
+
   .detail-section { margin: 14px 0 0; padding-top: 10px; border-top: 1px solid var(--border); }
   .detail-section-title { font-size: 11px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; color: #8b949e; margin-bottom: 6px; }
   .edge-item {
@@ -129,14 +201,6 @@
   .edge-node-name:hover {
     color: #f0883e;
     text-decoration: underline;
-  }
-  .detail-section .edge-reason {
-    font-size: 12px;
-    color: #6e7681;
-    margin-top: 3px;
-    margin-left: 22px;
-    font-style: italic;
-    line-height: 1.4;
   }
   .no-edges {
     font-size: 12px;
@@ -1055,35 +1119,105 @@ function descParts(node) {
   return { info: String(d || ''), code: '' };
 }
 
-function renderCodeBlock(code) {
-  if (!code || !String(code).trim()) return '';
-  return `
-    <div class="detail-section">
-      <div class="detail-section-title">CODE</div>
-      <pre class="code-block"><code>${esc(String(code).trim())}</code></pre>
-    </div>`;
-}
-
-/** CODE from v3 ``node.code`` or v2-style ``description.code`` — after DESCRIPTION, before EDGES. */
-function renderCodeSection(node) {
-  let code = '';
+/** v3 ``node.code`` or v2 ``description.code`` (not ``descParts().code`` when description is string). */
+function getNodeCodeText(node) {
+  if (!node) return '';
   if (node.code != null && String(node.code).trim()) {
-    code = String(node.code).trim();
-  } else if (
+    return String(node.code).trim();
+  }
+  if (
     node.description
     && typeof node.description === 'object'
     && !Array.isArray(node.description)
     && node.description.code != null
     && String(node.description.code).trim()
   ) {
-    code = String(node.description.code).trim();
+    return String(node.description.code).trim();
   }
-  if (!code) return '';
+  return '';
+}
+
+function renderDescriptionPanel(body) {
+  if (!body || !String(body).trim()) return '';
   return `
-    <div class="detail-section">
-      <div class="detail-section-title">CODE</div>
-      <pre class="code-block"><code>${esc(code)}</code></pre>
+    <div class="detail-panel detail-panel--description">
+      <div class="detail-panel-title">DESCRIPTION</div>
+      <div class="detail-panel-body detail-panel-body--prose">${esc(String(body).trim())}</div>
     </div>`;
+}
+
+function renderCodePanel(code) {
+  if (!code || !String(code).trim()) return '';
+  return `
+    <div class="detail-panel detail-panel--code">
+      <div class="detail-panel-title">CODE</div>
+      <pre class="detail-panel-body detail-panel-body--code"><code>${esc(String(code).trim())}</code></pre>
+    </div>`;
+}
+
+function renderCodeBlock(code) {
+  if (!code || !String(code).trim()) return '';
+  return renderCodePanel(String(code).trim());
+}
+
+/** CODE from v3 ``node.code`` or v2-style ``description.code`` — framed, after DESCRIPTION. */
+function renderCodeSection(node) {
+  return renderCodePanel(getNodeCodeText(node));
+}
+
+/**
+ * Split edge ``reason`` into prose vs code.
+ * - YAML object { info, code } if loaded as object
+ * - Or single string with ``\\n---\\n`` or ``\\n---CODE---\\n`` between blocks
+ * - Or JSON `{ "info": "...", "code": "..." }`
+ */
+function splitReasonParts(raw) {
+  if (raw == null || raw === '') return { desc: '', code: '' };
+  if (typeof raw === 'object' && !Array.isArray(raw)) {
+    const o = raw;
+    if ('info' in o || 'code' in o) {
+      return {
+        desc: String(o.info != null ? o.info : '').trim(),
+        code: String(o.code != null ? o.code : '').trim(),
+      };
+    }
+  }
+  const s = String(raw);
+  const sep = /\r?\n---CODE---\r?\n|\r?\n---\r?\n/;
+  const m = s.split(sep);
+  if (m.length >= 2) {
+    return { desc: m[0].trim(), code: m.slice(1).join('\n').trim() };
+  }
+  try {
+    const o = JSON.parse(s);
+    if (o && typeof o === 'object' && (o.info != null || o.code != null)) {
+      return {
+        desc: String(o.info != null ? o.info : '').trim(),
+        code: String(o.code != null ? o.code : '').trim(),
+      };
+    }
+  } catch (_) { /* ignore */ }
+  return { desc: s.trim(), code: '' };
+}
+
+function renderEdgeReasonPanels(reason) {
+  const rp = splitReasonParts(reason);
+  let html = '';
+  if (rp.desc) {
+    html += `
+      <div class="edge-panel edge-panel--desc">
+        <div class="edge-panel-title">DESCRIPTION</div>
+        <div class="edge-panel-body">${esc(rp.desc)}</div>
+      </div>`;
+  }
+  if (rp.code) {
+    html += `
+      <div class="edge-panel edge-panel--code">
+        <div class="edge-panel-title">CODE</div>
+        <pre class="edge-panel-body"><code>${esc(rp.code)}</code></pre>
+      </div>`;
+  }
+  return html;
 }
 
 function renderHistory(node) {
@@ -1168,13 +1302,13 @@ function renderEdges(nodeId, allEdges, allNodes) {
     const otherName = otherNode
       ? (otherNode.name || otherId)
       : (e.to_name || e.from_name || otherId);
-    const reason = e.reason != null ? String(e.reason).trim() : '';
+    const reasonPanels = renderEdgeReasonPanels(e.reason);
     return `
         <div class="edge-item">
             <div class="edge-header">
                 <span class="edge-node-name" data-edge-nav="${escAttr(otherId)}">${esc(otherName)}</span>
             </div>
-            ${reason ? `<div class="edge-reason">${esc(reason)}</div>` : ''}
+            ${reasonPanels}
         </div>`;
   }).join('');
 
@@ -1256,9 +1390,7 @@ function showDetail(node) {
     html += `<div class="v2-type">${esc(nt)}</div>`;
     html += `<div class="v2-title">${esc(node.name || '')}</div>`;
     const dp = descParts(node);
-    if (dp.info && String(dp.info).trim()) {
-      html += `<div class="v2-section"><div class="v2-h">DESCRIPTION</div><div class="v2-desc-info">${esc(dp.info)}</div></div>`;
-    }
+    html += renderDescriptionPanel(dp.info);
     html += renderCodeSection(node);
   }
 
