@@ -1,6 +1,6 @@
-# GoBP Core Edge Types v2 — per-edge YAML fields (see docs/SCHEMA.md EDGE):
-#   reason — prose: why this link exists (human / AI context)
-#   code   — optional: machine-oriented snippet (IDs, constraints); query separately from reason
+# GoBP Core Edge Types v2 — per-edge YAML (see docs/SCHEMA.md «MÔ HÌNH THỐNG NHẤT»):
+#   reason — full prose for the relationship (same role as node desc_full)
+#   code   — optional technical snippet (same role as node code)
 # Reference: docs/GOBP_SCHEMA_REDESIGN_v2.1.md, waves/wave_17a01_brief.md Task 2
 # Validator v1 still uses core_edges.yaml until cutover.
 

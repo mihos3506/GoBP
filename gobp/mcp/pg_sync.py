@@ -42,7 +42,11 @@ def maybe_upsert_node_v3(gobp_root: Path, node: dict[str, Any]) -> None:
 
 
 def maybe_upsert_edge_v3(gobp_root: Path, edge: dict[str, Any]) -> None:
-    """Upsert edge into PG v3 if the MCP process has an open v3 connection."""
+    """Upsert edge into PG v3 if the MCP process has an open v3 connection.
+
+    Maps ``reason``/``code`` from the file edge dict — same semantics as node
+    ``desc_full`` / ``code`` (see docs/SCHEMA.md).
+    """
     _ = gobp_root
     try:
         from gobp.mcp import server as mcp_server

@@ -4,13 +4,29 @@
 
 ---
 
+## MÔ HÌNH THỐNG NHẤT — MÔ TẢ ĐẦY ĐỦ + CODE
+
+Cùng một cặp khái niệm cho **node** và **edge** — chỉ khác tên field theo loại entity:
+
+| | Mô tả đầy đủ (prose, human/AI) | Code (snippet kỹ thuật, optional) |
+|--|--------------------------------|-----------------------------------|
+| **Node** | `description` trong file → `desc_l1` / `desc_l2` / **`desc_full`** trong PostgreSQL | **`code`** |
+| **Edge** | **`reason`** trong file và PostgreSQL | **`code`** |
+
+- **`edge.reason`** = cùng vai trò với **`node.desc_full`** (mô tả đầy đủ cho *mối quan hệ*), không phải loại dữ liệu khác.
+- **`edge.code`** = cùng vai trò với **`node.code`** (cùng quy ước snippet).
+
+Tên cột PG cho edge vẫn là `reason` (legacy); `reason_vec` FTS chỉ index cột đó.
+
+---
+
 ## TEMPLATE 1 — MỌI NODE
 
 ```yaml
 name:        {tên mô tả rõ ràng}
 group:       {breadcrumb đầy đủ}
-description: {plain text — mô tả đầy đủ}
-code:        {optional — snippet kỹ thuật; lưu riêng description vs code trong PG (desc_* / code)}
+description: {plain text — mô tả đầy đủ; trong PG = nguồn cho desc_full}
+code:        {optional — cùng nghĩa với code trên edge}
 history[]:   [{description, code}]   # append-only, không sửa không xóa
 ```
 
@@ -34,11 +50,11 @@ history[]:   [{description, code}]   # append-only, không sửa không xóa
 ```yaml
 from:    {node}
 to:      {node}
-reason:  {plain text — tại sao kết nối này tồn tại}
-code:    {optional — snippet kỹ thuật; lưu riêng reason trong DB/PG để AI chỉ đọc field cần}
+reason:  {plain text — full description của quan hệ; cùng vai trò với desc_full của node}
+code:    {optional — cùng vai trò với code của node}
 ```
 
-PostgreSQL v3: bảng `edges` có hai cột **`reason`** và **`code`** (tách bạch; FTS `reason_vec` chỉ index `reason`).
+PostgreSQL v3: `edges.reason` + `edges.code` (FTS: `reason_vec` trên `reason`).
 
 Edge type do hệ thống tự xác định — người nhập không khai báo.
 
@@ -49,9 +65,9 @@ Edge type do hệ thống tự xác định — người nhập không khai báo
 ```
 1. Node = điểm kết nối — knowledge sống trong edges
 2. name + group = unique identity trong graph
-3. description chứa tất cả — không dùng fields nhỏ lẻ
+3. Một cặp prose + code: node (description/desc_full + code), edge (reason + code) — cùng mô hình
 4. history[] ghi khi node thay đổi ý nghĩa — không phải typo
-5. Edge reason bắt buộc — mô tả tại sao kết nối tồn tại
+5. Edge reason = full description của quan hệ (như desc_full cho node); edge code = như node code
 6. Edge type do hệ thống infer — AI không khai báo
 7. Ít fields = ít token khi nhập + ít token khi query
 ```

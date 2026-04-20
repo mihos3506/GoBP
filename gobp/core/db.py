@@ -231,7 +231,11 @@ def upsert_edge_v3(
     reason: str = "",
     code: str = "",
 ) -> None:
-    """Upsert edge — schema v3 has no edge type column."""
+    """Upsert edge — schema v3 has no edge type column.
+
+    ``reason`` is the full prose for the relationship (same semantic role as
+    :attr:`desc_full` on nodes). ``code`` matches node ``code`` (optional snippet).
+    """
     with conn.cursor() as cur:
         cur.execute(
             """
