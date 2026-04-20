@@ -41,6 +41,53 @@ from gobp.core.graph import GraphIndex
 logger = logging.getLogger("gobp.mcp.server")
 
 
+def _update_config_schema_version_int(gobp_root: Path, version: int) -> None:
+    """Bump ``.gobp/config.yaml`` ``schema_version`` when PostgreSQL v3 is active."""
+    try:
+        import yaml
+
+        config_path = gobp_root / ".gobp" / "config.yaml"
+        if not config_path.exists():
+            return
+        with open(config_path, "r", encoding="utf-8") as f:
+            config = yaml.safe_load(f) or {}
+        config["schema_version"] = version
+        with open(config_path, "w", encoding="utf-8") as f:
+            yaml.dump(
+                config,
+                f,
+                allow_unicode=True,
+                default_flow_style=False,
+                sort_keys=False,
+            )
+    except Exception:
+        pass
+
+
+def _init_postgresql_backend(gobp_root: Path) -> None:
+    """If ``GOBP_DB_URL`` resolves, ensure PostgreSQL schema v3 exists (see ``create_schema_v3``)."""
+    from gobp.core.db import _get_conn, create_schema_v3, get_schema_version
+
+    conn = _get_conn(gobp_root)
+    if conn is None:
+        logger.info("GoBP MCP: file-based graph (no PostgreSQL URL or connection failed)")
+        return
+    try:
+        ver = get_schema_version(conn)
+        if ver != "v3":
+            create_schema_v3(conn)
+            logger.info("PostgreSQL schema v3 initialized (create_schema_v3)")
+        logger.info("GoBP running with PostgreSQL v3 backend")
+        _update_config_schema_version_int(gobp_root, 3)
+    except Exception as e:
+        logger.warning("PostgreSQL v3 init failed, using file graph only: %s", e)
+    finally:
+        try:
+            conn.close()
+        except Exception:
+            pass
+
+
 def _query_truthy(val: Any) -> bool:
     """Coerce query param to bool (same semantics as read tools)."""
     if val is True:
@@ -50,9 +97,9 @@ def _query_truthy(val: Any) -> bool:
     return str(val).strip().lower() in ("true", "1", "yes", "on")
 
 _READ_ONLY_ACTIONS: frozenset[str] = frozenset({
-    "create", "update", "upsert", "lock",
+    "create", "upsert", "lock",
     "session", "edge", "import", "commit", "batch", "quick",
-    "delete", "retype",
+    "delete", "edit",
 })
 _READ_ONLY: bool = os.environ.get("GOBP_READ_ONLY", "").lower() in ("true", "1", "yes")
 
@@ -60,11 +107,10 @@ _READ_ONLY: bool = os.environ.get("GOBP_READ_ONLY", "").lower() in ("true", "1",
 WRITE_ACTIONS: frozenset[str] = frozenset({
     "session",
     "create",
-    "update",
+    "edit",
     "upsert",
     "lock",
     "delete",
-    "retype",
     "batch",
     "quick",
     "import",
@@ -390,6 +436,7 @@ async def main() -> None:
     )
 
     _project_root = _get_project_root()
+    _init_postgresql_backend(_project_root)
     _index = get_cached_index(_project_root)
 
     async with stdio_server() as (read_stream, write_stream):

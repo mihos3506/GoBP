@@ -42,6 +42,11 @@ def test_version_action_returns_protocol(seeded_root: Path):
     assert r["protocol_version"] == "2.0"
     assert "gobp_version" in r
     assert "schema_version" in r
+    assert "postgresql_connected" in r
+    assert isinstance(r["postgresql_connected"], bool)
+    # No GOBP_DB_URL in unit tests → file-first protocol marker
+    if not r["postgresql_connected"]:
+        assert r["schema_version"] == "2.1"
 
 
 def test_version_has_changelog(seeded_root: Path):

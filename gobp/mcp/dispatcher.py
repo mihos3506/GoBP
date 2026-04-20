@@ -162,11 +162,27 @@ async def dispatch(
         elif action == "version":
             import gobp as _gobp
 
+            from gobp.core.db import _get_conn, get_schema_version
+
+            postgresql_connected = False
+            schema_version = "2.1"
+            conn = _get_conn(project_root)
+            if conn is not None:
+                try:
+                    postgresql_connected = True
+                    schema_version = get_schema_version(conn)
+                except Exception:
+                    postgresql_connected = False
+                    schema_version = "2.1"
+                finally:
+                    conn.close()
+
             result = {
                 "ok": True,
                 "protocol_version": "2.0",
                 "gobp_version": getattr(_gobp, "__version__", "0.1.0"),
-                "schema_version": "2.1",
+                "schema_version": schema_version,
+                "postgresql_connected": postgresql_connected,
                 "deprecated_actions": [],
                 "supported_actions": list(PROTOCOL_GUIDE.get("actions", {}).keys()),
                 "changelog": [
