@@ -104,6 +104,7 @@ _DEFAULT_GROUPS: dict[str, str] = {
 }
 
 _VALID_SEVERITIES = {"fatal", "error", "warning", "info"}
+META_TYPES = {"Session", "Wave", "Task", "Reflection"}
 VALID_EDGE_TYPES = {
     "depends_on",
     "implements",
@@ -198,6 +199,31 @@ def auto_reason(from_name: str, to_name: str, edge_type: str) -> str:
     return ""
 
 
+def coerce_implemented(node: dict[str, Any]) -> dict[str, Any]:
+    """Coerce ``implemented`` field for non-meta node types."""
+    node_type = str(node.get("type", ""))
+    if node_type in META_TYPES:
+        return node
+    if "implemented" not in node:
+        node["implemented"] = False
+    else:
+        node["implemented"] = bool(node["implemented"])
+    return node
+
+
+def validate_implemented(node: dict[str, Any]) -> list[str]:
+    """Validate implemented/code consistency (warning-like message)."""
+    node_type = str(node.get("type", ""))
+    if node_type in META_TYPES:
+        return []
+    if node.get("implemented") is True:
+        if not str(node.get("code") or "").strip():
+            return [
+                f"Node '{node.get('name','?')}': implemented=True nhưng code field trống."
+            ]
+    return []
+
+
 class ValidatorV3:
     """
     Schema v3 validator — 2 templates.
@@ -221,6 +247,7 @@ class ValidatorV3:
             List of error strings. Empty list = valid.
         """
         errors: list[str] = []
+        node = coerce_implemented(dict(node))
 
         # Template 1: base fields
         if not node.get("name", "").strip():
@@ -258,6 +285,7 @@ class ValidatorV3:
                     f"{sorted(_VALID_SEVERITIES)}, got: '{severity}'"
                 )
 
+        errors.extend(validate_implemented(node))
         return errors
 
     def auto_fix(self, node: dict[str, Any]) -> dict[str, Any]:
@@ -269,7 +297,7 @@ class ValidatorV3:
         - Convert description dict → plain text
         - Set empty defaults cho code, history
         """
-        node = dict(node)
+        node = coerce_implemented(dict(node))
 
         # Infer group từ type
         if not node.get("group") and node.get("type"):
