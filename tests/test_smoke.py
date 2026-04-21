@@ -1,4 +1,4 @@
-﻿"""Smoke tests for GoBP Wave 0 deliverables.
+"""Smoke tests for GoBP Wave 0 deliverables.
 
 These tests verify:
 1. The gobp package can be imported

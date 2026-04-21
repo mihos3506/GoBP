@@ -57,18 +57,9 @@ def before_write(action: str, params: dict[str, Any], index: Any) -> dict[str, A
         except Exception:
             pass  # Fallback to downstream validation
 
-    # 2. Session required for writes
-    session_id = params.get("session_id", "")
-    if isinstance(session_id, str):
-        session_ok = bool(session_id.strip())
-    else:
-        session_ok = bool(session_id)
-    if action in ("create", "upsert", "lock", "delete") and not session_ok:
-        return {
-            "ok": False,
-            "error": "session_id required for write operations",
-            "suggestion": "gobp(query=\"session:start actor='...' goal='...'\") first",
-        }
+    # 2. Session/audit policy is enforced in write-path (tools.write via
+    # resolve_write_session), not in hooks. Hooks stay lightweight to avoid
+    # semantic drift and accidental hard-blocks.
 
     return None
 
@@ -111,7 +102,7 @@ def _suggest_fix(action: str, error: str, params: dict[str, Any], index: Any) ->
 
     # Missing session
     if "session" in err_l:
-        return "gobp(query=\"session:start actor='cursor' goal='...'\")"
+        return "Session resolution happens in write-path; pass session_id or set GOBP_SESSION_ID."
 
     return ""
 
