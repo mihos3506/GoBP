@@ -135,7 +135,11 @@ def edit_node(
     """
     fp = node_file_path(gobp_dir, node_id)
     if not fp.exists():
-        return {"ok": False, "errors": [f"Node not found: {node_id}"]}
+        resolved_fp = _find_node_file_by_id(gobp_dir, node_id)
+        if resolved_fp is not None:
+            fp = resolved_fp
+        else:
+            return {"ok": False, "errors": [f"Node not found: {node_id}"]}
     existing = deserialize_node(fp.read_text(encoding="utf-8"))
     if not existing:
         return {"ok": False, "errors": [f"Cannot deserialize: {node_id}"]}
@@ -216,6 +220,10 @@ def delete_node(
 ) -> dict[str, Any]:
     """Soft delete: archive file + remove from PostgreSQL."""
     fp = node_file_path(gobp_dir, node_id)
+    if not fp.exists():
+        resolved_fp = _find_node_file_by_id(gobp_dir, node_id)
+        if resolved_fp is not None:
+            fp = resolved_fp
     if fp.exists():
         archive = gobp_dir / "archive"
         archive.mkdir(parents=True, exist_ok=True)
@@ -250,3 +258,23 @@ def _log(gobp_dir: Path, event: dict[str, Any]) -> None:
     log_dir.mkdir(parents=True, exist_ok=True)
     with open(log_dir / f"{today}.jsonl", "a", encoding="utf-8") as f:
         f.write(json.dumps(event, ensure_ascii=False) + "\n")
+
+
+def _find_node_file_by_id(gobp_dir: Path, node_id: str) -> Path | None:
+    """Fallback lookup when canonical ``node_file_path`` is absent.
+
+    Some legacy or external-imported projects keep node files in nested paths
+    that do not match ``node_file_path(id)``. Scan ``.gobp/nodes`` and return
+    the first file whose parsed ``id`` matches.
+    """
+    nodes_dir = gobp_dir / "nodes"
+    if not nodes_dir.exists():
+        return None
+    for fp in nodes_dir.rglob("*.md"):
+        try:
+            parsed = deserialize_node(fp.read_text(encoding="utf-8"))
+        except Exception:
+            continue
+        if str(parsed.get("id", "") or "") == node_id:
+            return fp
+    return None

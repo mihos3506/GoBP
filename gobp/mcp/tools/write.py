@@ -637,7 +637,21 @@ def handle_edit(
 
     _ = index
     gobp_dir = project_root / ".gobp"
-    node_id = str(args.get("id", "") or args.get("node_id", "")).strip()
+    raw_node_id = str(args.get("id", "") or args.get("node_id", "")).strip()
+    node_id = raw_node_id
+    # Accept optional ``node:...`` references while preserving real ids that
+    # legitimately start with ``node:``.
+    resolved = index.get_node(raw_node_id) if raw_node_id else None
+    if resolved is None and raw_node_id.startswith("node:"):
+        prefixed_candidate = raw_node_id[len("node:") :].strip()
+        if prefixed_candidate:
+            node_id = prefixed_candidate
+            resolved = index.get_node(node_id)
+    elif resolved is not None:
+        node_id = raw_node_id
+    # Resolve through index (supports legacy-id mapping in GraphIndex.get_node).
+    if resolved is not None:
+        node_id = str(resolved.get("id", node_id) or node_id)
     raw_s = args.get("session_id")
     resolved_id, _sn, sess_err, _auto = resolve_write_session(
         index,
@@ -669,14 +683,40 @@ def handle_edit(
 
     conn = db_mod._get_conn(project_root)
     try:
-        return edit_node(
-            node_id=node_id,
-            changes=changes,
-            gobp_dir=gobp_dir,
-            conn=conn,
-            session_id=session_id,
-            expected_updated_at=expected,
-        )
+        candidates: list[str] = []
+        for cand in (
+            node_id,
+            raw_node_id,
+            raw_node_id[len("node:") :].strip() if raw_node_id.startswith("node:") else "",
+        ):
+            c = str(cand or "").strip()
+            if c and c not in candidates:
+                candidates.append(c)
+        if raw_node_id.startswith("node:"):
+            stripped = raw_node_id[len("node:") :].strip()
+            prefixed = f"node:{stripped}" if stripped else ""
+            if prefixed and prefixed not in candidates:
+                candidates.append(prefixed)
+
+        last_result: dict[str, Any] | None = None
+        for cand in candidates:
+            res = edit_node(
+                node_id=cand,
+                changes=changes,
+                gobp_dir=gobp_dir,
+                conn=conn,
+                session_id=session_id,
+                expected_updated_at=expected,
+            )
+            if res.get("ok"):
+                return res
+            errs = res.get("errors") or []
+            first_err = str(errs[0]) if errs else ""
+            if not first_err.startswith("Node not found:"):
+                return res
+            last_result = res
+
+        return last_result or {"ok": False, "errors": [f"Node not found: {node_id}"]}
     finally:
         if conn is not None:
             conn.close()

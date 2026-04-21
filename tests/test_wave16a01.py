@@ -131,6 +131,33 @@ def test_dispatch_get_batch(seeded_root: Path) -> None:
     assert r["_dispatch"]["action"] == "get_batch"
 
 
+def test_dispatch_edit_accepts_node_prefix_id(seeded_root: Path) -> None:
+    index = GraphIndex.load_from_disk(seeded_root)
+    sid = asyncio.run(dispatch("session:start actor='test' goal='edit node prefix'", index, seeded_root))["session_id"]
+    index = GraphIndex.load_from_disk(seeded_root)
+    create_r = asyncio.run(
+        dispatch(f"create:Node name='EditPrefixNode' session_id='{sid}'", index, seeded_root)
+    )
+    assert create_r.get("ok") is True
+    nid = str(create_r.get("node_id", ""))
+    assert nid
+
+    index = GraphIndex.load_from_disk(seeded_root)
+    edit_r = asyncio.run(
+        dispatch(
+            f"edit: id='node:{nid}' description='Edited via node prefix id.' session_id='{sid}'",
+            index,
+            seeded_root,
+        )
+    )
+    assert edit_r.get("ok") is True, edit_r
+
+    index = GraphIndex.load_from_disk(seeded_root)
+    node = index.get_node(nid)
+    assert node is not None
+    assert str(node.get("id", "")) == nid
+
+
 def test_get_batch_pg_missing_falls_back_to_file_index(
     seeded_root: Path,
     monkeypatch: pytest.MonkeyPatch,
