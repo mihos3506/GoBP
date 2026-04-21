@@ -422,6 +422,16 @@
     <button id="btn-refresh">↺ Refresh</button>
     <button type="button" id="btn-mcp" onclick="toggleMCPPanel()">⚙ MCP</button>
   </section>
+  <section>
+    <h3 class="sidebar-section-title">Layout (X/Y/Z)</h3>
+    <label style="display:block;font-size:10px;color:var(--text-dim);margin:6px 0 2px;">X spread: <span id="x-scale-val">1.00</span></label>
+    <input type="range" id="x-scale" min="0.5" max="3" step="0.05" value="1" style="width:100%;">
+    <label style="display:block;font-size:10px;color:var(--text-dim);margin:8px 0 2px;">Y tier height: <span id="y-scale-val">1.00</span></label>
+    <input type="range" id="y-scale" min="0.5" max="3" step="0.05" value="1" style="width:100%;">
+    <label style="display:block;font-size:10px;color:var(--text-dim);margin:8px 0 2px;">Z depth: <span id="z-scale-val">1.00</span></label>
+    <input type="range" id="z-scale" min="0.5" max="4" step="0.05" value="1" style="width:100%;">
+    <button id="btn-layout-reset" style="margin-top:8px;">Reset XYZ</button>
+  </section>
 </div>
 
 <div id="graph-canvas"></div>
@@ -578,17 +588,65 @@ const TYPE_X_CENTER = {
   UIComponent: 400,
   CtoDevHandoff: 800,
   QaCodeDevHandoff: 800,
+  Spec: 900,
+  ErrorDomain: -650,
+  ErrorCase: -450,
 };
-const TYPE_X_JITTER = 140;
+const TYPE_X_JITTER = 420;
+const LAYOUT_SCALE = { x: 1, y: 1, z: 1 };
+const NODE_LIFT_PER_SIZE = 18;
+
+function nodeVisualSize(node) {
+  return READ_ORDER_SIZE[node.read_order] || PRIORITY_SIZE[node.priority] || NODE_VAL_DEFAULT;
+}
 
 const TYPE_GROUP = {
   Decision: "core", Invariant: "core", Concept: "core",
   Entity: "domain",
   Flow: "ops", Engine: "ops", Feature: "ops", Screen: "ops", APIEndpoint: "ops",
   TestKind: "test", TestCase: "test",
+  Spec: "meta",
+  ErrorDomain: "core",
+  ErrorCase: "core",
   Session: "meta", Wave: "meta", Document: "meta", Lesson: "meta", Node: "meta", Repository: "meta", Idea: "meta",
   Task: "meta", CtoDevHandoff: "meta", QaCodeDevHandoff: "meta",
 };
+
+const GROUP_BUCKET_FROM_TOP = {
+  Constraint: "core",
+  Error: "core",
+  Dev: "ops",
+  Test: "test",
+  Document: "meta",
+  Meta: "meta",
+};
+
+const GROUP_X_CENTER = {
+  Constraint: -900,
+  Error: -700,
+  Dev: 200,
+  Test: -300,
+  Document: 900,
+  Meta: 1100,
+};
+
+function inferTierGroup(node) {
+  const byType = TYPE_GROUP[node.type];
+  if (byType) return byType;
+  const gp = String(node.group || node.group_path || '').trim();
+  if (!gp) return 'meta';
+  const top = gp.split(/\s*>\s*/)[0].trim();
+  return GROUP_BUCKET_FROM_TOP[top] || 'meta';
+}
+
+function inferXCenter(node) {
+  const byType = TYPE_X_CENTER[node.type];
+  if (typeof byType === 'number') return byType;
+  const gp = String(node.group || node.group_path || '').trim();
+  if (!gp) return 0;
+  const top = gp.split(/\s*>\s*/)[0].trim();
+  return GROUP_X_CENTER[top] ?? 0;
+}
 function stableHash(input) {
   let h = 0;
   for (let i = 0; i < input.length; i += 1) {
@@ -601,24 +659,71 @@ function stableHash(input) {
 const TIER_Z_JITTER = 1000;
 
 function tierTargetX(node) {
-  const center = TYPE_X_CENTER[node.type] ?? 0;
+  const center = inferXCenter(node);
   const jitter = (stableHash((node.id || node.name || '') + ':x') % (TYPE_X_JITTER * 2)) - TYPE_X_JITTER;
-  return center + jitter;
+  return (center + jitter) * LAYOUT_SCALE.x;
 }
 
 function tierTargetY(node) {
-  const group = TYPE_GROUP[node.type] || 'meta';
+  const group = inferTierGroup(node);
   const w = TIER_WEIGHT[group] ?? 0;
   const base = -100 * w;
   const micro = ((stableHash((node.id || '') + ':y') % 120) - 60) * 0.35;
-  return base + micro;
+  // Slightly lift bigger nodes so key nodes are more visible in dense clusters.
+  const sizeLift = Math.max(0, nodeVisualSize(node) - NODE_VAL_DEFAULT) * NODE_LIFT_PER_SIZE;
+  return (base + micro - sizeLift) * LAYOUT_SCALE.y;
 }
 
 function tierTargetZ(node) {
-  const group = TYPE_GROUP[node.type] || 'meta';
+  const group = inferTierGroup(node);
   const center = TIER_Z[group] ?? TIER_Z.meta;
   const jitter = (stableHash((node.id || '') + ':z') % (TIER_Z_JITTER * 2)) - TIER_Z_JITTER;
-  return center + jitter;
+  return (center + jitter) * LAYOUT_SCALE.z;
+}
+
+function applyLayoutScaleFromUI() {
+  const xEl = document.getElementById('x-scale');
+  const yEl = document.getElementById('y-scale');
+  const zEl = document.getElementById('z-scale');
+  if (!xEl || !yEl || !zEl) return;
+  const x = Number(xEl.value || '1');
+  const y = Number(yEl.value || '1');
+  const z = Number(zEl.value || '1');
+  LAYOUT_SCALE.x = Number.isFinite(x) ? x : 1;
+  LAYOUT_SCALE.y = Number.isFinite(y) ? y : 1;
+  LAYOUT_SCALE.z = Number.isFinite(z) ? z : 1;
+  const xv = document.getElementById('x-scale-val');
+  const yv = document.getElementById('y-scale-val');
+  const zv = document.getElementById('z-scale-val');
+  if (xv) xv.textContent = LAYOUT_SCALE.x.toFixed(2);
+  if (yv) yv.textContent = LAYOUT_SCALE.y.toFixed(2);
+  if (zv) zv.textContent = LAYOUT_SCALE.z.toFixed(2);
+}
+
+function initLayoutControls() {
+  const xEl = document.getElementById('x-scale');
+  const yEl = document.getElementById('y-scale');
+  const zEl = document.getElementById('z-scale');
+  const resetEl = document.getElementById('btn-layout-reset');
+  if (!xEl || !yEl || !zEl) return;
+
+  const onChange = () => {
+    applyLayoutScaleFromUI();
+    applyFilters();
+  };
+  xEl.addEventListener('input', onChange);
+  yEl.addEventListener('input', onChange);
+  zEl.addEventListener('input', onChange);
+  if (resetEl) {
+    resetEl.addEventListener('click', () => {
+      xEl.value = '1';
+      yEl.value = '1';
+      zEl.value = '1';
+      applyLayoutScaleFromUI();
+      applyFilters();
+    });
+  }
+  applyLayoutScaleFromUI();
 }
 
 /** Seed positions before simulation so links don’t start from a point cloud blob. */
@@ -675,6 +780,7 @@ async function boot() {
     PROJECTS = [];
   }
   buildProjectSwitcher();
+  initLayoutControls();
   initGraph();
   const allEdgesChk = document.getElementById('showAllEdges');
   if (allEdgesChk) {
@@ -967,7 +1073,7 @@ function initGraph() {
     .nodeLabel(n => n.name)
     .nodeColor(n => n.__hit ? '#ffffff' : (getNodeColor(n) || TYPE_COLORS[n.type] || '#888'))
     .nodeOpacity(0.92)
-    .nodeVal((n) => READ_ORDER_SIZE[n.read_order] || PRIORITY_SIZE[n.priority] || NODE_VAL_DEFAULT)
+    .nodeVal((n) => nodeVisualSize(n))
     .nodeRelSize(6)
     .nodeThreeObject(n => {
       if(!SHOW_LABELS) return null;
@@ -990,7 +1096,7 @@ function initGraph() {
     .onNodeClick(n => showDetail(n))
     .onBackgroundClick(() => document.getElementById('detail').classList.remove('visible'));
 
-  FG.d3Force('charge').strength(-420);
+  FG.d3Force('charge').strength(-820);
   const linkForce = FG.d3Force('link');
   linkForce.distance((l) => {
     const t = l.type || '';
@@ -1004,17 +1110,18 @@ function initGraph() {
     return 120 + (delta * 40);
   });
   if (typeof linkForce.strength === 'function') {
-    linkForce.strength(() => 0.12);
+    // Lower spring force so X/Z tier anchors can separate dense clusters.
+    linkForce.strength(() => 0.04);
   }
-  FG.d3Force('x', d3.forceX((n) => tierTargetX(n)).strength(0.15));
-  FG.d3Force('y', d3.forceY((n) => tierTargetY(n)).strength(0.3));
+  FG.d3Force('x', d3.forceX((n) => tierTargetX(n)).strength(0.45));
+  FG.d3Force('y', d3.forceY((n) => tierTargetY(n)).strength(0.24));
   if (typeof d3.forceZ === 'function') {
     // Slightly stronger Z pull so tiers keep visual depth separation.
-    FG.d3Force('z', d3.forceZ((n) => tierTargetZ(n)).strength(0.2));
+    FG.d3Force('z', d3.forceZ((n) => tierTargetZ(n)).strength(0.34));
   }
   FG.d3Force(
     'collide',
-    d3.forceCollide((n) => (READ_ORDER_SIZE[n.read_order] || PRIORITY_SIZE[n.priority] || NODE_VAL_DEFAULT) * 10 + 42).strength(0.92),
+    d3.forceCollide((n) => nodeVisualSize(n) * 10 + 42).strength(0.92),
   );
   FG.d3VelocityDecay(0.28);
   if (typeof FG.cooldownTicks === 'function') {

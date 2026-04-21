@@ -105,6 +105,42 @@ def test_dispatch_get_batch(seeded_root: Path) -> None:
     assert r["_dispatch"]["action"] == "get_batch"
 
 
+def test_get_batch_pg_missing_falls_back_to_file_index(
+    seeded_root: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    index = GraphIndex.load_from_disk(seeded_root)
+    node_id = index.all_nodes()[0]["id"]
+
+    class _FakeConn:
+        def close(self) -> None:
+            return None
+
+    from gobp.mcp.tools import read_v3 as _read_v3
+
+    monkeypatch.setattr(_read_v3, "_conn_v3", lambda _root: (_FakeConn(), True))
+    monkeypatch.setattr(
+        _read_v3,
+        "get_batch_v3",
+        lambda _conn, ids, _mode, _since: {
+            "ok": True,
+            "mode": "brief",
+            "nodes": {ids[0]: {"ok": False, "error": f"Node not found: {ids[0]}"}},
+            "summary": {"total": 1, "unchanged": 0, "fetched": 1},
+        },
+    )
+
+    r = tools_read.get_batch(index, seeded_root, {"ids": node_id, "mode": "brief"})
+    assert r["ok"] is True
+    assert r["found"] == 1
+    assert r["not_found"] == []
+    assert r.get("source") == "hybrid_pg_file"
+    assert r.get("mirror_fallback_count") == 1
+    assert isinstance(r["nodes"][node_id], dict)
+    assert r["nodes"][node_id].get("id") == node_id
+    assert r["nodes"][node_id].get("_source") == "file_index_fallback"
+
+
 def test_metadata_lint_returns_score(seeded_root: Path) -> None:
     index = GraphIndex.load_from_disk(seeded_root)
     r = tools_read.metadata_lint(index, seeded_root, {})

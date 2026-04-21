@@ -1552,9 +1552,50 @@ def get_batch(
             if gb_mode == "summary":
                 gb_mode = "brief"
             out = _read_v3.get_batch_v3(conn_b, ids, gb_mode, since_i)
-            if out.get("ok"):
-                out["not_found"] = []
-                out["found"] = out["summary"].get("fetched", len(ids))
+            if not out.get("ok"):
+                return out
+
+            nodes_payload = out.get("nodes")
+            if not isinstance(nodes_payload, dict):
+                return out
+
+            fallback_count = 0
+            not_found_ids: list[str] = []
+            for node_id in ids:
+                entry = nodes_payload.get(node_id)
+                if not isinstance(entry, dict):
+                    # Keep unknown shapes untouched; caller may request since-diff views.
+                    continue
+                if entry.get("ok") is not False:
+                    continue
+                err_text = str(entry.get("error", "") or "")
+                if "Node not found:" not in err_text:
+                    continue
+
+                local = index.get_node(node_id)
+                if local is None:
+                    not_found_ids.append(node_id)
+                    continue
+
+                if mode == "summary":
+                    fallback_node: dict[str, Any] = _node_summary(local, index)
+                elif mode in ("brief", "standard"):
+                    fallback_node = _node_brief(local, index)
+                else:
+                    fallback_node = dict(local)
+                fallback_node["_source"] = "file_index_fallback"
+                nodes_payload[node_id] = fallback_node
+                fallback_count += 1
+
+            out["not_found"] = not_found_ids
+            out["found"] = max(0, len(ids) - len(not_found_ids))
+            if fallback_count > 0:
+                out["source"] = "hybrid_pg_file"
+                out["mirror_fallback_count"] = fallback_count
+                out["hint"] = (
+                    "Some requested ids were missing from PostgreSQL mirror. "
+                    "Returned from file index fallback; run sync_file_to_pg_v3.py to realign mirror."
+                )
             return out
         finally:
             conn_b.close()
