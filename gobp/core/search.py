@@ -43,11 +43,17 @@ def search_score(query_norm: str, node: dict[str, Any]) -> int:
 
     Scoring:
         Name exact match:      100
-        Name starts with query: 80
+        Name starts with query: 79 (name longer than query after normalize)
         Name contains query:    60
         ID contains query:      40
         Description match:      20
         No match:                0
+
+    After an exact name match fails, ``name_norm.startswith(query_norm)`` implies
+    the name is strictly longer than the query. That score is **79** so callers
+    using threshold **80** (batch duplicate guard, ``find_similar_nodes``) do not
+    treat e.g. ``Place`` and ``PlaceOwnership`` as duplicates. Prefix hits still rank
+    above substring-only (60) matches for ``find:``.
     """
     name_norm = normalize_text(node.get("name", ""))
     id_norm = normalize_text(node.get("id", ""))
@@ -56,7 +62,7 @@ def search_score(query_norm: str, node: dict[str, Any]) -> int:
     if name_norm == query_norm:
         return 100
     if name_norm.startswith(query_norm):
-        return 80
+        return 79
     if query_norm in name_norm:
         return 60
     if query_norm in id_norm:
@@ -72,7 +78,7 @@ def search_score(query_norm: str, node: dict[str, Any]) -> int:
         if name_c == qc:
             return 100
         if name_c.startswith(qc):
-            return 80
+            return 79
         if len(qc) >= 4 and qc in name_c:
             return 60
         if len(qc) >= 4 and qc in id_c:

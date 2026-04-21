@@ -4,7 +4,7 @@
 **Read after:** `docs/SCHEMA.md`, `docs/MCP_PROTOCOL.md` (nếu có), `docs/edge_policy_v1.md` hoặc `gobp/schema/core_edges.yaml`  
 **Audience:** Mọi AI agent khi nhập liệu vào GoBP  
 
-**Mục lục nội dung v2:** PHẦN 0 (vận hành thật) → PHẦN 1 (chọn type + Spec vs Document) → PHẦN 2 (description + **§2.1 ErrorCase catalog vs `code`**) → PHẦN 3 (create/batch/…) → PHẦN 3.0 (bảng hành động MCP) → PHẦN 4–10 như trước, bổ sung lỗi & ví dụ Document.
+**Mục lục nội dung v2:** PHẦN 0 (vận hành thật) → PHẦN 1 (chọn type + Spec vs Document + **§1.3 Entity prefix**) → PHẦN 2 (description + **§2.1 ErrorCase catalog vs `code`**) → PHẦN 3 (create/batch/…) → PHẦN 3.0 (bảng hành động MCP) → PHẦN 4–10 như trước, bổ sung lỗi & ví dụ Document.
 
 ---
 
@@ -107,6 +107,14 @@ Câu hỏi                                  Node type
 "Đây là session làm việc?"              Session (auto)
 "Đây là wave/task của AI?"              Wave / Task
 ```
+
+### 1.3 — Entity MIHOS: tiền tố tên (`Place` vs `PlaceOwnership`)
+
+**Đã xử trong code (`gobp/core/search.py`):** Khi tên normalize **dài hơn** query nhưng vẫn **bắt đầu bằng** query (vd. `placeownership` vs `place`), điểm prefix được **giới hạn 79** thay vì 80. Nhờ đó **`find_similar_nodes` ngưỡng 80** (batch `create:` + cảnh báo duplicate `node_upsert`) **không** coi hai entity là trùng chỉ vì tiền tố — tránh **batch bỏ sót** `create: Entity: Place` khi đã có `PlaceOwnership`.
+
+**Hành vi còn lại:** `find:` / `suggest:` vẫn có thể liệt kê **`PlaceOwnership`** khi tìm `Place` (điểm 79 vẫn > chỉ mô tả / id); nếu cần đúng literal catalog, vẫn nên đối chiếu cột **`name`**.
+
+**Thực hành tốt:** Trong `batch` / `edge+`, sau khi node đã có id, ưu tiên **`node:<id>`** cho cạnh để tránh mọi nhầm lẫn tên ngoài luồng search.
 
 ---
 
@@ -841,6 +849,7 @@ Bước 6 — Validate + End:
 | `session:resume` failed | Không PG, schema ≠ v3, hoặc session không có trong DB | Set `GOBP_DB_URL`, schema v3; hoặc `session:start` mới (§0.3) |
 | `find:` không thấy node vừa tạo | Cache index chưa reload / chỉ tìm trên FTS DB | `refresh:` sau sửa tay; hoặc `get: node:…` bằng id từ kết quả `create` |
 | ErrorCase `code` bị reject (`AUTH_001`) | Catalog dùng id không có severity letter; schema bắt `^[A-Z]+_[FEWI]_[0-9]{3}$` | `name` = id catalog; `code` = id GoBP (`AUTH_W_001`); mô tả HTTP/behavior trong `description` — **§2.1** |
+| Lo ngại **Entity `Place`** vs **`PlaceOwnership`** trong batch | Đã giới hạn điểm prefix (79) dưới ngưỡng duplicate (80) trong `search_score` | Vẫn kiểm `name` literal khi đọc `find:`; cạnh ưu tiên **`node:<id>`** — **§1.3** |
 | Duplicate nodes | Không `suggest:` trước `create:` | Luôn `suggest:` trước khi tạo (dec:d011 Lessons) |
 | Score < 100 khi validate | Nodes thiếu description | Thêm description cho mọi node |
 | Session IN_PROGRESS tồn đọng | Quên session:end | `session:end` với outcome + handoff |

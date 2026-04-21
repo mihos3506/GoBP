@@ -48,7 +48,8 @@ def test_score_exact_name():
 
 def test_score_name_starts_with():
     node = {"name": "TrustGate Engine", "id": "x", "description": ""}
-    assert search_score("trustgate", node) == 80
+    # Strict prefix of a longer name is capped below duplicate threshold (80).
+    assert search_score("trustgate", node) == 79
 
 
 def test_score_name_contains():
@@ -69,6 +70,22 @@ def test_score_description_only():
 def test_score_no_match():
     node = {"name": "Auth Engine", "id": "auth_engine", "description": "handles login"}
     assert search_score("trustgate", node) == 0
+
+
+def test_score_place_vs_placeownership_prefix_not_duplicate_tier():
+    """Short catalog name must not score as exact-tier duplicate of longer sibling."""
+    ownership = {"name": "PlaceOwnership", "id": "a", "description": ""}
+    assert search_score("place", ownership) == 79
+    place = {"name": "Place", "id": "b", "description": ""}
+    assert search_score("place", place) == 100
+
+
+def test_find_similar_nodes_excludes_strict_prefix_at_threshold_80():
+    place_own = {"type": "Entity", "name": "PlaceOwnership", "id": "e1", "description": ""}
+    index = GraphIndex()
+    index._nodes["e1"] = place_own  # type: ignore[attr-defined]
+    sim = find_similar_nodes(index, "Place", "Entity", threshold=80)
+    assert sim == []
 
 
 # ── search_nodes tests ────────────────────────────────────────────────────────
@@ -255,6 +272,27 @@ def test_no_false_positive_duplicate(tmp_path):
     warnings = r.get("warnings", [])
     dup_warnings = [w for w in warnings if isinstance(w, dict) and w.get("type") == "potential_duplicate"]
     assert not dup_warnings, f"False positive duplicate warning: {dup_warnings}"
+
+
+def test_batch_creates_place_after_placeownership_not_skipped(tmp_path):
+    """Batch duplicate guard must not skip Entity Place when PlaceOwnership exists."""
+    init_project(tmp_path)
+    index = GraphIndex.load_from_disk(tmp_path)
+
+    sid = asyncio.run(dispatch(
+        "session:start actor='test' goal='place ownership batch'", index, tmp_path
+    ))["session_id"]
+    index = GraphIndex.load_from_disk(tmp_path)
+    ops = (
+        "create: Entity: PlaceOwnership | MIHOS relation traveller to place\n"
+        "create: Entity: Place | MIHOS geographic or venue entity"
+    )
+    r = asyncio.run(dispatch(f"batch session_id='{sid}' ops='{ops}'", index, tmp_path))
+    assert r.get("ok") is True, r
+    assert r.get("succeeded", 0) >= 2, r
+    index = GraphIndex.load_from_disk(tmp_path)
+    names = {n.get("name") for n in index.all_nodes() if n.get("type") == "Entity"}
+    assert "Place" in names and "PlaceOwnership" in names
 
 
 # ── find: action integration tests ───────────────────────────────────────────
