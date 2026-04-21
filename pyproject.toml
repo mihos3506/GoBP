@@ -32,13 +32,19 @@ dev = [
     "pytest>=7.0",
     "pytest-asyncio>=0.21",
 ]
+# PostgreSQL v3 (GOBP_DB_URL) — optional so file-only installs stay dependency-light.
+postgres = [
+    "psycopg2-binary>=2.9.9",
+]
 
 [tool.pytest.ini_options]
 addopts = ["-m", "not slow"]
+asyncio_mode = "auto"
 markers = [
     "slow: marks tests as slow (batch 100+ nodes, > 5s, or perf benchmarks)",
     "postgres_v3: tests that require PostgreSQL with schema v3 (set GOBP_DB_URL)",
     "file_only: tests intended for file-backed graph only (no live DB assumptions)",
+    "destructive: tests that TRUNCATE/DROP or otherwise wipe remote DB tables (extra guardrails)",
 ]
 
 [project.scripts]

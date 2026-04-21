@@ -11,6 +11,7 @@ import yaml
 from gobp.core.graph import GraphIndex
 from gobp.core.init import init_project
 from gobp.mcp.dispatcher import dispatch
+from gobp.mcp.tools import write as tools_write
 
 
 @pytest.fixture
@@ -103,8 +104,10 @@ def test_retype_node_changes_group(tmp_project: Path) -> None:
     assert ".meta." in old_id
 
     index = GraphIndex.load_from_disk(tmp_project)
-    r2 = asyncio.run(
-        dispatch(f"retype: id='{old_id}' new_type=Engine session_id='{sid}'", index, tmp_project)
+    r2 = tools_write.retype_node_action(
+        index,
+        tmp_project,
+        {"id": old_id, "new_type": "Engine", "session_id": sid},
     )
     assert r2["ok"] is True
     new_id = r2["new_id"]
@@ -120,7 +123,12 @@ def test_retype_old_node_deleted(tmp_project: Path) -> None:
     old_id = r["node_id"]
 
     index = GraphIndex.load_from_disk(tmp_project)
-    asyncio.run(dispatch(f"retype: id='{old_id}' new_type=Flow session_id='{sid}'", index, tmp_project))
+    r = tools_write.retype_node_action(
+        index,
+        tmp_project,
+        {"id": old_id, "new_type": "Flow", "session_id": sid},
+    )
+    assert r["ok"] is True
 
     index = GraphIndex.load_from_disk(tmp_project)
     assert index.get_node(old_id) is None
@@ -135,9 +143,12 @@ def test_retype_preserves_name(tmp_project: Path) -> None:
     old_id = r["node_id"]
 
     index = GraphIndex.load_from_disk(tmp_project)
-    r2 = asyncio.run(
-        dispatch(f"retype: id='{old_id}' new_type=Flow session_id='{sid}'", index, tmp_project)
+    r2 = tools_write.retype_node_action(
+        index,
+        tmp_project,
+        {"id": old_id, "new_type": "Flow", "session_id": sid},
     )
+    assert r2["ok"] is True
     new_id = r2["new_id"]
 
     index = GraphIndex.load_from_disk(tmp_project)
@@ -159,7 +170,12 @@ def test_retype_migrates_edges(tmp_project: Path) -> None:
     asyncio.run(dispatch(f"edge: {id_a} --relates_to--> {id_b}", index, tmp_project))
 
     index = GraphIndex.load_from_disk(tmp_project)
-    r3 = asyncio.run(dispatch(f"retype: id='{id_a}' new_type=Flow session_id='{sid}'", index, tmp_project))
+    r3 = tools_write.retype_node_action(
+        index,
+        tmp_project,
+        {"id": id_a, "new_type": "Flow", "session_id": sid},
+    )
+    assert r3["ok"] is True
     new_id = r3["new_id"]
     assert r3["edges_migrated"] >= 1
 

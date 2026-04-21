@@ -17,6 +17,36 @@ from pathlib import Path
 
 import pytest
 
+# Isolated tmp graphs must not inherit a developer-wide ``GOBP_DB_URL``; otherwise
+# ``find`` / ``overview`` route to PostgreSQL v3 and hit the wrong dataset.
+_TMP_GRAPH_FIXTURES = frozenset(
+    {
+        "gobp_root",
+        "disp_root",
+        "seeded_root",
+        "w17_proj",
+        "mihos_root",
+        "mihos_perf_root",
+        "populated_root",
+        "tmp_project",
+        "proj",
+        # Built-in pytest tmp dirs: many tests use tmp_path alone with disk graphs;
+        # without clearing GOBP_DB_URL, find/explore route to PG and see the wrong dataset.
+        "tmp_path",
+        "tmp_path_factory",
+    }
+)
+
+
+@pytest.fixture(autouse=True)
+def _isolate_tmp_graph_from_global_pg_url(request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch) -> None:
+    if request.node.get_closest_marker("postgres_v3"):
+        return
+    if not _TMP_GRAPH_FIXTURES.intersection(set(request.fixturenames)):
+        return
+    monkeypatch.delenv("GOBP_DB_URL", raising=False)
+    monkeypatch.delenv("GOBP_MIHOS_DB_URL", raising=False)
+
 
 @pytest.fixture
 def gobp_root(tmp_path: Path) -> Path:

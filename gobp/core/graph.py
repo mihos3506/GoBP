@@ -22,6 +22,13 @@ from gobp.core.validator import validate_edge
 logger = logging.getLogger(__name__)
 
 
+def _count_node_files(nodes_dir: Path) -> int:
+    """Count ``*.md`` node files under ``nodes_dir`` (recursive)."""
+    if not nodes_dir.exists() or not nodes_dir.is_dir():
+        return 0
+    return len(list(nodes_dir.rglob("*.md")))
+
+
 PRIORITY_THRESHOLDS: list[tuple[int, str]] = [
     (20, "critical"),
     (10, "high"),
@@ -44,6 +51,10 @@ class GraphIndex:
     Loads from .gobp/ folder at startup. Provides read-only query methods.
     Write operations go through :mod:`gobp.core.fs_mutator` (Wave G).
 
+    **Scale tiers** (see ``docs/ARCHITECTURE.md`` §2): TIER 1 loads full nodes and
+    edges from disk. TIER 2 (5K+ nodes when PostgreSQL v3 is available) keeps
+    lightweight node rows and loads edges lazily from PostgreSQL.
+
     Internal indexes for O(1) / O(k) lookups:
       _nodes          : id â†’ node dict
       _nodes_by_type  : type â†’ list[node dict]
@@ -57,6 +68,10 @@ class GraphIndex:
 
     def __init__(self) -> None:
         """Initialize empty index."""
+        self.tier: int = 1
+        self._node_count: int = 0
+        self._tier2_metadata: bool = False
+        self._node_file_paths: dict[str, Path] = {}
         self._nodes: dict[str, dict[str, Any]] = {}
         self._nodes_by_type_idx: dict[str, list[dict[str, Any]]] = defaultdict(list)
         self._edges: list[dict[str, Any]] = []
@@ -119,14 +134,84 @@ class GraphIndex:
         index._edges_schema = load_schema(schema_dir / "core_edges.yaml")
 
         data_dir = gobp_root / ".gobp"
-        index._load_nodes(data_dir / "nodes")
+        nodes_dir = data_dir / "nodes"
+
+        cls._apply_tier_and_counts(index, gobp_root, nodes_dir)
+
+        index._load_nodes(nodes_dir)
         index._load_edges(data_dir / "edges")
 
+        cls._build_secondary_indexes(index, gobp_root)
+        return index
+
+    @classmethod
+    def _apply_tier_and_counts(
+        cls, index: "GraphIndex", gobp_root: Path, nodes_dir: Path
+    ) -> None:
+        """Set ``tier``, ``_tier2_metadata``, and ``_node_count`` from DB + file counts."""
+        from gobp.core.db import _get_conn, count_nodes_in_db
+
+        n_db = count_nodes_in_db(gobp_root)
+        n_files = _count_node_files(nodes_dir)
+        node_count = max(n_db, n_files)
+        index._node_count = node_count
+
+        tier_candidate = 1
+        if node_count >= 100_000:
+            logger.warning(
+                "Graph scale >= 100K nodes (%s) — TIER 3 LRU not implemented; using TIER 2 path",
+                node_count,
+            )
+            tier_candidate = 2
+        elif node_count >= 5_000:
+            tier_candidate = 2
+
+        pg_ok = False
+        _probe = _get_conn(gobp_root)
+        if _probe is not None:
+            try:
+                from gobp.core.db import get_schema_version
+
+                if get_schema_version(_probe) == "v3":
+                    pg_ok = True
+            finally:
+                try:
+                    _probe.close()
+                except Exception:
+                    pass
+
+        if tier_candidate >= 2 and pg_ok:
+            index.tier = 2
+            index._tier2_metadata = True
+        elif tier_candidate >= 2:
+            logger.warning(
+                "Tier 2 thresholds met (%s nodes) but PostgreSQL unavailable — full TIER 1 load",
+                node_count,
+            )
+            index.tier = 1
+            index._tier2_metadata = False
+        else:
+            index.tier = 1
+            index._tier2_metadata = False
+
+        logger.info(
+            "GraphIndex startup tier=%s node_count=%s tier2_metadata=%s",
+            index.tier,
+            node_count,
+            index._tier2_metadata,
+        )
+
+    @classmethod
+    def _build_secondary_indexes(cls, index: "GraphIndex", gobp_root: Path) -> None:
+        """Inverted index, adjacency, and group index after node/edge load."""
         index._inverted.build(list(index._nodes.values()))
-        index._adjacency.build(index._edges)
+        if index._tier2_metadata:
+            index._adjacency.build([])
+            index._adjacency.set_tier(2, gobp_root)
+        else:
+            index._adjacency.build(index._edges)
 
         index._build_group_index()
-        return index
 
     def _load_nodes(self, nodes_dir: Path) -> None:
         """Load all node markdown files from nodes_dir into the index."""
@@ -141,10 +226,23 @@ class GraphIndex:
                 if result.ok:
                     node_id = node.get("id")
                     if node_id:
-                        self._nodes[node_id] = node
-                        # Build type index
-                        node_type = node.get("type", "Unknown")
-                        self._nodes_by_type_idx[node_type].append(node)
+                        if self._tier2_metadata:
+                            self._node_file_paths[str(node_id)] = node_file
+                            ntype = str(node.get("type", "Unknown"))
+                            slim: dict[str, Any] = {
+                                "id": str(node_id),
+                                "name": str(node.get("name", "") or ""),
+                                "group": str(node.get("group", "") or ""),
+                                "desc_l1": str(node.get("desc_l1", "") or ""),
+                                "type": ntype,
+                                "_metadata_only": True,
+                            }
+                            self._nodes[str(node_id)] = slim
+                            self._nodes_by_type_idx[ntype].append(slim)
+                        else:
+                            self._nodes[node_id] = node
+                            node_type = node.get("type", "Unknown")
+                            self._nodes_by_type_idx[node_type].append(node)
                     else:
                         self._load_errors.append(f"{node_file}: node has no 'id' field")
                 else:
@@ -157,6 +255,9 @@ class GraphIndex:
 
     def _load_edges(self, edges_dir: Path) -> None:
         """Load all edge YAML files from edges_dir into the index."""
+        if self._tier2_metadata:
+            logger.info("TIER 2: skipping edge file load (lazy PostgreSQL adjacency)")
+            return
         if not edges_dir.exists() or not edges_dir.is_dir():
             return
         for edge_file in sorted(edges_dir.glob("**/*.yaml")):
@@ -184,6 +285,113 @@ class GraphIndex:
                 logger.warning("skip corrupted edge file %s: %s", edge_file.name, e)
                 self._load_errors.append(f"{edge_file}: {e}")
 
+    def _hydrate_metadata_node_from_pg(self, node_id: str) -> dict[str, Any] | None:
+        """Build a node dict from PostgreSQL v3 when the markdown file is missing."""
+        from gobp.core.db import _get_conn, get_schema_version
+
+        root = self._gobp_root
+        if root is None:
+            return None
+        conn = _get_conn(root)
+        if conn is None:
+            return None
+        try:
+            if get_schema_version(conn) != "v3":
+                return None
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT name, group_path, desc_l1, desc_l2, desc_full, code, severity
+                    FROM nodes WHERE id = %s
+                    """,
+                    (node_id,),
+                )
+                row = cur.fetchone()
+            if not row:
+                return None
+            name, gpath, d1, d2, dfull, code, sev = row
+            dfull_s = str(dfull or "")
+            data: dict[str, Any] = {
+                "id": node_id,
+                "name": str(name or ""),
+                "group": str(gpath or ""),
+                "desc_l1": str(d1 or ""),
+                "desc_l2": str(d2 or ""),
+                "desc_full": dfull_s,
+                "description": {"info": dfull_s},
+                "code": str(code or ""),
+                "severity": str(sev or ""),
+                "type": "Unknown",
+            }
+            self.register_persisted_node(data)
+            return data
+        except Exception as e:
+            logger.warning("PostgreSQL node hydrate failed for %s: %s", node_id, e)
+            return None
+        finally:
+            try:
+                conn.close()
+            except Exception:
+                pass
+
+    def _hydrate_metadata_node(self, node_id: str) -> dict[str, Any] | None:
+        """Load full node from disk or PostgreSQL, replacing a TIER 2 slim row."""
+        if self._gobp_root is None:
+            return None
+        path = self._node_file_paths.get(node_id)
+        if path is not None and path.exists():
+            try:
+                raw = load_node_file(path)
+                data = dict(raw)
+                result = coerce_and_validate_node(
+                    self._gobp_root, data, self._nodes_schema
+                )
+                if result.ok and data.get("id"):
+                    self.register_persisted_node(data)
+                    return data
+            except Exception as e:
+                logger.warning("Failed to hydrate node from file %s: %s", path, e)
+        return self._hydrate_metadata_node_from_pg(node_id)
+
+    def _all_edges_from_pg(self) -> list[dict[str, Any]]:
+        """Full edge list from PostgreSQL v3 (TIER 2)."""
+        from gobp.core.db import _get_conn, get_schema_version
+
+        root = self._gobp_root
+        if root is None:
+            return []
+        conn = _get_conn(root)
+        if conn is None:
+            return []
+        try:
+            if get_schema_version(conn) != "v3":
+                return []
+            out: list[dict[str, Any]] = []
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT from_id, to_id, reason, code FROM edges ORDER BY from_id, to_id"
+                )
+                for row in cur.fetchall():
+                    fid, tid, reason, code = row[0], row[1], row[2] or "", row[3] or ""
+                    out.append(
+                        {
+                            "from": fid,
+                            "to": tid,
+                            "type": "relates_to",
+                            "reason": reason,
+                            "code": code,
+                        }
+                    )
+            return out
+        except Exception as e:
+            logger.warning("PostgreSQL all_edges query failed: %s", e)
+            return []
+        finally:
+            try:
+                conn.close()
+            except Exception:
+                pass
+
     @property
     def load_errors(self) -> list[str]:
         """Return list of errors encountered during load (non-fatal)."""
@@ -193,18 +401,33 @@ class GraphIndex:
         """Return total node count."""
         return len(self._nodes)
 
-    def get_node(self, node_id: str) -> dict[str, Any] | None:
-        """Get node by ID. Supports both new and legacy IDs. O(1)."""
-        node = self._nodes.get(node_id)
-        if node:
-            return node
+    @property
+    def nodes(self) -> dict[str, dict[str, Any]]:
+        """In-memory node map (TIER 2 may hold metadata-only rows; use :meth:`get_node`)."""
+        return self._nodes
 
-        if self._legacy_id_map:
+    def get_node(self, node_id: str) -> dict[str, Any] | None:
+        """Get node by ID. Supports both new and legacy IDs. O(1).
+
+        In TIER 2, slim rows (``_metadata_only``) are expanded from disk or PostgreSQL.
+        """
+        node = self._nodes.get(node_id)
+        if node is None and self._legacy_id_map:
             new_id = self._legacy_id_map.get(node_id)
             if new_id:
-                return self._nodes.get(new_id)
+                node = self._nodes.get(new_id)
+                node_id = new_id
 
-        return None
+        if node is None:
+            return None
+
+        if node.get("_metadata_only"):
+            full = self._hydrate_metadata_node(str(node.get("id", node_id)))
+            if full is not None:
+                return full
+            return node
+
+        return node
 
     def all_nodes(self) -> list[dict[str, Any]]:
         """Return all nodes as a list. O(n).
@@ -220,6 +443,13 @@ class GraphIndex:
         Returns:
             List of edge dicts.
         """
+        if self._tier2_metadata:
+            mem = list(self._edges)
+            pg = self._all_edges_from_pg()
+            # Pending in-memory edges (e.g. add_edge_in_memory) win over PG on duplicate keys
+            keys = {(e.get("from"), e.get("to"), e.get("type")) for e in mem}
+            rest = [e for e in pg if (e.get("from"), e.get("to"), e.get("type")) not in keys]
+            return mem + rest
         return list(self._edges)
 
     def nodes_by_type(self, type_name: str) -> list[dict[str, Any]]:
@@ -242,6 +472,8 @@ class GraphIndex:
         Returns:
             List of edges.
         """
+        if self._tier2_metadata:
+            return list(self._adjacency.get_outgoing(node_id))
         return list(self._edges_from_idx.get(node_id, []))
 
     def get_edges_to(self, node_id: str) -> list[dict[str, Any]]:
@@ -253,6 +485,8 @@ class GraphIndex:
         Returns:
             List of edges.
         """
+        if self._tier2_metadata:
+            return list(self._adjacency.get_incoming(node_id))
         return list(self._edges_to_idx.get(node_id, []))
 
     def get_edges_by_type(self, edge_type: str) -> list[dict[str, Any]]:
@@ -264,6 +498,8 @@ class GraphIndex:
         Returns:
             List of edges matching type.
         """
+        if self._tier2_metadata:
+            return [e for e in self.all_edges() if e.get("type") == edge_type]
         return list(self._edges_by_type_idx.get(edge_type, []))
 
     def remove_node(self, node_id: str) -> bool:
@@ -275,6 +511,7 @@ class GraphIndex:
         if node_id not in self._nodes:
             return False
         node = self._nodes.pop(node_id)
+        self._node_file_paths.pop(node_id, None)
         old_group = str(node.get("group", "") or "").strip()
         if old_group:
             self._remove_node_from_group_index(node_id, old_group)
@@ -305,7 +542,11 @@ class GraphIndex:
                 self._edges_to_idx[to_id].append(edge)
             if edge_type:
                 self._edges_by_type_idx[edge_type].append(edge)
-        self._adjacency.build(self._edges)
+        if self._tier2_metadata and self._gobp_root is not None:
+            self._adjacency.build([])
+            self._adjacency.set_tier(2, self._gobp_root)
+        else:
+            self._adjacency.build(self._edges)
         self._rebuild_group_index()
         return True
 
@@ -552,6 +793,8 @@ class GraphIndex:
             self._inverted.remove_node(node_id)
 
         self._nodes[node_id] = data
+        if not data.get("_metadata_only"):
+            self._node_file_paths.pop(node_id, None)
         ntype = str(data.get("type", "Unknown"))
         self._nodes_by_type_idx.setdefault(ntype, []).append(data)
         self._inverted.add_node(data)

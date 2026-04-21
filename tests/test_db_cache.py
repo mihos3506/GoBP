@@ -12,6 +12,7 @@ from gobp.core.cache import GoBPCache, get_cache, reset_cache
 from gobp.core import db as db_module
 from tests.fixtures.db_v3 import (
     minimal_v3_node,
+    pytest_skip_if_database_name_unsafe_for_truncate,
     pytest_skip_without_v3,
     unique_test_id,
 )
@@ -222,6 +223,7 @@ def test_v3_group_path_filter_sql(gobp_root: Path) -> None:
         conn.close()
 
 
+@pytest.mark.destructive
 @pytest.mark.postgres_v3
 @pytest.mark.skipif(
     os.environ.get("GOBP_TEST_ALLOW_TRUNCATE") != "1",
@@ -233,6 +235,7 @@ def test_v3_group_path_filter_sql(gobp_root: Path) -> None:
 def test_v3_rebuild_index_from_file_graph(gobp_root: Path) -> None:
     """``rebuild_index`` reloads PG from :class:`GraphIndex` (destructive)."""
     pytest_skip_without_v3(gobp_root)
+    pytest_skip_if_database_name_unsafe_for_truncate(gobp_root)
     from gobp.core.init import init_project
     from gobp.core.graph import GraphIndex
 

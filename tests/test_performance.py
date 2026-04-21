@@ -68,7 +68,7 @@ DISPATCH_MAX_MS: dict[str, float] = {
     "dispatch_validate_schema_tests": 5000.0,
     "dispatch_recompute_dry": 1000.0,
     "dispatch_create_dry": 400.0,
-    "dispatch_update_dry": 400.0,
+    "dispatch_edit_dry": 400.0,
     "dispatch_upsert_dry": 400.0,
     "dispatch_lock_dry": 400.0,
     "dispatch_session_dry": 400.0,
@@ -167,8 +167,8 @@ DISPATCH_CASES: list[tuple[str, str, bool]] = [
         True,
     ),
     (
-        "dispatch_update_dry",
-        "update: id='idea:i001' name='PerfUpdateDry' session_id='session:2026-04-15_current' dry_run=true",
+        "dispatch_edit_dry",
+        "edit: id='idea:i001' name='PerfUpdateDry' session_id='session:2026-04-15_current' dry_run=true",
         True,
     ),
     (

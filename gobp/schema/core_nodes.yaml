@@ -8,6 +8,8 @@ node_types:
   Decision:
     group: Document > Decision
     read_order: foundational
+    optional:
+      priority: int
     required:
       what: str
       why: str
@@ -20,6 +22,8 @@ node_types:
   Idea:
     group: Document > Idea
     read_order: background
+    optional:
+      priority: int
   LessonRule:
     group: Document > Lesson > Rule
     read_order: foundational
@@ -38,6 +42,8 @@ node_types:
   Entity:
     group: Dev > Domain > Entity
     read_order: foundational
+    optional:
+      priority: int
   ValueObject:
     group: Dev > Domain > ValueObject
     read_order: important
@@ -50,9 +56,13 @@ node_types:
   Flow:
     group: Dev > Application > Flow
     read_order: important
+    optional:
+      priority: int
   Feature:
     group: Dev > Application > Feature
     read_order: important
+    optional:
+      priority: int
   Command:
     group: Dev > Application > Command
     read_order: reference
@@ -65,6 +75,8 @@ node_types:
   Engine:
     group: Dev > Infrastructure > Engine
     read_order: foundational
+    optional:
+      priority: int
   Repository:
     group: Dev > Infrastructure > Repository
     read_order: reference
@@ -306,12 +318,16 @@ node_types:
   Document:
     group: Document > Spec
     read_order: important
+    optional:
+      priority: int
   Lesson:
     group: Document > Lesson > Dev
     read_order: reference
   Node:
     group: Meta > Graph > Node
     read_order: reference
+    optional:
+      priority: int
   CtoDevHandoff:
     group: Meta > Handoff > CTO
     read_order: reference

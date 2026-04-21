@@ -5,6 +5,56 @@ Format: [Wave N — Title] with date, what was added/changed/fixed.
 
 ---
 
+## [HOTFIX-A] — Foundation audit (PG sync, governance, DB hygiene) — 2026-04-21
+
+### Added
+
+- `gobp/core/db.py` — `postgres_connection()` context manager (commit / rollback / close).
+- `scripts/sync_file_to_pg_v3.py` — dry-run or `--execute` wrapper around `rebuild_index` (TRUNCATE + reload).
+- `scripts/generate_schema_governance_index.py` — refreshes the node-type index block in `docs/SCHEMA.md`.
+- `tests/test_db_security.py` — asserts parameterized `upsert_node_v3` and context-manager behavior.
+
+### Changed
+
+- `gobp/schema/core_nodes.yaml` — `optional.priority` for governance “important” node types (Node, Idea, Decision, Document, Feature, Flow, Engine, Entity).
+- `docs/SCHEMA.md` — machine-readable list of all `node_types` keys for `schema_governance` substring checks.
+- `gobp/mcp/tools/read_governance.py` — `missing_id_prefix` downgraded to **info** (v2 schema has no `id_prefix`; errors made score always 0).
+- `gobp/core/graph.py` — `load_from_disk` delegates to `_apply_tier_and_counts` and `_build_secondary_indexes`.
+
+### Notes
+
+- `upsert_node_v3` / edges already used `%s` placeholders; no `nodes_v3` table in this codebase.
+- File → DB sync: use `sync_file_to_pg_v3.py --execute` (destructive TRUNCATE of PG mirror).
+
+---
+
+## [Wave S1] — Tier-aware loading (TIER 1/2) — 2026-04-21
+
+### Added
+
+- `gobp/core/db.py` — `count_nodes_in_db()` helper for tier detection.
+- `gobp/core/graph.py` — `GraphIndex.tier`, `_node_count`, `_tier2_metadata`, and `nodes` view.
+- `gobp/core/graph.py` — Tier-aware `load_from_disk()` (metadata-only in TIER 2).
+- `gobp/core/graph.py` — Lazy `get_node()` (full node from file or PostgreSQL in TIER 2).
+- `gobp/core/indexes.py` — `AdjacencyIndex.set_tier()` and lazy PostgreSQL edge queries merged with in-memory edges.
+- `docs/ARCHITECTURE.md` §2 — TIER 1/2 implementation status.
+- `tests/test_wave_s1.py` — Tests for tier detection, lazy loading, PostgreSQL fallback.
+
+### Changed
+
+- **TIER 1 (< 5K nodes):** No behavior change (full in-memory, file-only works).
+- **TIER 2 (5K-100K nodes with v3 PG):** Metadata-only nodes, lazy adjacency via PostgreSQL v3.
+- `GraphIndex.get_edges_from()` / `get_edges_to()` / `get_edges_by_type()` / `all_edges()` — Tier-aware when `_tier2_metadata` is set.
+
+### Notes
+
+- **Breaking change (TIER 2 only):** `GraphIndex.nodes` may contain partial data (`_metadata_only`). Use `get_node(id)` for full data.
+- **PostgreSQL v3 required** for TIER 2 edge queries; file-only projects stay TIER 1.
+- **TIER 3 (100K+):** Detected but falls back to TIER 2 until Wave S4 (LRU cache).
+- Existing dev projects (< 5K nodes) unaffected (TIER 1 automatic).
+
+---
+
 ## [Wave R2] — Cache & async documentation — 2026-04-20
 
 ### Added

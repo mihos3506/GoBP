@@ -12,6 +12,32 @@ from typing import Any
 import pytest
 
 
+def pytest_skip_if_database_name_unsafe_for_truncate(gobp_root: Path) -> None:
+    """Skip destructive tests when ``current_database()`` looks like production.
+
+    Call after :func:`pytest_skip_without_v3` so a connection is known possible.
+    This is a second line of defense beyond ``GOBP_TEST_ALLOW_TRUNCATE=1``.
+    """
+    from gobp.core import db as db_mod
+
+    conn = db_mod._get_conn(gobp_root)
+    if conn is None:
+        return
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT current_database()")
+            row = cur.fetchone()
+        name = (row[0] if row else "").strip().lower()
+    finally:
+        conn.close()
+    if not name:
+        return
+    if name in {"prod", "production", "live"}:
+        pytest.skip(f"Refusing TRUNCATE tests on database named {name!r}")
+    if "production" in name:
+        pytest.skip(f"Refusing TRUNCATE tests: database {name!r} contains 'production'")
+
+
 def pytest_skip_without_v3(gobp_root: Path) -> None:
     """Skip current test if PostgreSQL v3 is not available for ``gobp_root``."""
     from gobp.core import db as db_mod
@@ -40,15 +66,19 @@ def minimal_v3_node(
     name: str,
     group_path: str,
     desc_full: str = "Test node body",
+    desc_l1: str | None = None,
+    desc_l2: str | None = None,
 ) -> dict[str, Any]:
     """Build a node dict suitable for :func:`gobp.core.db.upsert_node_v3`."""
+    l1 = desc_l1 if desc_l1 is not None else "L1 summary"
+    l2 = desc_l2 if desc_l2 is not None else "L2 summary"
     return {
         "id": node_id,
         "name": name,
         "group": group_path,
         "group_path": group_path,
-        "desc_l1": "L1 summary",
-        "desc_l2": "L2 summary",
+        "desc_l1": l1,
+        "desc_l2": l2,
         "desc_full": desc_full,
         "description": {"info": desc_full},
         "code": "",

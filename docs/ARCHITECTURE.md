@@ -74,31 +74,60 @@ AI không bao giờ đọc/ghi files trực tiếp — luôn qua MCP
 
 ---
 
-## 2. STORAGE STRATEGY THEO SCALE
+## 2. Scale tiers (Wave S1 — Implemented)
 
-```
-< 5,000 nodes (TIER 1):
-  PostgreSQL: recommended nhưng optional
-  Fallback: file-backed `.gobp/` only; optional PostgreSQL mirror via `GOBP_DB_URL`
-  In-memory GraphIndex: full metadata + adjacency lists
-  File: source of truth (nếu không có PostgreSQL)
+**Implementation status:** ✅ TIER 1 + TIER 2 (Wave S1, 2026-04-21)
 
-5,000 – 100,000 nodes (TIER 2):
-  PostgreSQL: REQUIRED
-  In-memory: chỉ metadata (name, group, desc_l1)
-  Adjacency: từ PostgreSQL, không load vào memory
-  LRU cache: 500 hot nodes
+**Tier selection (automatic at startup):**
 
-100,000+ nodes (TIER 3):
-  PostgreSQL: REQUIRED + table partitioning
-  In-memory: LRU 1,000 hot nodes only
-  Graph traversal: PostgreSQL recursive CTE
-  File: audit trail only (không phải source of truth)
+| Tier | Node count | Strategy | Status |
+|------|-----------|----------|--------|
+| **TIER 1** | < 5K | Full in-memory (all metadata + adjacency) | ✅ Implemented |
+| **TIER 2** | 5K-100K | Metadata in-memory, lazy adjacency via PostgreSQL | ✅ Implemented |
+| **TIER 3** | 100K+ | LRU hot nodes, PostgreSQL-first | ⏳ Planned (Wave S4) |
 
-Auto-detect tier:
-  Startup → count nodes → set tier → configure accordingly
-  Migration: gobp migrate --to-tier=2 khi vượt threshold
-```
+**Startup flow:**
+
+1. `GraphIndex.load_from_disk()` calls `count_nodes_in_db(gobp_root)`
+2. If PostgreSQL v3 available → use DB count
+3. If file-only → count `.gobp/nodes/**/*.md` files (recursive)
+4. `node_count = max(db_count, file_count)`; select tier from that
+5. TIER 2 is used only when thresholds are met **and** a PostgreSQL v3 connection is available; otherwise the index falls back to TIER 1 (full load)
+6. Load nodes + edges according to tier strategy
+
+**TIER 1 behavior (< 5K nodes):**
+
+- Load all nodes (full metadata) into `GraphIndex` / `GraphIndex.nodes`
+- Build full adjacency lists in memory from `.gobp/edges/**/*.yaml`
+- All queries use in-memory data
+- **No PostgreSQL required** (file-only mode works)
+
+**TIER 2 behavior (5K-100K nodes, PostgreSQL v3 present):**
+
+- Load metadata only (`id`, `name`, `group`, `desc_l1`, `type`) into `GraphIndex.nodes` with `_metadata_only`
+- Skip edge file load at startup
+- `get_edges_from()` / `get_edges_to()` query PostgreSQL on first access (with per-node caching), merged with any in-memory edges
+- `get_node(id)` loads the full node from the markdown file or PostgreSQL when needed
+- **Requires PostgreSQL v3** for edge queries and for tier selection at this scale
+
+**TIER 3 behavior (100K+ nodes, planned Wave S4):**
+
+- LRU cache for hot nodes (e.g. 10K most recent)
+- PostgreSQL-first for all queries
+- File reads only for cache misses
+- **Requires PostgreSQL v3**
+
+**Code:**
+
+- `gobp/core/db.py` — `count_nodes_in_db()` helper
+- `gobp/core/graph.py` — `GraphIndex.tier`, tier-aware loading, lazy `get_node()`
+- `gobp/core/indexes.py` — `AdjacencyIndex.set_tier()`, lazy PostgreSQL queries
+
+**Migration notes:**
+
+- Existing projects (< 5K nodes) → TIER 1 automatically (no behavior change)
+- Large projects (5K+) → TIER 2 when PostgreSQL v3 is configured; otherwise warning + TIER 1 full load
+- TIER 3 detection logs a warning and falls back to TIER 2 until Wave S4
 
 ---
 

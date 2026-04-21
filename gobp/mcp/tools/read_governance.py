@@ -146,8 +146,11 @@ def schema_governance(
         if not type_def.get("id_prefix"):
             issues.append({
                 "type": "missing_id_prefix",
-                "severity": "error",
-                "message": f"Node type '{type_name}' has no id_prefix in schema",
+                "severity": "info",
+                "message": (
+                    f"Node type '{type_name}' has no id_prefix in schema "
+                    "(optional for gobp_core_v2; Wave HOTFIX-A: not scored)"
+                ),
                 "node_type": type_name,
             })
 

@@ -13,6 +13,8 @@ Schema:
 from __future__ import annotations
 
 import logging
+from collections.abc import Iterator
+from contextlib import contextmanager
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -23,6 +25,36 @@ else:
     PgConnection = Any  # type: ignore[misc, assignment]
 
 logger = logging.getLogger("gobp.db")
+
+
+@contextmanager
+def postgres_connection(gobp_root: Path) -> Iterator[Any]:
+    """Yield a PostgreSQL connection with commit / rollback / close.
+
+    Use for ad-hoc scripts. Low-level helpers such as :func:`upsert_node_v3`
+    already call ``conn.commit()``; an extra commit at context exit is harmless.
+
+    Yields:
+        Open connection, or ``None`` if no URL / connect fails.
+    """
+    conn = _get_conn(gobp_root)
+    if conn is None:
+        yield None
+        return
+    try:
+        yield conn
+        conn.commit()
+    except Exception:
+        try:
+            conn.rollback()
+        except Exception:
+            pass
+        raise
+    finally:
+        try:
+            conn.close()
+        except Exception:
+            pass
 
 
 def _get_conn(gobp_root: Path) -> Any | None:
@@ -174,6 +206,34 @@ def get_schema_version(conn: PgConnection) -> str:
         return "v3" if cur.fetchone() else "v2"
 
 
+def count_nodes_in_db(gobp_root: Path) -> int:
+    """Return total node count from PostgreSQL schema v3.
+
+    Returns ``0`` if PostgreSQL is unavailable, connection fails, or schema is not v3.
+    Used for :class:`~gobp.core.graph.GraphIndex` tier detection at startup.
+
+    See ``docs/ARCHITECTURE.md`` §2 for tier thresholds.
+    """
+    conn = _get_conn(gobp_root)
+    if conn is None:
+        return 0
+    try:
+        if get_schema_version(conn) != "v3":
+            return 0
+        with conn.cursor() as cur:
+            cur.execute("SELECT COUNT(*) FROM nodes")
+            row = cur.fetchone()
+            return int(row[0]) if row else 0
+    except Exception as e:
+        logger.debug("count_nodes_in_db failed: %s", e)
+        return 0
+    finally:
+        try:
+            conn.close()
+        except Exception:
+            pass
+
+
 def ensure_v3_connection(gobp_root: Path) -> PgConnection:
     """Return an open PostgreSQL connection whose schema is v3.
 
@@ -220,6 +280,8 @@ def _node_desc_full_v3(node: dict[str, Any]) -> str:
 
 def upsert_node_v3(conn: PgConnection, node: dict[str, Any]) -> None:
     """Upsert one node row into PostgreSQL schema v3 (database only).
+
+    SQL uses ``%s`` placeholders only (no string interpolation of user data).
 
     This is a low-level primitive: it does **not** write ``.gobp/nodes/*.md``.
     The full write-through path (PG + file backup + history) lives in

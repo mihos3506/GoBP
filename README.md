@@ -20,7 +20,7 @@ GoBP là một knowledge store shared giữa mọi AI agents trong project:
 - **File-first:** Markdown + YAML, git-friendly, human-readable
 - **MCP-based:** Bất kỳ AI nào hỗ trợ MCP đều đọc/ghi được
 - **Human-free authoring:** Founder chỉ chat với AI, AI tự ghi vào GoBP
-- **Structured:** 6 node types + 5 edge types, validated schema
+- **Structured:** Rich node/edge schema (see `docs/SCHEMA.md` and `gobp/schema/*.yaml`), validated
 
 ## Ai dùng GoBP?
 

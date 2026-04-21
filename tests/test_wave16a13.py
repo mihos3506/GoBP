@@ -208,7 +208,7 @@ def test_protocol_guide_batch_no_fixed_max_ops() -> None:
     actions = PROTOCOL_GUIDE.get("actions", {})
     batch_line = str(
         actions.get(
-            "batch session_id='x' ops='create: Engine: A | desc\\nedge+: A --implements--> B'",
+            "batch session_id='x' ops='create: Engine: A | desc\\nedge+: Hub --implements--> B, C'",
             "",
         )
     ).lower()

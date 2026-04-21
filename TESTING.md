@@ -15,6 +15,12 @@ Most tests use temporary project roots and file-backed `.gobp/` data.
 
 Point `GOBP_DB_URL` at a database that already has **v3** layout (see `gobp.core.db.create_schema_v3`).
 
+Install the optional driver (not pulled in by default `pip install -e .`):
+
+```powershell
+.\venv\Scripts\python.exe -m pip install -e ".[postgres]"
+```
+
 ```powershell
 $env:GOBP_DB_URL = "postgresql://user:pass@localhost/gobp"
 .\venv\Scripts\python.exe -m pytest tests\ -q
@@ -24,13 +30,15 @@ Tests marked `@pytest.mark.postgres_v3` exercise `upsert_node_v3`, `upsert_edge_
 
 ### Destructive: `rebuild_index`
 
-`rebuild_index` runs `TRUNCATE` on `nodes` and `edges`. The test `test_v3_rebuild_index_from_file_graph` is **skipped** unless:
+`rebuild_index` runs `TRUNCATE` on `nodes` and `edges`. The test `test_v3_rebuild_index_from_file_graph` is marked `@pytest.mark.destructive` and is **skipped** unless:
 
 ```powershell
 $env:GOBP_TEST_ALLOW_TRUNCATE = "1"
 ```
 
-Use **only** on a disposable database, never on shared production data.
+It also **skips** if `SELECT current_database()` looks like a production name (`prod`, `production`, `live`, or contains `production`). Use **only** on a disposable database, never on shared production data.
+
+Run only destructive tests: `pytest -m destructive` (still requires `postgres_v3` + env above where applicable).
 
 ## Markers
 
@@ -39,6 +47,7 @@ Use **only** on a disposable database, never on shared production data.
 | `slow` | Long-running or large-graph tests (see `pyproject.toml` default `-m "not slow"`) |
 | `postgres_v3` | Needs live PostgreSQL v3 |
 | `file_only` | Reserved for tests that must not assume a DB (optional; not all file tests use it) |
+| `destructive` | Wipes remote DB tables (e.g. `TRUNCATE`); needs disposable DB + explicit env (see above) |
 
 ## Schema notes (v3)
 
