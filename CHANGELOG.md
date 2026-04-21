@@ -5,6 +5,19 @@ Format: [Wave N — Title] with date, what was added/changed/fixed.
 
 ---
 
+## [Wave R2] — Cache & async documentation — 2026-04-20
+
+### Added
+
+- `docs/ARCHITECTURE.md` Section 9.4 — `GoBPCache` invalidation scope, TTL/LRU, multi-process limits.
+- `docs/ARCHITECTURE.md` Section 16 — Async I/O strategy (sync I/O inside async MCP handler; Option A default).
+
+### Changed
+
+- `gobp/core/cache.py` — class and `invalidate_all` docstrings reference the architecture policy (no behavior change).
+
+---
+
 ## [Wave R1] — Storage & legacy cleanup — 2026-04-20
 
 ### Removed
