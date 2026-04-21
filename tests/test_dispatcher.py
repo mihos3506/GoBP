@@ -40,6 +40,21 @@ def test_parse_find_with_type():
     assert params["query"] == "auth"
 
 
+def test_parse_find_module_schema_prefix():
+    action, ntype, params = parse_query("find:Module auth handler")
+    assert action == "find"
+    assert ntype == "Module"
+    assert params["query"] == "auth handler"
+
+
+def test_parse_find_type_equals_kw():
+    action, ntype, params = parse_query("find: gps type=Invariant")
+    assert action == "find"
+    assert ntype == ""
+    assert params["query"] == "gps"
+    assert params["type"] == "Invariant"
+
+
 def test_parse_get():
     action, ntype, params = parse_query("get: node:feat_login")
     assert action == "get"
@@ -121,6 +136,15 @@ def test_dispatch_find_with_type(disp_root: Path):
     index = GraphIndex.load_from_disk(disp_root)
     result = asyncio.run(dispatch("find:TestKind unit", index, disp_root))
     assert result["ok"] is True
+    for match in result.get("matches", []):
+        assert match["type"] == "TestKind"
+
+
+def test_dispatch_find_type_kw_uses_file_index_filter(disp_root: Path):
+    index = GraphIndex.load_from_disk(disp_root)
+    result = asyncio.run(dispatch("find: unit type=TestKind", index, disp_root))
+    assert result["ok"] is True
+    assert result.get("type_filter") == "TestKind"
     for match in result.get("matches", []):
         assert match["type"] == "TestKind"
 

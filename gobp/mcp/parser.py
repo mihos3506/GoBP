@@ -6,8 +6,12 @@ Separated from dispatcher for clarity and testability.
 
 from __future__ import annotations
 
+import functools
 import re
+from pathlib import Path
 from typing import Any
+
+import yaml
 
 # Canonical NodeType mapping — case-insensitive input → PascalCase output
 _TYPE_CANONICAL: dict[str, str] = {
@@ -53,6 +57,44 @@ def _normalize_type(raw: str) -> str:
 def _normalize_node_type(node_type: str) -> str:
     """Normalize user-provided node type to canonical schema casing."""
     return _normalize_type(node_type)
+
+
+def _packaged_schema_paths() -> list[Path]:
+    """YAML files whose ``node_types`` keys define valid ``find:<Type>`` prefixes."""
+    pkg = Path(__file__).resolve().parent.parent
+    return [
+        pkg / "schema" / "core_nodes.yaml",
+        pkg / "schema" / "extensions" / "mihos.yaml",
+    ]
+
+
+@functools.lru_cache(maxsize=1)
+def _packaged_node_type_names() -> frozenset[str]:
+    """All node type names from packaged core + MIHOS extension schema."""
+    names: set[str] = set()
+    for path in _packaged_schema_paths():
+        if not path.exists():
+            continue
+        try:
+            data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+        except Exception:
+            continue
+        nt = data.get("node_types")
+        if isinstance(nt, dict):
+            names.update(str(k) for k in nt.keys())
+    return frozenset(names)
+
+
+@functools.lru_cache(maxsize=1)
+def _find_prefix_type_casefold() -> dict[str, str]:
+    """Map casefolded type token -> canonical PascalCase name from schema."""
+    return {name.casefold(): name for name in _packaged_node_type_names()}
+
+
+def clear_schema_type_cache() -> None:
+    """Test helper: invalidate cached schema type names."""
+    _packaged_node_type_names.cache_clear()
+    _find_prefix_type_casefold.cache_clear()
 
 
 # -- Query parser --------------------------------------------------------------
@@ -236,9 +278,12 @@ def parse_query(query: str) -> tuple[str, str, dict[str, Any]]:
             # This preserves "find: session" search intent while "find:Session" stays explicit.
             pass
         else:
-            normalized_first = _normalize_node_type(first_value)
-            if "=" not in first and ":" not in first and normalized_first in _TYPE_CANONICAL.values():
-                node_type = normalized_first
+            schema_type = _find_prefix_type_casefold().get(first_value.casefold())
+            legacy = _normalize_node_type(first_value)
+            if "=" not in first and ":" not in first and (
+                schema_type is not None or legacy in _TYPE_CANONICAL.values()
+            ):
+                node_type = schema_type or legacy
                 tokens = tokens[1:]
 
     positional_key = _POSITIONAL_KEY.get(action, "query")
@@ -257,6 +302,11 @@ def parse_query(query: str) -> tuple[str, str, dict[str, Any]]:
                 # Backward compatibility for existing callers/tests.
                 params["query"] = value
             positional_consumed = True
+        elif action == "find" and positional_key == "query":
+            # Join remaining bare tokens into the keyword (e.g. find:Module foo bar).
+            prev = str(params.get("query", "") or "").strip()
+            nxt = token.strip("'\"")
+            params["query"] = f"{prev} {nxt}".strip() if prev else nxt
 
     if action in ("suggest", "explore") and tokens:
         bare = [t.strip("'\"") for t in tokens if "=" not in t]
@@ -275,6 +325,12 @@ assert _p.get("query") == "auth" and _p.get("page_size") == 5
 _a, _t, _p = parse_query("find:decision auth page_size=5")
 assert (_a, _t) == ("find", "Decision")
 assert _p.get("query") == "auth" and _p.get("page_size") == 5
+_a, _t, _p = parse_query("find:Module auth flow")
+assert (_a, _t) == ("find", "Module")
+assert _p.get("query") == "auth flow"
+_a, _t, _p = parse_query("find: foo type=Module")
+assert (_a, _t) == ("find", "")
+assert _p.get("query") == "foo" and _p.get("type") == "Module"
 _a, _t, _p = parse_query("related: node:x direction='outgoing' page_size=10")
 assert (_a, _t) == ("related", "")
 assert _p.get("node_id") == "node:x" and _p.get("direction") == "outgoing" and _p.get("page_size") == 10
@@ -295,7 +351,8 @@ QUERY_RULES: dict[str, Any] = {
         "4. suggest: — BEFORE creating any new node. Check reusable nodes.",
         "5. explore: — instead of find+get+related. Use compact=true for quick check.",
         "6. batch / quick — for ALL writes; ONE batch may mix create: ops of different types + edge+:/update:; large op lists are auto-chunked internally (no fixed client limit).",
-        "7. find/get — default mode=summary. Only mode=full when debugging.",
+        "7. find/get — default mode=summary. Only mode=full when debugging. "
+        "Mixed FTS types: use overview stats then find:Type …, type=…, or group=… on the file index.",
         "8. After getting IDs — keep only id+name in next prompt. No full JSON.",
         "9. 1 session = 1 goal. session:end when done.",
         "10. Errors — if batch returns errors, fix and retry ONLY failed ops.",
@@ -327,7 +384,10 @@ PROTOCOL_GUIDE = {
         "find: <keyword>": "Search any node by keyword",
         "find: <keyword> mode=summary": "Lightweight results (~50 tokens/node)",
         "find: <keyword> mode=brief": "Medium results (~150 tokens/node)",
-        "find:<NodeType> <keyword>": "Search by type + keyword",
+        "find:<NodeType> <keyword>": (
+            "Search by type + keyword; <NodeType> is any packaged schema node type "
+            "(Module, Invariant, …). Alternatively find: kw type=Module or group=…"
+        ),
         "get: <node_id>": "Full node + edges + decisions",
         "get: <node_id> mode=brief": "Brief node detail",
         "get_batch: ids='node:a,node:b,node:c'": "Fetch multiple nodes (mode=brief)",

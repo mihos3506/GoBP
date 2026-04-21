@@ -26,29 +26,33 @@ def test_find_v3_blank_query() -> None:
 
 def test_find_v3_compact_format() -> None:
     conn = MagicMock()
+    cur_schema = MagicMock()
+    cur_schema.fetchone.return_value = (1,)
     cur = _mock_cursor(
         [
-            ("n1", "PaymentService", "Dev > Infra", "l1", "l2", 2.5),
-            ("n2", "Other", "Dev > Infra", "l1", "l2", 0.5),
+            ("n1", "PaymentService", "Dev > Infra", "Engine", "l1", "l2", 2.5),
+            ("n2", "Other", "Dev > Infra", "Flow", "l1", "l2", 0.5),
         ]
     )
-    conn.cursor.return_value.__enter__.return_value = cur
+    conn.cursor.return_value.__enter__.side_effect = [cur_schema, cur]
     out = read_v3.find_v3(conn, "payment", None, "compact", 20, None)
     assert out["ok"] is True
     assert out["matches"][0]["id"] == "n1"
-    assert set(out["matches"][0].keys()) == {"id", "name", "group"}
+    assert set(out["matches"][0].keys()) == {"id", "name", "group", "type"}
 
 
 def test_find_v3_name_match_ranks_first() -> None:
     """Higher rank (BM25F) appears first — enforced by SQL order; mock row order."""
     conn = MagicMock()
+    cur_schema = MagicMock()
+    cur_schema.fetchone.return_value = (1,)
     cur = _mock_cursor(
         [
-            ("name_hit", "PaymentService", "Dev", "l1", "l2", 3.0),
-            ("desc_hit", "Other", "Dev", "l1", "payment in desc", 0.4),
+            ("name_hit", "PaymentService", "Dev", "Engine", "l1", "l2", 3.0),
+            ("desc_hit", "Other", "Dev", "Flow", "l1", "payment in desc", 0.4),
         ]
     )
-    conn.cursor.return_value.__enter__.return_value = cur
+    conn.cursor.return_value.__enter__.side_effect = [cur_schema, cur]
     out = read_v3.find_v3(conn, "payment", None, "summary", 20, None)
     assert out["matches"][0]["id"] == "name_hit"
     assert out["matches"][0]["desc"] == "l1"
@@ -56,12 +60,15 @@ def test_find_v3_name_match_ranks_first() -> None:
 
 def test_find_v3_group_filter_passed() -> None:
     conn = MagicMock()
+    cur_schema = MagicMock()
+    cur_schema.fetchone.return_value = (1,)
     cur = MagicMock()
-    conn.cursor.return_value.__enter__.return_value = cur
+    conn.cursor.return_value.__enter__.side_effect = [cur_schema, cur]
     cur.fetchall.return_value = []
     read_v3.find_v3(conn, "x", "Dev > Infra", "brief", 10, None)
     sql = cur.execute.call_args[0][0]
     assert "group_path" in sql
+    assert "node_type" in sql
     params = cur.execute.call_args[0][1]
     assert "Dev > Infra" in params
 
@@ -69,11 +76,13 @@ def test_find_v3_group_filter_passed() -> None:
 def test_find_v3_pagination_next_cursor() -> None:
     conn = MagicMock()
     rows = [
-        (f"id{i}", "n", "g", "l1", "l2", 1.0 - i * 0.01)
+        (f"id{i}", "n", "g", "T", "l1", "l2", 1.0 - i * 0.01)
         for i in range(25)
     ]
+    cur_schema = MagicMock()
+    cur_schema.fetchone.return_value = (1,)
     cur = MagicMock()
-    conn.cursor.return_value.__enter__.return_value = cur
+    conn.cursor.return_value.__enter__.side_effect = [cur_schema, cur]
     cur.fetchall.return_value = rows
     out = read_v3.find_v3(conn, "q", None, "brief", 20, None)
     assert out["page_info"]["has_more"] is True
@@ -82,12 +91,15 @@ def test_find_v3_pagination_next_cursor() -> None:
 
 def test_get_v3_brief_edges_need_reason() -> None:
     conn = MagicMock()
+    cur_schema = MagicMock()
+    cur_schema.fetchone.return_value = (1,)
     cur1 = MagicMock()
     cur2 = MagicMock()
     cur1.fetchone.return_value = (
         "nid",
         "N",
         "Dev > G",
+        "Flow",
         "l1",
         "l2 text",
         "full text",
@@ -99,7 +111,7 @@ def test_get_v3_brief_edges_need_reason() -> None:
         ("nid", "o1", "because", "N", "O"),
         ("nid", "o2", "", "N", "Empty"),
     ]
-    conn.cursor.return_value.__enter__.side_effect = [cur1, cur2]
+    conn.cursor.return_value.__enter__.side_effect = [cur_schema, cur1, cur2]
     out = read_v3.get_v3(conn, "nid", "brief")
     assert out["ok"] is True
     assert out["description"] == "l2 text"
@@ -155,19 +167,27 @@ def test_context_action_no_seed() -> None:
     conn = MagicMock()
     cur = MagicMock()
     conn.cursor.return_value.__enter__.return_value = cur
+    cur.fetchone.return_value = (1,)
     cur.fetchall.return_value = []
     out = read_v3.context_action(conn, "zzzunused")
     assert out["ok"] is True
     assert out["nodes"] == []
 
 
-def test_overview_v3_structure(tmp_path: Path) -> None:
+@patch("gobp.core.db.nodes_table_has_node_type", return_value=False)
+@patch.object(read_v3, "_ensure_v3_node_type_column")
+@patch("gobp.core.session_watchdog.run_watchdog_in_overview", return_value={})
+def test_overview_v3_structure(
+    _wd: MagicMock,
+    _ens: MagicMock,
+    _nt: MagicMock,
+    tmp_path: Path,
+) -> None:
     conn = MagicMock()
     cur = MagicMock()
     conn.cursor.return_value.__enter__.return_value = cur
     cur.fetchone.side_effect = [(10,), (3,)]
     cur.fetchall.side_effect = [
-        [],  # session_watchdog: no stale sessions
         [("Dev", 5), ("Meta", 2)],
         [],
     ]
@@ -179,6 +199,8 @@ def test_overview_v3_structure(tmp_path: Path) -> None:
 
 def test_explore_v3_siblings_same_group() -> None:
     conn = MagicMock()
+    cur0 = MagicMock()
+    cur0.fetchone.return_value = (1,)
     cur1 = MagicMock()
     cur1.fetchone.return_value = (
         "nid",
@@ -197,7 +219,7 @@ def test_explore_v3_siblings_same_group() -> None:
     cur3.fetchall.return_value = [
         ("s1", "Sib", "d1"),
     ]
-    seq = [cur1, cur2, cur3]
+    seq = [cur0, cur1, cur2, cur3]
 
     def enter(*_a: object, **_k: object) -> MagicMock:
         return seq.pop(0)
@@ -234,6 +256,7 @@ def test_find_routes_to_v3(mock_cv3: MagicMock, tmp_path: Path) -> None:
     mock_cv3.return_value = (conn, True)
     cur = MagicMock()
     conn.cursor.return_value.__enter__.return_value = cur
+    cur.fetchone.return_value = (1,)
     cur.fetchall.return_value = []
     idx = GraphIndex()
     args = {"query": "hello", "mode": "summary", "page_size": 10}

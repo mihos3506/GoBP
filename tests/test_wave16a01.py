@@ -67,24 +67,16 @@ def test_dispatch_find_mode_brief(seeded_root: Path) -> None:
     assert r.get("mode") == "brief"
 
 
-def test_find_type_filter_uses_file_index_even_when_pg_connected(
+def test_find_type_filter_uses_file_index_when_pg_unavailable(
     seeded_root: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    """Without a v3 connection, type-filtered find lists from the file-backed index."""
     index = GraphIndex.load_from_disk(seeded_root)
-
-    class _FakeConn:
-        def close(self) -> None:
-            return None
 
     from gobp.mcp.tools import read_v3 as _read_v3
 
-    monkeypatch.setattr(_read_v3, "_conn_v3", lambda _root: (_FakeConn(), True))
-
-    def _unexpected_find_v3(*_args: object, **_kwargs: object) -> dict[str, object]:
-        raise AssertionError("find_v3 must not run for exact type filter")
-
-    monkeypatch.setattr(_read_v3, "find_v3", _unexpected_find_v3)
+    monkeypatch.setattr(_read_v3, "_conn_v3", lambda _root: (None, False))
 
     r = tools_read.find(index, seeded_root, {"query": "", "type": "Engine", "mode": "summary"})
     assert r["ok"] is True

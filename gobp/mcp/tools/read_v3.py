@@ -18,6 +18,13 @@ TRAVERSE_PRIORITY: dict[str, str] = {
 }
 
 
+def _ensure_v3_node_type_column(conn: Any) -> None:
+    """Apply idempotent v3 migration so ``nodes.node_type`` exists for typed FTS."""
+    from gobp.core.db import ensure_nodes_node_type_column
+
+    ensure_nodes_node_type_column(conn)
+
+
 def _conn_v3(project_root: Path) -> tuple[Any, bool]:
     """Return ``(connection, is_v3)`` or ``(None, False)`` if unavailable."""
     from gobp.core import db as db_mod
@@ -40,17 +47,23 @@ def _conn_v3(project_root: Path) -> tuple[Any, bool]:
 
 
 def _format_find_nodes(rows: list[tuple[Any, ...]], mode: str) -> list[dict[str, Any]]:
-    """Format SQL rows per pyramid mode (find: v3)."""
+    """Format SQL rows per pyramid mode (find: v3).
+
+    Row shape: ``id, name, group_path, node_type, desc_l1, desc_l2, [, desc_full], rank``.
+    """
     result: list[dict[str, Any]] = []
     for row in rows:
-        if len(row) >= 7 and mode == "full":
-            node_id, name, group_path, desc_l1, desc_l2, desc_full, rank = row[:7]
+        rank = float(row[-1] or 0)
+        body = row[:-1]
+        if mode == "full":
+            node_id, name, group_path, node_type, desc_l1, desc_l2, desc_full = body
         else:
-            node_id, name, group_path, desc_l1, desc_l2, rank = row[:6]
+            node_id, name, group_path, node_type, desc_l1, desc_l2 = body
             desc_full = None
+        ntype = str(node_type or "")
         if mode == "compact":
             result.append(
-                {"id": node_id, "name": name, "group": group_path}
+                {"id": node_id, "name": name, "group": group_path, "type": ntype}
             )
         elif mode == "summary":
             result.append(
@@ -58,6 +71,7 @@ def _format_find_nodes(rows: list[tuple[Any, ...]], mode: str) -> list[dict[str,
                     "id": node_id,
                     "name": name,
                     "group": group_path,
+                    "type": ntype,
                     "desc": desc_l1 or "",
                 }
             )
@@ -67,8 +81,9 @@ def _format_find_nodes(rows: list[tuple[Any, ...]], mode: str) -> list[dict[str,
                     "id": node_id,
                     "name": name,
                     "group": group_path,
+                    "type": ntype,
                     "desc": (desc_full or desc_l2 or desc_l1 or ""),
-                    "_rank": round(float(rank or 0), 4),
+                    "_rank": round(rank, 4),
                 }
             )
         else:  # brief (default)
@@ -77,8 +92,9 @@ def _format_find_nodes(rows: list[tuple[Any, ...]], mode: str) -> list[dict[str,
                     "id": node_id,
                     "name": name,
                     "group": group_path,
+                    "type": ntype,
                     "desc": desc_l2 or desc_l1 or "",
-                    "_rank": round(float(rank or 0), 4),
+                    "_rank": round(rank, 4),
                 }
             )
     return result
@@ -91,17 +107,20 @@ def find_v3(
     mode: str = "summary",
     page_size: int = 20,
     cursor: str | None = None,
+    type_filter: str | None = None,
 ) -> dict[str, Any]:
     """find: v3 — BM25F-style ranking + BFS expand depth 1 + pyramid modes."""
     if not query_text.strip():
         return {"ok": False, "error": "find: requires a keyword"}
+
+    _ensure_v3_node_type_column(conn)
 
     mode_l = (mode or "summary").lower()
     if mode_l not in ("compact", "summary", "brief", "full"):
         mode_l = "summary"
 
     extra_col = ", n.desc_full" if mode_l == "full" else ""
-    sel_cols = f"n.id, n.name, n.group_path, n.desc_l1, n.desc_l2{extra_col}"
+    sel_cols = f"n.id, n.name, n.group_path, n.node_type, n.desc_l1, n.desc_l2{extra_col}"
 
     sql = f"""
     WITH q AS (SELECT plainto_tsquery('simple', %s) AS query),
@@ -112,11 +131,12 @@ def find_v3(
         WHERE n.search_vec @@ q.query
           AND (%s::text IS NULL OR n.group_path LIKE %s)
           AND (%s::text IS NULL OR n.id::text > %s::text)
+          AND (%s::text IS NULL OR n.node_type = %s)
         ORDER BY rank DESC
         LIMIT %s
     ),
     expanded AS (
-        SELECT DISTINCT n.id, n.name, n.group_path, n.desc_l1, n.desc_l2{extra_col},
+        SELECT DISTINCT n.id, n.name, n.group_path, n.node_type, n.desc_l1, n.desc_l2{extra_col},
                         0.5::float8 AS rank
         FROM seed s
         JOIN edges e ON e.from_id = s.id OR e.to_id = s.id
@@ -125,6 +145,7 @@ def find_v3(
             ELSE e.from_id END
         WHERE NOT EXISTS (SELECT 1 FROM seed s2 WHERE s2.id = n.id)
           AND e.from_id IS DISTINCT FROM e.to_id
+          AND (%s::text IS NULL OR n.node_type = %s)
     )
     SELECT * FROM (
         SELECT * FROM seed
@@ -139,6 +160,7 @@ def find_v3(
     like_pat = f"{gf}%" if gf else "%"
     cur_val = cursor.strip() if cursor else None
     fetch_limit = page_size + 15
+    tf = (type_filter or "").strip() or None
 
     with conn.cursor() as cur:
         cur.execute(
@@ -149,7 +171,11 @@ def find_v3(
                 like_pat,
                 cur_val,
                 cur_val,
+                tf,
+                tf,
                 fetch_limit,
+                tf,
+                tf,
                 fetch_limit,
             ),
         )
@@ -163,6 +189,7 @@ def find_v3(
             "count": 0,
             "matches": [],
             "next_cursor": None,
+            "type_filter": tf,
             "page_info": {
                 "next_cursor": None,
                 "has_more": False,
@@ -184,6 +211,7 @@ def find_v3(
         "count": len(nodes),
         "matches": nodes,
         "next_cursor": next_cursor,
+        "type_filter": tf,
         "page_info": {
             "next_cursor": next_cursor,
             "has_more": has_more,
@@ -199,10 +227,12 @@ def get_v3(conn: Any, node_id: str, mode: str = "brief") -> dict[str, Any]:
     if mode_l not in ("brief", "full"):
         mode_l = "brief"
 
+    _ensure_v3_node_type_column(conn)
+
     with conn.cursor() as cur:
         cur.execute(
             """
-            SELECT id, name, group_path, desc_l1, desc_l2,
+            SELECT id, name, group_path, node_type, desc_l1, desc_l2,
                    desc_full, code, severity, updated_at
             FROM nodes WHERE id = %s
             """,
@@ -213,7 +243,7 @@ def get_v3(conn: Any, node_id: str, mode: str = "brief") -> dict[str, Any]:
     if not row:
         return {"ok": False, "error": f"Node not found: {node_id}"}
 
-    _nid, name, group_path, _l1, l2, full, code, severity, updated_at = row
+    _nid, name, group_path, node_type, _l1, l2, full, code, severity, updated_at = row
 
     desc = l2 if mode_l == "brief" else full
     lim = 5 if mode_l == "brief" else 50
@@ -249,6 +279,7 @@ def get_v3(conn: Any, node_id: str, mode: str = "brief") -> dict[str, Any]:
         "id": node_id,
         "name": name,
         "group": group_path,
+        "type": str(node_type or ""),
         "description": desc,
         "updated_at": updated_at,
         "edges": edges,
@@ -315,6 +346,8 @@ def context_action(
     """context: task= — FTS seed + priority BFS with token budget."""
     if not task_description.strip():
         return {"ok": False, "error": "task description is required"}
+
+    _ensure_v3_node_type_column(conn)
 
     td = task_description.strip()
 
@@ -504,7 +537,10 @@ def overview_v3(conn: Any, project_root: Path, full_interface: bool = False) -> 
     """overview: v3 — stats + active sessions (schema v3)."""
     del full_interface
 
+    from gobp.core.db import nodes_table_has_node_type
     from gobp.core.session_watchdog import run_watchdog_in_overview
+
+    _ensure_v3_node_type_column(conn)
 
     watchdog_result = run_watchdog_in_overview(conn)
 
@@ -524,6 +560,20 @@ def overview_v3(conn: Any, project_root: Path, full_interface: bool = False) -> 
             """
         )
         nodes_by_group = {r[0]: r[1] for r in cur.fetchall()}
+
+        nodes_by_type_pg: dict[str, int] = {}
+        if nodes_table_has_node_type(project_root):
+            cur.execute(
+                """
+                SELECT t, COUNT(*) FROM (
+                    SELECT coalesce(nullif(trim(node_type), ''), '(none)') AS t
+                    FROM nodes
+                ) x
+                GROUP BY t
+                ORDER BY COUNT(*) DESC
+                """
+            )
+            nodes_by_type_pg = {str(r[0]): int(r[1]) for r in cur.fetchall()}
 
         cur.execute(
             """
@@ -568,6 +618,7 @@ def overview_v3(conn: Any, project_root: Path, full_interface: bool = False) -> 
             "total_nodes": total_nodes,
             "total_edges": total_edges,
             "nodes_by_group": nodes_by_group,
+            "nodes_by_type": nodes_by_type_pg,
         },
         "active_sessions": active_sessions,
         "hint": (
@@ -584,6 +635,8 @@ def explore_v3(conn: Any, keyword: str) -> dict[str, Any]:
     """explore: v3 — best FTS match + reasonful edges + same-group siblings."""
     if not keyword.strip():
         return {"ok": False, "error": "Query required"}
+
+    _ensure_v3_node_type_column(conn)
 
     with conn.cursor() as cur:
         cur.execute(
@@ -671,6 +724,8 @@ def validate_v3(conn: Any) -> dict[str, Any]:
       5. Sessions không có IN_PROGRESS quá 24h (stale)
     """
     issues: list[dict[str, Any]] = []
+
+    _ensure_v3_node_type_column(conn)
 
     with conn.cursor() as cur:
         # Check 1: Required fields

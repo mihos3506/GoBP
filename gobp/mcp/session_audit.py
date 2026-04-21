@@ -5,6 +5,11 @@ use an **opaque audit id** (host / ``GOBP_SESSION_ID`` / auto ``audit:…``) tha
 not correspond to a node on the graph. Only when ``session_id`` resolves to an
 existing node with ``type == "Session"`` do we enforce ``COMPLETED`` and attach
 ``discovered_in`` edges to that node.
+
+Set ``GOBP_GRAPH_SESSION_ONLY=true`` to **reject** opaque ids and auto-``audit:…``:
+every write must use an ``IN_PROGRESS`` Session id from ``session:start`` (or set
+``GOBP_SESSION_ID`` to that same id). Use this when agents invent random
+``session_id`` strings instead of starting a graph session.
 """
 
 from __future__ import annotations
@@ -14,6 +19,12 @@ import uuid
 from typing import Any
 
 from gobp.core.graph import GraphIndex
+
+
+def graph_session_only_enforced() -> bool:
+    """True when env requests graph-backed sessions only (no opaque audit ids)."""
+    v = os.environ.get("GOBP_GRAPH_SESSION_ONLY", "").strip().lower()
+    return v in ("1", "true", "yes", "on")
 
 
 def resolve_write_session(
@@ -39,9 +50,21 @@ def resolve_write_session(
     audit_auto = False
     if not raw:
         raw = os.environ.get("GOBP_SESSION_ID", "").strip()
-    if not raw and allow_auto_audit:
-        raw = f"audit:{uuid.uuid4().hex}"
-        audit_auto = True
+
+    strict = graph_session_only_enforced()
+    if not raw:
+        if strict:
+            return (
+                "",
+                None,
+                "Graph session required: call session:start and pass the returned "
+                "session_id on writes, or set GOBP_SESSION_ID to that Session node id "
+                "(GOBP_GRAPH_SESSION_ONLY is enabled).",
+                False,
+            )
+        if allow_auto_audit:
+            raw = f"audit:{uuid.uuid4().hex}"
+            audit_auto = True
     if not raw:
         return "", None, "Missing session_id (set GOBP_SESSION_ID or pass session_id)", False
 
@@ -50,6 +73,16 @@ def resolve_write_session(
         if str(node.get("status", "")).strip().upper() == "COMPLETED":
             return "", None, "Session already ended, start new one", False
         return raw, node, None, False
+
+    if strict:
+        return (
+            "",
+            None,
+            "GOBP_GRAPH_SESSION_ONLY: session_id must be an active Session node id from "
+            "session:start (or set GOBP_SESSION_ID to that id). "
+            f"Refusing opaque or unknown id: {raw!r}.",
+            False,
+        )
 
     return raw, None, None, audit_auto
 

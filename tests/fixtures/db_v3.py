@@ -1,6 +1,7 @@
 """Helpers for tests that require PostgreSQL schema v3.
 
-Schema matches :func:`gobp.core.db.create_schema_v3` (see ``gobp/core/db.py``).
+Schema matches :func:`gobp.core.db.create_schema_v3` (see ``gobp/core/db.py``),
+including ``nodes.node_type``.
 """
 
 from __future__ import annotations
@@ -68,6 +69,7 @@ def minimal_v3_node(
     desc_full: str = "Test node body",
     desc_l1: str | None = None,
     desc_l2: str | None = None,
+    node_type: str = "TestKind",
 ) -> dict[str, Any]:
     """Build a node dict suitable for :func:`gobp.core.db.upsert_node_v3`."""
     l1 = desc_l1 if desc_l1 is not None else "L1 summary"
@@ -75,6 +77,7 @@ def minimal_v3_node(
     return {
         "id": node_id,
         "name": name,
+        "type": node_type,
         "group": group_path,
         "group_path": group_path,
         "desc_l1": l1,

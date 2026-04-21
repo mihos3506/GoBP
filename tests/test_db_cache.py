@@ -162,6 +162,78 @@ def test_v3_edge_upsert_and_delete(gobp_root: Path) -> None:
 
 
 @pytest.mark.postgres_v3
+@pytest.mark.postgres_v3
+def test_v3_upsert_stores_node_type(gobp_root: Path) -> None:
+    """``node_type`` column mirrors graph ``type``."""
+    pytest_skip_without_v3(gobp_root)
+    from gobp.core.db import delete_node_v3, ensure_v3_connection, upsert_node_v3
+
+    nid = unique_test_id("node:pytest_dbcache_type_")
+    conn = ensure_v3_connection(gobp_root)
+    try:
+        upsert_node_v3(
+            conn,
+            minimal_v3_node(
+                nid,
+                name="Typed node",
+                group_path="Test > DBCache",
+                node_type="Invariant",
+            ),
+        )
+        with conn.cursor() as cur:
+            cur.execute("SELECT node_type FROM nodes WHERE id = %s", (nid,))
+            row = cur.fetchone()
+        assert row is not None
+        assert row[0] == "Invariant"
+    finally:
+        delete_node_v3(conn, nid)
+        conn.close()
+
+
+@pytest.mark.postgres_v3
+def test_v3_find_v3_type_filter_excludes_other_types(gobp_root: Path) -> None:
+    """PostgreSQL FTS find respects ``type_filter`` via ``node_type``."""
+    pytest_skip_without_v3(gobp_root)
+    from gobp.core.db import delete_node_v3, ensure_v3_connection, upsert_node_v3
+    from gobp.mcp.tools import read_v3
+
+    token = unique_test_id("tok_")[-10:]
+    a = unique_test_id("node:pytest_find_a_")
+    b = unique_test_id("node:pytest_find_b_")
+    conn = ensure_v3_connection(gobp_root)
+    try:
+        upsert_node_v3(
+            conn,
+            minimal_v3_node(
+                a,
+                name=f"Alpha {token} lessonish",
+                group_path="Test > DBCache",
+                node_type="Lesson",
+            ),
+        )
+        upsert_node_v3(
+            conn,
+            minimal_v3_node(
+                b,
+                name=f"Beta {token} flowish",
+                group_path="Test > DBCache",
+                node_type="Flow",
+            ),
+        )
+        out = read_v3.find_v3(conn, token, None, "summary", 20, None, type_filter="Lesson")
+        assert out["ok"] is True
+        ids = {m["id"] for m in out["matches"]}
+        assert a in ids
+        assert b not in ids
+        for m in out["matches"]:
+            if m["id"] == a:
+                assert m.get("type") == "Lesson"
+    finally:
+        delete_node_v3(conn, a)
+        delete_node_v3(conn, b)
+        conn.close()
+
+
 def test_v3_name_substring_search_sql(gobp_root: Path) -> None:
     """ILIKE on ``name`` (replaces legacy ``query_nodes_substring`` for v3)."""
     pytest_skip_without_v3(gobp_root)
@@ -193,7 +265,7 @@ def test_v3_name_substring_search_sql(gobp_root: Path) -> None:
 
 @pytest.mark.postgres_v3
 def test_v3_group_path_filter_sql(gobp_root: Path) -> None:
-    """Filter by ``group_path`` prefix (v3 has no ``type`` column on nodes)."""
+    """Filter by ``group_path`` prefix (v3 ``nodes`` includes ``node_type`` for FTS filters)."""
     pytest_skip_without_v3(gobp_root)
     from gobp.core.db import delete_node_v3, ensure_v3_connection, upsert_node_v3
 

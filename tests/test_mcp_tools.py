@@ -179,6 +179,10 @@ def test_gobp_overview_stats_counts(index: GraphIndex, populated_root: Path) -> 
     out = tools_read.gobp_overview(index, populated_root, {})
     assert out["stats"]["total_nodes"] >= 7
     assert out["stats"]["total_edges"] == 4
+    assert isinstance(out["stats"].get("nodes_by_top_level_group"), dict)
+    assert out["stats"]["nodes_by_top_level_group"]
+    assert "search_drill_down" in out
+    assert "workflow" in out["search_drill_down"]
 
 
 def test_gobp_overview_topics(index: GraphIndex, populated_root: Path) -> None:
@@ -194,7 +198,7 @@ def test_gobp_overview_recent_decisions(index: GraphIndex, populated_root: Path)
 
 def test_gobp_overview_suggestions(index: GraphIndex, populated_root: Path) -> None:
     out = tools_read.gobp_overview(index, populated_root, {})
-    assert len(out["suggested_next_queries"]) == 4
+    assert len(out["suggested_next_queries"]) == 5
 
 
 def test_gobp_overview_default_is_slim_interface(index: GraphIndex, populated_root: Path) -> None:

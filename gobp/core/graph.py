@@ -287,7 +287,7 @@ class GraphIndex:
 
     def _hydrate_metadata_node_from_pg(self, node_id: str) -> dict[str, Any] | None:
         """Build a node dict from PostgreSQL v3 when the markdown file is missing."""
-        from gobp.core.db import _get_conn, get_schema_version
+        from gobp.core.db import _get_conn, get_schema_version, nodes_table_has_node_type
 
         root = self._gobp_root
         if root is None:
@@ -299,17 +299,32 @@ class GraphIndex:
             if get_schema_version(conn) != "v3":
                 return None
             with conn.cursor() as cur:
-                cur.execute(
-                    """
-                    SELECT name, group_path, desc_l1, desc_l2, desc_full, code, severity
-                    FROM nodes WHERE id = %s
-                    """,
-                    (node_id,),
-                )
+                if nodes_table_has_node_type(root):
+                    cur.execute(
+                        """
+                        SELECT name, group_path, node_type, desc_l1, desc_l2,
+                               desc_full, code, severity
+                        FROM nodes WHERE id = %s
+                        """,
+                        (node_id,),
+                    )
+                else:
+                    cur.execute(
+                        """
+                        SELECT name, group_path, desc_l1, desc_l2, desc_full, code, severity
+                        FROM nodes WHERE id = %s
+                        """,
+                        (node_id,),
+                    )
                 row = cur.fetchone()
             if not row:
                 return None
-            name, gpath, d1, d2, dfull, code, sev = row
+            if len(row) == 8:
+                name, gpath, ntype, d1, d2, dfull, code, sev = row
+                type_s = str(ntype or "") or "Unknown"
+            else:
+                name, gpath, d1, d2, dfull, code, sev = row
+                type_s = "Unknown"
             dfull_s = str(dfull or "")
             data: dict[str, Any] = {
                 "id": node_id,
@@ -321,7 +336,7 @@ class GraphIndex:
                 "description": {"info": dfull_s},
                 "code": str(code or ""),
                 "severity": str(sev or ""),
-                "type": "Unknown",
+                "type": type_s,
             }
             self.register_persisted_node(data)
             return data

@@ -195,12 +195,14 @@ async def dispatch(
 
         elif action == "find":
             args: dict[str, Any] = {}
+            type_from_params = params.get("type_filter") or params.get("type")
+            effective_type = node_type or type_from_params
             if "query" in params:
                 args["query"] = params["query"]
-                if node_type:
-                    args["type"] = node_type
-            elif node_type:
-                args["type"] = node_type
+                if effective_type:
+                    args["type"] = effective_type
+            elif effective_type:
+                args["type"] = effective_type
                 args["query"] = ""
             else:
                 args["query"] = ""

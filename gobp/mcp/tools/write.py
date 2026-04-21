@@ -1,8 +1,10 @@
 """GoBP MCP write tools.
 
 Implementations for node_upsert, decision_lock, session_log.
-Writes require an audit ``session_id`` (opaque string, env ``GOBP_SESSION_ID``, or an
-existing graph ``Session`` node id). Opaque ids do not create or require Session nodes.
+Writes require an audit ``session_id`` (opaque string, env ``GOBP_SESSION_ID``, auto
+``audit:…``, or an existing graph ``Session`` node id). Opaque ids do not create
+Session nodes. When ``GOBP_GRAPH_SESSION_ONLY=true``, only an active ``Session`` id
+from ``session:start`` (or ``GOBP_SESSION_ID`` set to that id) is accepted.
 """
 
 from __future__ import annotations

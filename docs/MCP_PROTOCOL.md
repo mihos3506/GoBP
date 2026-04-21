@@ -170,6 +170,8 @@ gobp(query="version:")
 
 **Tất cả write actions cần session_id.**
 
+**Bắt buộc dùng Session trên graph (chặn session_id opaque do AI bịa):** đặt `GOBP_GRAPH_SESSION_ONLY=true` trong môi trường MCP — khi đó mọi write phải dùng đúng `session_id` từ `session:start` (hoặc `GOBP_SESSION_ID` trỏ tới cùng id đó); không còn chấp nhận chuỗi tự đặt / `audit:…` tự sinh khi thiếu id.
+
 ### NGUYÊN LÝ CỐT LÕI
 
 ```

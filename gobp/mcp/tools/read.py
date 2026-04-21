@@ -146,6 +146,20 @@ def gobp_overview(index: GraphIndex, project_root: Path, args: dict[str, Any]) -
         t = node.get("type", "Unknown")
         nodes_by_type[t] = nodes_by_type.get(t, 0) + 1
 
+    nodes_by_top_level_group: dict[str, int] = {}
+    for node in all_nodes:
+        g = str(node.get("group", "") or "").strip()
+        if not g:
+            label = "(no group)"
+        else:
+            label = (g.split(" > ", 1)[0].strip()) or "(no group)"
+        nodes_by_top_level_group[label] = nodes_by_top_level_group.get(label, 0) + 1
+    top_level_sorted = sorted(
+        nodes_by_top_level_group.items(),
+        key=lambda kv: (-kv[1], kv[0]),
+    )[:50]
+    nodes_by_top_level_group = dict(top_level_sorted)
+
     edges_by_type: dict[str, int] = {}
     for edge in all_edges:
         t = edge.get("type", "Unknown")
@@ -247,12 +261,27 @@ def gobp_overview(index: GraphIndex, project_root: Path, args: dict[str, Any]) -
             "total_nodes": len(all_nodes),
             "total_edges": len(all_edges),
             "nodes_by_type": nodes_by_type,
+            "nodes_by_top_level_group": nodes_by_top_level_group,
             "edges_by_type": edges_by_type,
+        },
+        "search_drill_down": {
+            "context": (
+                "PostgreSQL v3 mirror stores ``node_type`` for FTS ``find:`` with type filters "
+                "after sync (``scripts/sync_file_to_pg_v3.py``). Without PG, type filters use the "
+                "file-backed index only."
+            ),
+            "workflow": [
+                "1) Read stats.nodes_by_type and stats.nodes_by_top_level_group (this overview).",
+                "2) find:Module <keyword> or find: <keyword> type=Module (packaged schema types; "
+                "project-only extensions: use type=ExactType).",
+                '3) Narrow by group: find: gps group="Dev > Domain" group_exact=true (schema v2).',
+            ],
         },
         "main_topics": main_topics,
         "recent_decisions": recent_decisions,
         "recent_sessions": recent_sessions,
         "suggested_next_queries": [
+            "gobp(query='overview:') for nodes_by_type + nodes_by_top_level_group, then find:Type …",
             "gobp(query='find: <keyword>') to search nodes",
             "gobp(query='find:Decision <topic>') to find decisions",
             "gobp(query='session:start actor=<name> goal=<goal>') to start session",
@@ -311,6 +340,7 @@ def gobp_overview(index: GraphIndex, project_root: Path, args: dict[str, Any]) -
                 "total_nodes": v3["stats"]["total_nodes"],
                 "total_edges": v3["stats"]["total_edges"],
                 "nodes_by_group": v3["stats"].get("nodes_by_group", {}),
+                "nodes_by_type": v3["stats"].get("nodes_by_type", {}),
             }
             pg_n = int(v3["stats"]["total_nodes"])
             pg_e = int(v3["stats"]["total_edges"])
@@ -542,15 +572,15 @@ def find(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> dict[st
     else:
         cursor = None
 
+    from gobp.core import db as db_mod
     from gobp.mcp.tools import read_v3 as _read_v3
 
     file_fallback_after_pg = False
-    # PostgreSQL v3 mirror does not keep explicit node type column, so exact
-    # type filtering should use the file index path for correctness.
-    force_file_index_for_type = bool(type_filter)
     conn_f, is_v3_f = _read_v3._conn_v3(project_root)
-    if conn_f is not None and is_v3_f and not force_file_index_for_type:
+    had_pg_v3 = conn_f is not None and is_v3_f
+    if had_pg_v3:
         try:
+            db_mod.ensure_nodes_node_type_column(conn_f)
             if not query_str.strip():
                 return {"ok": False, "error": "find: requires a keyword"}
             gf_raw = args.get("group")
@@ -560,7 +590,10 @@ def find(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> dict[st
             mode_v3 = str(args.get("mode", "summary")).lower()
             if mode_v3 in ("standard", ""):
                 mode_v3 = "summary"
-            out_pg = _read_v3.find_v3(conn_f, query_str, gf_s, mode_v3, page_size, cursor)
+            tf = str(type_filter).strip() if type_filter else None
+            out_pg = _read_v3.find_v3(
+                conn_f, query_str, gf_s, mode_v3, page_size, cursor, type_filter=tf
+            )
             if (
                 out_pg.get("ok")
                 and int(out_pg.get("count", 0)) == 0
@@ -570,11 +603,14 @@ def find(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> dict[st
             else:
                 out_pg["sessions_excluded"] = True
                 out_pg["type_filter"] = type_filter
+                out_pg["search_source"] = "postgresql_fts"
                 return out_pg
         finally:
             conn_f.close()
     elif conn_f is not None:
         conn_f.close()
+
+    use_file_index_for_type_only = bool(type_filter) and not had_pg_v3
 
     sort_field = args.get("sort", "id")
     direction = str(args.get("direction", "asc")).lower()
@@ -815,11 +851,11 @@ def find(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> dict[st
             "after writes. "
             + out["hint"]
         )
-    elif force_file_index_for_type:
+    elif use_file_index_for_type_only:
         out["search_source"] = "file_index"
         out["hint"] = (
-            "Type-filtered find uses file index for exact type matching "
-            "(PostgreSQL mirror has no explicit type column). "
+            "Type-filtered find uses the file-backed graph index because PostgreSQL "
+            "v3 is not configured or not reachable. "
             + out["hint"]
         )
     if group_meta is not None:

@@ -6,7 +6,7 @@ Connection: reads GOBP_DB_URL environment variable.
 Fallback: if PostgreSQL unavailable, operations are no-ops (in-memory index still works).
 
 Schema:
-  nodes  — searchable node metadata with tsvector FTS
+  nodes  — searchable node metadata with tsvector FTS + ``node_type`` (graph ``type``)
   edges  — edge relationships with indexes
 """
 
@@ -95,6 +95,7 @@ def create_schema_v3(conn: PgConnection) -> None:
                 id          TEXT PRIMARY KEY,
                 name        TEXT NOT NULL,
                 group_path  TEXT NOT NULL,
+                node_type   TEXT NOT NULL DEFAULT '',
                 desc_l1     TEXT DEFAULT '',
                 desc_l2     TEXT DEFAULT '',
                 desc_full   TEXT DEFAULT '',
@@ -164,6 +165,12 @@ def create_schema_v3(conn: PgConnection) -> None:
         )
         cur.execute(
             """
+            CREATE INDEX idx_nodes_node_type
+            ON nodes(node_type)
+            """
+        )
+        cur.execute(
+            """
             CREATE INDEX idx_edges_from
             ON edges(from_id)
             """
@@ -204,6 +211,70 @@ def get_schema_version(conn: PgConnection) -> str:
             """
         )
         return "v3" if cur.fetchone() else "v2"
+
+
+def nodes_table_has_node_type(gobp_root: Path) -> bool:
+    """True if PostgreSQL ``nodes`` has ``node_type`` (mirror supports type-filtered FTS)."""
+    conn = _get_conn(gobp_root)
+    if conn is None:
+        return False
+    try:
+        if get_schema_version(conn) != "v3":
+            return False
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT 1 FROM information_schema.columns
+                WHERE table_schema = 'public'
+                  AND table_name = 'nodes'
+                  AND column_name = 'node_type'
+                LIMIT 1
+                """
+            )
+            return cur.fetchone() is not None
+    except Exception:
+        return False
+    finally:
+        try:
+            conn.close()
+        except Exception:
+            pass
+
+
+def ensure_nodes_node_type_column(conn: PgConnection) -> None:
+    """Add ``nodes.node_type`` on legacy v3 databases (idempotent).
+
+    New installs get the column from :func:`create_schema_v3`. Existing mirrors
+    pick it up here; run :func:`rebuild_index` or your file→PG sync to backfill
+    values from the graph.
+    """
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT 1 FROM information_schema.columns
+            WHERE table_schema = 'public'
+              AND table_name = 'nodes'
+              AND column_name = 'node_type'
+            LIMIT 1
+            """
+        )
+        if cur.fetchone():
+            return
+        cur.execute(
+            """
+            ALTER TABLE nodes
+            ADD COLUMN node_type TEXT NOT NULL DEFAULT ''
+            """
+        )
+    conn.commit()
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            CREATE INDEX IF NOT EXISTS idx_nodes_node_type
+            ON nodes(node_type)
+            """
+        )
+    conn.commit()
 
 
 def count_nodes_in_db(gobp_root: Path) -> int:
@@ -292,13 +363,14 @@ def upsert_node_v3(conn: PgConnection, node: dict[str, Any]) -> None:
         cur.execute(
             """
             INSERT INTO nodes
-                (id, name, group_path, desc_l1, desc_l2, desc_full,
+                (id, name, group_path, node_type, desc_l1, desc_l2, desc_full,
                  code, severity, updated_at)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s,
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s,
                     extract(epoch from now())::BIGINT)
             ON CONFLICT (id) DO UPDATE SET
                 name       = EXCLUDED.name,
                 group_path = EXCLUDED.group_path,
+                node_type  = EXCLUDED.node_type,
                 desc_l1    = EXCLUDED.desc_l1,
                 desc_l2    = EXCLUDED.desc_l2,
                 desc_full  = EXCLUDED.desc_full,
@@ -310,6 +382,7 @@ def upsert_node_v3(conn: PgConnection, node: dict[str, Any]) -> None:
                 node["id"],
                 node["name"],
                 str(node.get("group") or node.get("group_path", "") or ""),
+                str(node.get("type", "") or ""),
                 str(node.get("desc_l1", "") or ""),
                 str(node.get("desc_l2", "") or ""),
                 _node_desc_full_v3(node),
@@ -433,6 +506,7 @@ def rebuild_index(gobp_root: Path, graph_index: Any) -> dict[str, Any]:
     try:
         if get_schema_version(conn) != "v3":
             create_schema_v3(conn)
+        ensure_nodes_node_type_column(conn)
 
         with conn.cursor() as cur:
             cur.execute(
