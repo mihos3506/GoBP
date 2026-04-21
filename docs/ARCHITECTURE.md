@@ -602,6 +602,28 @@ class QueryCache:
                       if from_id not in k and to_id not in k}
 ```
 
+### 9.4 — Cache invalidation policy (`GoBPCache`)
+
+**Phạm vi:** Trong một **process** (một MCP server / một tiến trình Python). Không đồng bộ giữa hai process khác nhau.
+
+**Triển khai:** `gobp.core.cache.GoBPCache` — LRU + **TTL từng entry** (mặc định singleton `max_size=500`, `default_ttl=60s`). Hết hạn hoặc eviction → miss cache.
+
+**Kích hoạt invalidate rõ ràng:**
+
+1. Sau khi ghi (file mutator, MCP write path): thường gọi `get_cache().invalidate_all()` để đồng bộ với thay đổi disk/PG.
+2. Rebuild / CLI: xóa cache + rebuild index nếu có flow tương ứng.
+
+**Độ “stale” chấp nhận được:**
+
+- **File-first:** Ghi xong file trước; cache chỉ ảnh hưởng kết quả đọc đã nhét vào RAM.
+- **PostgreSQL + cache:** Sau commit write, code gọi invalidate (hoặc TTL hết hạn trong vài chục giây tùy cấu hình).
+
+**Đa process (hai Cursor / hai CLI):** Không được hỗ trợ như một cluster cache — mỗi process có `GoBPCache` riêng; có thể thấy dữ liệu khác nhau cho tới khi reload/`refresh:`.
+
+**Tương lai:** Nếu cần đồng bộ liên process, cân nhắc TTL ngắn hơn, hoặc lớp cache ngoài (Redis, v.v.) — ngoài scope hiện tại.
+
+**Code:** `gobp/core/cache.py`.
+
 ---
 
 ## 10. MCP SERVER
@@ -861,6 +883,42 @@ Conflict im lặng         Optimistic lock — expected_updated_at
 Không biết nhau          active_sessions trong overview:
 Import duplicate         Import lock + upsert
 ```
+
+---
+
+## 16 — Async I/O strategy
+
+### 16.1 — Hiện trạng: sync I/O trong async handler
+
+MCP dispatcher (`gobp/mcp/dispatcher.py`) là **async**, nhưng nhiều đường gọi **sync**: đọc/ghi file, `GraphIndex`, `psycopg2` (sync).
+
+**Vì sao chấp nhận được:**
+
+1. **Giao thức MCP (stdio):** Thường một client tại một thời điểm; mô hình đơn giản.
+2. **Tải độ trễ I/O điển hình** (find, get, upsert) nằm trong ngưỡng chấp nhận cho agent (xem §13 Performance).
+3. **Đơn giản:** Tránh phụ thuộc driver async DB / `asyncio.to_thread` trừ khi đo được nút thắt.
+
+### 16.2 — Khi nào nên refactor sang async / thread pool
+
+Cân nhắc nếu:
+
+1. Nhiều client MCP song song trên cùng server.
+2. Tool call thường xuyên > ~1s và ảnh hưởng workflow.
+3. Cần song song hóa nhiều mutation.
+
+| Hướng | Effort | Ghi chú |
+|-------|--------|---------|
+| **A — Giữ sync** | Thấp | Mặc định hiện tại |
+| **B — `asyncio.to_thread` cho từng khối nặng** | Trung bình | Ít đổi kiến trúc |
+| **C — Full async (asyncpg, v.v.)** | Cao | Ngoài quy ước forbidden trong `.cursorrules` cho web/ORM |
+
+**Quyết định hiện tại:** **A** — giữ sync; xem lại khi có số đo latency hoặc concurrency thực tế.
+
+### 16.3 — Giới hạn async (trích policy repo)
+
+Tránh framework web async, ORM async, queue ngoài stdlib — xem `.cursorrules`. **`asyncio` stdlib** dùng cho MCP server loop là phù hợp.
+
+**Code:** `gobp/mcp/dispatcher.py` — `dispatch()`.
 
 ---
 
