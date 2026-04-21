@@ -545,8 +545,11 @@ def find(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> dict[st
     from gobp.mcp.tools import read_v3 as _read_v3
 
     file_fallback_after_pg = False
+    # PostgreSQL v3 mirror does not keep explicit node type column, so exact
+    # type filtering should use the file index path for correctness.
+    force_file_index_for_type = bool(type_filter)
     conn_f, is_v3_f = _read_v3._conn_v3(project_root)
-    if conn_f is not None and is_v3_f:
+    if conn_f is not None and is_v3_f and not force_file_index_for_type:
         try:
             if not query_str.strip():
                 return {"ok": False, "error": "find: requires a keyword"}
@@ -570,6 +573,8 @@ def find(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> dict[st
                 return out_pg
         finally:
             conn_f.close()
+    elif conn_f is not None:
+        conn_f.close()
 
     sort_field = args.get("sort", "id")
     direction = str(args.get("direction", "asc")).lower()
@@ -808,6 +813,13 @@ def find(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> dict[st
             "PostgreSQL FTS returned no matches; results are from the file-backed graph index. "
             "Sync the mirror (file→PostgreSQL) so search matches on-disk nodes, or use refresh: "
             "after writes. "
+            + out["hint"]
+        )
+    elif force_file_index_for_type:
+        out["search_source"] = "file_index"
+        out["hint"] = (
+            "Type-filtered find uses file index for exact type matching "
+            "(PostgreSQL mirror has no explicit type column). "
             + out["hint"]
         )
     if group_meta is not None:

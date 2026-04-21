@@ -659,12 +659,15 @@ async def dispatch(
                     "hint": "Example: gobp(query=\"edge: node:flow_auth --implements--> node:pop_protocol\")",
                 }
             else:
-                from gobp.core.loader import load_schema
+                from gobp.core.loader import load_schema, package_schema_dir
                 from gobp.core.fs_mutator import create_edge
                 from pathlib import Path as _Path
 
                 schema_dir = project_root / "gobp" / "schema"
-                edges_schema = load_schema(schema_dir / "core_edges.yaml")
+                schema_path = schema_dir / "core_edges.yaml"
+                if not schema_path.exists():
+                    schema_path = package_schema_dir() / "core_edges.yaml"
+                edges_schema = load_schema(schema_path)
 
                 edge = {
                     "from": from_id,
