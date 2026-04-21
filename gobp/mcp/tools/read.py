@@ -289,7 +289,11 @@ def gobp_overview(index: GraphIndex, project_root: Path, args: dict[str, Any]) -
             "(find / related / tests)."
         )
 
-    # Wave D — enrich from PostgreSQL schema v3 when available
+    # Wave D — enrich from PostgreSQL schema v3 when available.
+    # Primary stats stay file-first (GraphIndex); mirror may lag behind → confusing UX if we
+    # replaced totals with PG counts (see mirror_sync).
+    file_node_count = len(all_nodes)
+    file_edge_count = len(all_edges)
     from gobp.mcp.tools import read_v3 as _read_v3
 
     conn_ov, is_v3_ov = _read_v3._conn_v3(project_root)
@@ -301,9 +305,28 @@ def gobp_overview(index: GraphIndex, project_root: Path, args: dict[str, Any]) -
                 base["project"]["name"] = v3["project"]["name"]
             if v3["project"].get("id") is not None:
                 base["project"]["id"] = v3["project"]["id"]
-            base["stats"]["total_nodes"] = v3["stats"]["total_nodes"]
-            base["stats"]["total_edges"] = v3["stats"]["total_edges"]
-            base["stats"]["nodes_by_group"] = v3["stats"]["nodes_by_group"]
+            base["stats"]["total_nodes"] = file_node_count
+            base["stats"]["total_edges"] = file_edge_count
+            base["stats"]["postgresql_mirror"] = {
+                "total_nodes": v3["stats"]["total_nodes"],
+                "total_edges": v3["stats"]["total_edges"],
+                "nodes_by_group": v3["stats"].get("nodes_by_group", {}),
+            }
+            pg_n = int(v3["stats"]["total_nodes"])
+            pg_e = int(v3["stats"]["total_edges"])
+            if pg_n != file_node_count or pg_e != file_edge_count:
+                base["mirror_sync"] = {
+                    "aligned": False,
+                    "hint": (
+                        "Totals above are from the file-backed graph (source of truth). "
+                        "PostgreSQL mirror counts differ — search/find may use FTS on the mirror "
+                        "until sync completes; use refresh: after disk writes, or run your "
+                        "file→PG sync script. find: falls back to the file index when FTS returns "
+                        "no rows but nodes exist on disk."
+                    ),
+                }
+            else:
+                base["mirror_sync"] = {"aligned": True}
             base["active_sessions"] = v3["active_sessions"]
             base["hint_v3"] = v3.get("hint", "")
         finally:
@@ -521,6 +544,7 @@ def find(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> dict[st
 
     from gobp.mcp.tools import read_v3 as _read_v3
 
+    file_fallback_after_pg = False
     conn_f, is_v3_f = _read_v3._conn_v3(project_root)
     if conn_f is not None and is_v3_f:
         try:
@@ -533,10 +557,17 @@ def find(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> dict[st
             mode_v3 = str(args.get("mode", "summary")).lower()
             if mode_v3 in ("standard", ""):
                 mode_v3 = "summary"
-            out = _read_v3.find_v3(conn_f, query_str, gf_s, mode_v3, page_size, cursor)
-            out["sessions_excluded"] = True
-            out["type_filter"] = type_filter
-            return out
+            out_pg = _read_v3.find_v3(conn_f, query_str, gf_s, mode_v3, page_size, cursor)
+            if (
+                out_pg.get("ok")
+                and int(out_pg.get("count", 0)) == 0
+                and len(index.all_nodes()) > 0
+            ):
+                file_fallback_after_pg = True
+            else:
+                out_pg["sessions_excluded"] = True
+                out_pg["type_filter"] = type_filter
+                return out_pg
         finally:
             conn_f.close()
 
@@ -770,6 +801,15 @@ def find(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> dict[st
             "page_size": page_size,
         },
     }
+    if file_fallback_after_pg:
+        out["search_source"] = "file_index"
+        out["postgresql_fts_empty"] = True
+        out["hint"] = (
+            "PostgreSQL FTS returned no matches; results are from the file-backed graph index. "
+            "Sync the mirror (file→PostgreSQL) so search matches on-disk nodes, or use refresh: "
+            "after writes. "
+            + out["hint"]
+        )
     if group_meta is not None:
         out["group_filter"] = group_meta
     return out

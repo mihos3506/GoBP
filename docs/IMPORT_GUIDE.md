@@ -4,7 +4,7 @@
 **Read after:** `docs/SCHEMA.md`, `docs/MCP_PROTOCOL.md` (nếu có), `docs/edge_policy_v1.md` hoặc `gobp/schema/core_edges.yaml`  
 **Audience:** Mọi AI agent khi nhập liệu vào GoBP  
 
-**Mục lục nội dung v2:** PHẦN 0 (vận hành thật) → PHẦN 1 (chọn type + Spec vs Document) → PHẦN 2 (description) → PHẦN 3 (create/batch/…) → PHẦN 3.0 (bảng hành động MCP) → PHẦN 4–10 như trước, bổ sung lỗi & ví dụ Document.
+**Mục lục nội dung v2:** PHẦN 0 (vận hành thật) → PHẦN 1 (chọn type + Spec vs Document) → PHẦN 2 (description + **§2.1 ErrorCase catalog vs `code`**) → PHẦN 3 (create/batch/…) → PHẦN 3.0 (bảng hành động MCP) → PHẦN 4–10 như trước, bổ sung lỗi & ví dụ Document.
 
 ---
 
@@ -21,7 +21,7 @@
 9. Query hiệu quả (find / get / context) và giới hạn **session:resume** (cần PG v3)
 10. Nguyên tắc batch — gộp / tách / thứ tự ops
 11. Ví dụ copy-paste: batch, edge+, **hai Document + depends_on** (§3.6I)
-12. **Không suy luận** các mục trong §0.3–0.4
+12. **Không suy luận** các mục trong §0.3–0.4; ErrorCase catalog vs `code` — **§2.1**
 
 ---
 
@@ -32,6 +32,8 @@
 - **Nguồn sự thật** cho graph trong repo là **file**: `.gobp/nodes/*.md`, `.gobp/edges/*.yaml`.
 - **PostgreSQL** (`GOBP_DB_URL`) là **mirror / FTS / session resume** — có thể trống lúc mới khởi tạo project; không có nghĩa là “không tạo được node”.
 - Đồng bộ file → DB (khi cần): script `scripts/sync_file_to_pg_v3.py` (xem README repo), hoặc luồng rebuild trong ops.
+
+**Tránh nhầm “0 node” khi có file:** `overview:` trả **`stats.total_nodes` / `total_edges` từ graph trên đĩa** (GraphIndex). Nếu PostgreSQL mirror lệch, response có **`stats.postgresql_mirror`** và **`mirror_sync`** (kèm `hint` khi `aligned: false`). **`find:`** dùng FTS trên PG khi có kết nối v3; nếu FTS trả 0 trong khi vẫn có node trên file, runtime **tự tìm trên chỉ mục file** và gắn `search_source: file_index` + `postgresql_fts_empty: true` — không còn “im lặng trống” mà không giải thích.
 
 ### 0.2 — Biến môi trường (Cursor / MCP)
 
@@ -236,15 +238,33 @@ Invariant:
   "{Boolean expression stated simply}. {Why this must hold}.
    Enforced at {where}. Violation triggers {consequence}."
 
-ErrorCase (use code field for technical detail):
-  description: "When {trigger condition}. System responds by {action}.
-                User sees {message}. Auto-recovery: {yes/no, how}."
-  code: "HTTP 408. Retry 3x with 30s backoff. Idempotency key required."
+ErrorCase (name = catalog ID; field code = GoBP pattern only):
+  name: AUTH_001 | MIHOS catalog — ngắn, stable; find theo mã tài liệu
+  code: AUTH_W_001 | Bắt buộc ^[A-Z]+_[FEWI]_[0-9]{3}$ — map severity từ doc (vd. transient→W, fatal→F)
+  description: "When session expired. HTTP 401 transient. User must re-authenticate."
+  context: flows/features (không rỗng) — phân biệt cùng message ở nhiều flow
 
 Spec:
   "{What this specifies and why}. {Key rules or constraints}.
    {How AI/dev uses this spec}."
 ```
+
+### 2.1 — ErrorCase: catalog ngoài (`AUTH_001`) vs field `code` GoBP (`AUTH_W_001`)
+
+Tài liệu bên ngoài (vd. MIHOS DOC-13) thường dùng mã **không** có ký tự severity (`AUTH_001`, `VAL_001`). Schema GoBP vẫn bắt buộc **`code`** theo pattern **`^[A-Z]+_[FEWI]_[0-9]{3}$`** — **không** nới schema để `code` = `AUTH_001` thuần (tránh trùng nghĩa giữa dự án, mất governance).
+
+**Convention chốt (import / Layer 2):**
+
+| Field | Giá trị | Lý do |
+|--------|---------|--------|
+| **`name`** | `AUTH_001`, `VAL_001`, … | ID catalog MIHOS — **unique trong graph**, ngắn; `find:` theo mã tài liệu. **Không** cần trùng `code`. |
+| **`code`** | `AUTH_W_001`, `AUTH_F_002`, … | **Machine ID** GoBP; chữ **F/E/W/I** phải khớp **severity thật** (map từ mô tả doc). |
+| **`description`** | Semantic + HTTP + hành vi | **Intent search** (vd. `session`, `401`); không nhét chuỗi tự do vào `code` nếu phá pattern. |
+| **`context`** | `flows` / `features` / … | **Không để trống** — phân biệt khi cùng concept (vd. “Session expired”) ở nhiều flow/section. |
+
+**Search:** `find: AUTH_001` → khớp **`name`**; từ khóa mơ hồ (vd. `session`) → chủ yếu **`description`** / context sau enrich — không kỳ vọng một `name` chứa hết semantic.
+
+**Các field bắt buộc khác** (`trigger`, `severity`, `handling`, `fix`, …) — lấy đúng từ `template: ErrorCase` và `docs/SCHEMA.md`.
 
 ---
 
@@ -820,6 +840,7 @@ Bước 6 — Validate + End:
 | Ghi với id `Session` đã `COMPLETED` | Vẫn dùng id node Session đã đóng | Mở session mới hoặc dùng opaque / `GOBP_SESSION_ID` (§0.4) |
 | `session:resume` failed | Không PG, schema ≠ v3, hoặc session không có trong DB | Set `GOBP_DB_URL`, schema v3; hoặc `session:start` mới (§0.3) |
 | `find:` không thấy node vừa tạo | Cache index chưa reload / chỉ tìm trên FTS DB | `refresh:` sau sửa tay; hoặc `get: node:…` bằng id từ kết quả `create` |
+| ErrorCase `code` bị reject (`AUTH_001`) | Catalog dùng id không có severity letter; schema bắt `^[A-Z]+_[FEWI]_[0-9]{3}$` | `name` = id catalog; `code` = id GoBP (`AUTH_W_001`); mô tả HTTP/behavior trong `description` — **§2.1** |
 | Duplicate nodes | Không `suggest:` trước `create:` | Luôn `suggest:` trước khi tạo (dec:d011 Lessons) |
 | Score < 100 khi validate | Nodes thiếu description | Thêm description cho mọi node |
 | Session IN_PROGRESS tồn đọng | Quên session:end | `session:end` với outcome + handoff |
