@@ -1,7 +1,8 @@
 """GoBP MCP write tools.
 
 Implementations for node_upsert, decision_lock, session_log.
-All write tools require an active session_id.
+Writes require an audit ``session_id`` (opaque string, env ``GOBP_SESSION_ID``, or an
+existing graph ``Session`` node id). Opaque ids do not create or require Session nodes.
 """
 
 from __future__ import annotations
@@ -13,6 +14,7 @@ from pathlib import Path
 from typing import Any
 
 from gobp.core.graph import GraphIndex
+from gobp.mcp.session_audit import resolve_write_session
 from gobp.core.id_config import generate_external_id
 from gobp.core.id_generator import generate_id
 from gobp.core.search import find_similar_nodes, normalize_text
@@ -340,15 +342,13 @@ def node_upsert(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> 
     if not isinstance(fields, dict):
         return {"ok": False, "error": "fields must be a dict"}
 
-    session_id = args.get("session_id")
-    if not session_id:
-        return {"ok": False, "error": "Missing required field: session_id"}
-
-    session = index.get_node(session_id)
-    if not session:
-        return {"ok": False, "error": f"Session not found: {session_id}"}
-    if session.get("status") == "COMPLETED":
-        return {"ok": False, "error": "Session already ended, start new one"}
+    raw_session = args.get("session_id")
+    resolved_id, session_node, sess_err, audit_auto = resolve_write_session(
+        index, raw_session if raw_session else None
+    )
+    if sess_err:
+        return {"ok": False, "error": sess_err}
+    session_id = resolved_id
 
     explicit_id = str(args.get("id", "") or "").strip()
 
@@ -422,6 +422,10 @@ def node_upsert(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> 
 
     warnings: list[Any] = []
     warnings.extend(val_warnings)
+    if audit_auto:
+        warnings.append(
+            "session_id was auto-generated (audit:…); set GOBP_SESSION_ID for stable audit grouping"
+        )
 
     try:
         fresh_index = GraphIndex.load_from_disk(project_root)
@@ -453,15 +457,16 @@ def node_upsert(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> 
     except Exception:
         pass
 
-    try:
-        create_edge(
-            project_root,
-            {"from": node_id, "to": session_id, "type": "discovered_in"},
-            edges_schema,
-            actor="node_upsert",
-        )
-    except Exception as e:
-        warnings.append(f"Failed to create discovered_in edge: {e}")
+    if session_node is not None:
+        try:
+            create_edge(
+                project_root,
+                {"from": node_id, "to": session_id, "type": "discovered_in"},
+                edges_schema,
+                actor="node_upsert",
+            )
+        except Exception as e:
+            warnings.append(f"Failed to create discovered_in edge: {e}")
 
     if created:
         changed_fields = sorted([k for k in node.keys() if k not in ("updated", "session_id")])
@@ -499,18 +504,16 @@ def delete_node_action(
     Query shape: ``delete: {node_id} session_id='…'``.
     """
     node_id = str(args.get("query") or args.get("id") or "").strip()
-    session_id = str(args.get("session_id", "")).strip()
+    raw_s = args.get("session_id")
+    resolved_id, _session_node, sess_err, _auto = resolve_write_session(
+        index, str(raw_s).strip() if raw_s is not None and str(raw_s).strip() else None
+    )
+    if sess_err:
+        return {"ok": False, "error": sess_err}
+    session_id = resolved_id
 
     if not node_id:
         return {"ok": False, "error": "Node ID required"}
-    if not session_id:
-        return {"ok": False, "error": "session_id required"}
-
-    session = index.get_node(session_id)
-    if not session:
-        return {"ok": False, "error": f"Session not found: {session_id}"}
-    if session.get("status") == "COMPLETED":
-        return {"ok": False, "error": "Session already ended, start new one"}
 
     return remove_node_from_disk(
         project_root,
@@ -531,20 +534,18 @@ def retype_node_action(
     node_id = str(args.get("id") or args.get("query") or "").strip()
     new_type_raw = args.get("new_type")
     new_type = str(new_type_raw).strip() if new_type_raw is not None else ""
-    session_id = str(args.get("session_id", "")).strip()
+    raw_s = args.get("session_id")
+    resolved_id, _session_node, sess_err, _auto = resolve_write_session(
+        index, str(raw_s).strip() if raw_s is not None and str(raw_s).strip() else None
+    )
+    if sess_err:
+        return {"ok": False, "error": sess_err}
+    session_id = resolved_id
 
     if not node_id:
         return {"ok": False, "error": "id required"}
     if not new_type:
         return {"ok": False, "error": "new_type required"}
-    if not session_id:
-        return {"ok": False, "error": "session_id required"}
-
-    session = index.get_node(session_id)
-    if not session:
-        return {"ok": False, "error": f"Session not found: {session_id}"}
-    if session.get("status") == "COMPLETED":
-        return {"ok": False, "error": "Session already ended, start new one"}
 
     old_node = index.get_node(node_id)
     if not old_node:
@@ -637,7 +638,14 @@ def handle_edit(
     _ = index
     gobp_dir = project_root / ".gobp"
     node_id = str(args.get("id", "") or args.get("node_id", "")).strip()
-    session_id = str(args.get("session_id", "")).strip()
+    raw_s = args.get("session_id")
+    resolved_id, _sn, sess_err, _auto = resolve_write_session(
+        index,
+        str(raw_s).strip() if raw_s is not None and str(raw_s).strip() else None,
+    )
+    if sess_err:
+        return {"ok": False, "errors": [sess_err]}
+    session_id = resolved_id
     exp_raw = args.get("expected_updated_at")
 
     expected: int | None
@@ -651,8 +659,6 @@ def handle_edit(
 
     if not node_id:
         return {"ok": False, "errors": ["id required for edit:"]}
-    if not session_id:
-        return {"ok": False, "errors": ["session_id required for edit:"]}
 
     changes = {
         k: v
@@ -699,11 +705,12 @@ def decision_lock(index: GraphIndex, project_root: Path, args: dict[str, Any]) -
             "error": "locked_by must be a list of at least 2 entities (e.g. ['CEO', 'AI'])",
         }
 
-    session = index.get_node(session_id)
-    if not session:
-        return {"ok": False, "error": f"Session not found: {session_id}"}
-    if session.get("status") == "COMPLETED":
-        return {"ok": False, "error": "Session already ended"}
+    resolved_id, session_node, sess_err, _auto = resolve_write_session(
+        index, session_id if session_id else None
+    )
+    if sess_err:
+        return {"ok": False, "error": sess_err}
+    session_id = resolved_id
 
     decision_id = _generate_node_id("Decision", index)
 
@@ -744,15 +751,16 @@ def decision_lock(index: GraphIndex, project_root: Path, args: dict[str, Any]) -
     except Exception as e:
         return {"ok": False, "error": f"Write failed: {e}"}
 
-    try:
-        create_edge(
-            project_root,
-            {"from": decision_id, "to": session_id, "type": "discovered_in"},
-            edges_schema,
-            actor="decision_lock",
-        )
-    except Exception as e:
-        warnings.append(f"Failed to create discovered_in edge: {e}")
+    if session_node is not None:
+        try:
+            create_edge(
+                project_root,
+                {"from": decision_id, "to": session_id, "type": "discovered_in"},
+                edges_schema,
+                actor="decision_lock",
+            )
+        except Exception as e:
+            warnings.append(f"Failed to create discovered_in edge: {e}")
 
     for idea_id in args.get("related_ideas", []):
         if index.get_node(idea_id):
@@ -1032,12 +1040,6 @@ def _batch_build_create_node(
     if not node_type or not name:
         return None, "missing node_type or name"
 
-    session = index.get_node(session_id)
-    if not session:
-        return None, f"Session not found: {session_id}"
-    if session.get("status") == "COMPLETED":
-        return None, "Session already ended, start new one"
-
     fields: dict[str, Any] = {}
     if desc:
         fields["description"] = desc
@@ -1097,15 +1099,17 @@ def _batch_build_create_node(
     return node, None
 
 
-def _batch_require_open_session(index: GraphIndex, session_id: str) -> dict[str, Any] | None:
-    if not session_id.strip():
-        return {"ok": False, "error": "session_id required"}
-    session = index.get_node(session_id.strip())
-    if not session:
-        return {"ok": False, "error": f"Session not found: {session_id}"}
-    if session.get("status") == "COMPLETED":
-        return {"ok": False, "error": "Session already ended, start new one"}
-    return None
+def _batch_resolve_session(
+    index: GraphIndex,
+    session_id: str | None,
+) -> tuple[str | None, dict[str, Any] | None]:
+    """Resolve audit session for batch/quick; return ``(resolved_id, error_dict)``."""
+    rid, _sn, err, _auto = resolve_write_session(
+        index, session_id.strip() if isinstance(session_id, str) and session_id.strip() else None
+    )
+    if err:
+        return None, {"ok": False, "error": err}
+    return rid, None
 
 
 def _resolve_node_ref(index: GraphIndex, ref: str) -> str | None:
@@ -1137,9 +1141,10 @@ def merge_nodes_action(
     session_id: str,
 ) -> dict[str, Any]:
     """Rewire edges from ``absorb_id`` onto ``keep_id``, then delete absorbed node."""
-    gate = _batch_require_open_session(index, session_id)
+    resolved, gate = _batch_resolve_session(index, session_id)
     if gate:
         return gate
+    session_id = resolved or ""
     if keep_id == absorb_id:
         return {"ok": False, "error": "keep and absorb must differ"}
 
@@ -1205,11 +1210,13 @@ def quick_action(index: GraphIndex, project_root: Path, args: dict[str, Any]) ->
     """Quick capture: one line per node, ``Name | category | wave | description``."""
     from gobp.mcp.batch_parser import parse_quick
 
-    session_id = str(args.get("session_id", "")).strip()
+    raw_s = args.get("session_id")
+    session_id = str(raw_s).strip() if raw_s is not None else ""
     ops_raw = str(args.get("ops", args.get("query", "")))
-    gate = _batch_require_open_session(index, session_id)
+    resolved, gate = _batch_resolve_session(index, session_id if session_id else None)
     if gate:
         return gate
+    session_id = resolved or ""
 
     qops = parse_quick(ops_raw)
     if not qops:
@@ -1255,12 +1262,15 @@ def quick_action(index: GraphIndex, project_root: Path, args: dict[str, Any]) ->
 def batch_action(index: GraphIndex, project_root: Path, args: dict[str, Any]) -> dict[str, Any]:
     """Execute structured batch mutations; large op lists are processed in chunks."""
     from gobp.mcp.batch_parser import parse_batch_ops
+    from gobp.mcp.session_audit import session_id_is_graph_session
 
-    session_id = str(args.get("session_id", "")).strip()
+    raw_s = args.get("session_id")
+    session_id = str(raw_s).strip() if raw_s is not None else ""
     ops_text = str(args.get("ops", args.get("query", "")))
-    gate = _batch_require_open_session(index, session_id)
+    resolved, gate = _batch_resolve_session(index, session_id if session_id else None)
     if gate:
         return gate
+    session_id = resolved or ""
 
     ops, parse_errors = parse_batch_ops(ops_text)
     if parse_errors:
@@ -1326,7 +1336,8 @@ def batch_action(index: GraphIndex, project_root: Path, args: dict[str, Any]) ->
                         continue
                     try:
                         nid = idx.add_node_in_memory(node_dict)
-                        idx.add_edge_in_memory(nid, session_id, "discovered_in")
+                        if session_id_is_graph_session(idx, session_id):
+                            idx.add_edge_in_memory(nid, session_id, "discovered_in")
                     except ValueError as exc:
                         errors.append(f"create {name!r}: {exc}")
                         continue

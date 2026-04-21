@@ -13,7 +13,7 @@ Actions:
     edit        -> handle_edit() (v3 PG + file backup; replaces legacy update:/retype:)
     lock        -> decision_lock()
     session     -> session_log()
-    import      -> import_proposal()
+    import      -> register Document from path (node_upsert; not import_proposal)
     commit      -> import_commit()
     validate    -> validate()
     extract     -> lessons_extract()

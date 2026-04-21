@@ -316,7 +316,9 @@ node_types:
     group: Meta > Task
     read_order: background
   Document:
-    group: Document > Spec
+    # Must differ from Spec (also under Document > Spec) so UIs that key on
+    # default group path can list Document and Spec separately.
+    group: Document > Document
     read_order: important
     optional:
       priority: int

@@ -1,26 +1,88 @@
-# ◈ GoBP IMPORT GUIDE v1
+# ◈ GoBP IMPORT GUIDE v2
 **Status:** AUTHORITATIVE  
-**Date:** 2026-04-20  
-**Read after:** SCHEMA.md, MCP_PROTOCOL.md, EDGE_POLICY.md  
+**Date:** 2026-04-22  
+**Read after:** `docs/SCHEMA.md`, `docs/MCP_PROTOCOL.md` (nếu có), `docs/edge_policy_v1.md` hoặc `gobp/schema/core_edges.yaml`  
 **Audience:** Mọi AI agent khi nhập liệu vào GoBP  
+
+**Mục lục nội dung v2:** PHẦN 0 (vận hành thật) → PHẦN 1 (chọn type + Spec vs Document) → PHẦN 2 (description) → PHẦN 3 (create/batch/…) → PHẦN 3.0 (bảng hành động MCP) → PHẦN 4–10 như trước, bổ sung lỗi & ví dụ Document.
 
 ---
 
 ## SAU KHI ĐỌC FILE NÀY, AI BIẾT
 
-1. Chọn đúng node type cho từng loại thông tin
-2. Viết description đúng chuẩn không gây YAML lỗi
-3. Chọn đúng phương pháp nhập (create/batch/quick/import)
-4. Tạo edges đúng semantic theo edge policy
-5. Query hiệu quả ở từng tình huống
-6. Nguyên tắc batch — khi nào gộp, khi nào tách
-7. Ví dụ copy-paste batch / edge / quick (§3.6)
+1. **Mô hình file-first + PostgreSQL tùy chọn** — không suy luận ngược từ “DB trống”
+2. Chọn đúng node type; **phân biệt Spec vs Document** (group mặc định khác nhau trong schema)
+3. Viết description đúng chuẩn không gây YAML lỗi
+4. Chọn đúng phương pháp nhập (create / batch / quick / `import:` Document / `import_proposal`+`commit:` / upsert)
+5. **Gọi đúng chuỗi `gobp(query="...")`** theo bảng hành động (§3.0)
+6. Tạo edges đúng **edge policy** (Knowledge→Knowledge = `depends_on`, không đoán bừa `implements`)
+7. **Ràng buộc ghi:** mọi lệnh ghi cần **chuỗi audit** `session_id` (có thể opaque / `GOBP_SESSION_ID` / id node `Session` — §0.4); thứ tự ops: node trước → cạnh sau
+8. Dùng **`template:`** để lấy khung field theo schema, không đoán field bắt buộc
+9. Query hiệu quả (find / get / context) và giới hạn **session:resume** (cần PG v3)
+10. Nguyên tắc batch — gộp / tách / thứ tự ops
+11. Ví dụ copy-paste: batch, edge+, **hai Document + depends_on** (§3.6I)
+12. **Không suy luận** các mục trong §0.3–0.4
+
+---
+
+## PHẦN 0 — MÔ HÌNH VẬN HÀNH (ĐỌC TRƯỚC, KHÔNG BỎ QUA)
+
+### 0.1 — File-first
+
+- **Nguồn sự thật** cho graph trong repo là **file**: `.gobp/nodes/*.md`, `.gobp/edges/*.yaml`.
+- **PostgreSQL** (`GOBP_DB_URL`) là **mirror / FTS / session resume** — có thể trống lúc mới khởi tạo project; không có nghĩa là “không tạo được node”.
+- Đồng bộ file → DB (khi cần): script `scripts/sync_file_to_pg_v3.py` (xem README repo), hoặc luồng rebuild trong ops.
+
+### 0.2 — Biến môi trường (Cursor / MCP)
+
+| Biến | Vai trò |
+|------|---------|
+| `GOBP_PROJECT_ROOT` | Thư mục gốc project (chứa `.gobp/`, `gobp/schema/`). |
+| `GOBP_SESSION_ID` | **Tùy chọn, khuyến nghị cho host.** Một chuỗi cố định mỗi run (ví dụ UUID) — lớp ghi dùng làm `session_id` khi query **không** truyền `session_id`; gom mọi node tạo trong run dưới cùng audit **không** cần node `Session` trên graph. |
+| `GOBP_DB_URL` | Tùy chọn. Không set → chế độ file-only vẫn ghi node/edge lên đĩa. |
+
+### 0.3 — Luật “KHÔNG suy luận”
+
+1. **Không** kết luận “không tạo được Document→Document” vì DB trống — kiểm tra **đã có hai node**, **edge type đúng policy**, **session_id**.
+2. **Không** dùng `implements` cho hai node cùng nhóm **Knowledge** (Document, Spec, Idea, …) trừ khi chấp nhận cảnh báo policy; chuẩn là **`depends_on`** (xem §5).
+3. **Không** giả định `batch` line `edge+:` có `reason=` đầy đủ — nếu cần reason dài, dùng lệnh **`edge:`** đơn sau khi có `id` (§5 cuối).
+4. **`session:resume`** chỉ hoạt động khi có **PostgreSQL schema v3** và session tồn tại trong DB — file-only thì dùng **`session:start`** mới.
+
+### 0.4 — Ghi nhận phiên / audit (**không** đồng nhất với node `Session` trên graph)
+
+**Nguyên tắc hệ thống:** Việc **theo dõi phiên làm việc / audit / vòng đời session** là phần **hạ tầng GoBP + host (MCP server, Cursor, script orchestrator, CLI)** — không phải nhiệm vụ cốt lõi của mô hình AI khi nhập tri thức (Engine, Spec, Flow, …).
+
+**Hành vi code** (`gobp/mcp/session_audit.py`, dùng bởi `gobp/mcp/tools/write.py`): mọi ghi cần một **`session_id` audit** (chuỗi gắn vào node). Có ba khả năng: (1) id trỏ tới node **`Session`** trên graph — khi đó kiểm tra `status` và có thể tạo cạnh **`discovered_in`** tới session đó; (2) **opaque** (ví dụ `audit:…`, hoặc bất kỳ id không phải node `Session`) — **không** cần node Session, vẫn ghi được; (3) biến môi trường **`GOBP_SESSION_ID`** hoặc tự sinh `audit:{uuid}` khi không truyền gì (kèm cảnh báo gom nhóm audit). Đây là **log / attribution do hạ tầng quyết định**, không bắt AI tạo node Session để được phép ghi.
+
+**Cách vận hành đúng:**
+
+| Vai trò | Việc nên làm |
+|--------|----------------|
+| **Host / tooling** | **Ưu tiên:** set **`GOBP_SESSION_ID`** (một giá trị/run) hoặc truyền **`session_id`** opaque (ví dụ `audit:wave-17-fixed`) vào mọi tool call — **không** cần tạo node `Session`. **Tuỳ chọn** (khi cần **`discovered_in`** về một node Session hoặc vòng đời `IN_PROGRESS`/`COMPLETED`): gọi **`session:start`** một lần mỗi run và dùng **`session_id`** trả về; kết thúc: **`session:end`**. |
+| **AI (nhập liệu)** | Dùng **`session_id`** host đưa trong ngữ cảnh; **không** coi bắt buộc phải **`session:start`** trước mỗi lần nhập. Nếu không có gì, runtime có thể tự sinh `audit:{uuid}` (kém gom nhóm — host nên set env). |
+
+**Sai về nguyên tắc:** Bắt AI **lặp `session:start`** cho mỗi thao tác nhỏ → nhiều node **`Session`** trên graph (noise meta).
+
+**Node `Session` trên graph:** chỉ cần khi bạn **chủ đích** theo dõi phiên như entity (goal, actor, `session:end`). Với **chỉ** audit “ai đã ghi gì”, dùng **`GOBP_SESSION_ID`** / opaque là đủ.
+
+**`discovered_in`:** chỉ được tạo khi `session_id` trỏ tới **một node có `type: Session`** và session đó **chưa** `COMPLETED`. Với opaque audit, **không** có cạnh này — vẫn hợp lệ.
 
 ---
 
 ## PHẦN 1 — CHỌN NODE TYPE
 
-### Nguyên tắc chọn
+### 1.1 — Spec vs Document (tránh nhầm UI / dropdown)
+
+Trong `gobp/schema/core_nodes.yaml`:
+
+| Type | `group` mặc định (breadcrumb) | Ý nghĩa |
+|------|-------------------------------|--------|
+| **Spec** | `Document > Spec` | Đặc tả kỹ thuật đã chốt. |
+| **Document** | `Document > Document` | Tài liệu hoàn chỉnh (PRD tổng, pack nhiều spec…). |
+
+Hai type **khác nhau**; không gộp “Spec” với “Document”. Khi gõ MCP, type chuẩn là **`Document`** (PascalCase); parser chấp nhận `document` → `Document` (xem `_TYPE_CANONICAL` trong `gobp/mcp/parser.py`).
+
+### 1.2 — Nguyên tắc chọn
 
 ```
 Câu hỏi                                  Node type
@@ -188,6 +250,61 @@ Spec:
 
 ## PHẦN 3 — PHƯƠNG PHÁP NHẬP LIỆU
 
+### 3.0 — Bảng hành động MCP (chuẩn gọi `gobp(query="...")`)
+
+**Nguồn thật:** `gobp/mcp/parser.py` (`PROTOCOL_GUIDE`), `gobp/mcp/dispatcher.py`. Danh dưới đây là tập tối thiểu AI cần; catalog đầy đủ (rất dài): `gobp(query="overview: full_interface=true")` hoặc `gobp(query="version:")`.
+
+| Nhóm | Action | Ghi chú ngắn |
+|------|--------|----------------|
+| Trạng thái | `overview:` | Thống kê project; `full_interface=true` trả JSON lớn. |
+| | `version:` | Phiên bản protocol / GoBP / PostgreSQL. |
+| | `refresh:` | Reload `GraphIndex` từ đĩa (sau khi sửa tay `.md`/schema). |
+| | `ping:` | Kiểm tra PG v3 (cần `GOBP_DB_URL`). |
+| Đọc | `find: …`, `find:Engine …` | Tìm theo từ khóa / type. |
+| | `get: node:…`, `signature:`, `related:`, `context` | Chi tiết node / láng giềng. |
+| | `template:`, `template: Engine` | Catalog types hoặc khung field theo schema (§3.0b). |
+| | `template_batch: Engine count=5` | Mẫu batch nhiều node cùng type. |
+| Ghi | `create:Type …` | Cần **`session_id` audit** (tham số, `GOBP_SESSION_ID`, hoặc tự sinh `audit:…` — §0.4). |
+| | `upsert:`, `update:`, `delete:`, `retype:`, `edit:` | Idempotent / sửa / xóa / đổi type (xem MCP). |
+| | `edge: node:a --type--> node:b reason='…'` | Một cạnh; hỗ trợ `reason=` dài. |
+| Batch | `batch session_id='…' ops='…'` | Nhiều dòng `create:` / `edge+:` / `edge-` / `edge*` / `edge~` (§3.2). |
+| | `quick: session_id='…' ops='…'` | Mỗi dòng mặc định type **Node** (§3.3). |
+| Session | `session:start …`, `session:end …` | Tuỳ chọn: mỗi `start` tạo **một** node `Session` — chỉ khi cần graph Session; audit thường dùng opaque / `GOBP_SESSION_ID` thay thế (§0.4). |
+| | `session:resume id='meta.session.…'` | **Chỉ** khi có **PostgreSQL schema v3** + id là node Session trong DB (§0.3). |
+| Import | `import: path/to.md session_id='…'` | **Đăng ký Document** từ file (upsert node), **không** phải `import_proposal()` đầy đủ (§3.4). |
+| | `commit: imp:… accept=all session_id='…'` | Commit file `.gobp/proposals/*.pending.yaml` (§3.4). |
+| Khác | `validate:`, `lock:Decision`, `stats:`, … | Bảo trì / governance — xem `PROTOCOL_GUIDE`. |
+
+**Quy tắc thứ tự (áp dụng mọi luồng ghi):**
+
+1. Có **chuỗi audit** cho write: tham số `session_id`, hoặc **`GOBP_SESSION_ID`**, hoặc (cuối cùng) tự sinh trong runtime — **không** bắt buộc là node `Session` trên graph (§0.4).
+2. Tạo / cập nhật **node** (create / batch / upsert).
+3. Tạo **cạnh** sau khi hai đầu đã có id hoặc tên đã resolve trong cùng batch.
+4. Nếu đang dùng **node `Session`** (graph): `session:end` khi xong; nếu chỉ audit opaque/env — **không** bắt buộc `session:end`. `validate:` khi cần.
+
+### 3.0b — `template:` và `template_batch:` (không đoán field)
+
+**Catalog** — liệt kê mọi `node_types` trong schema đang load:
+
+```
+gobp(query="template:")
+```
+
+**Khung field** — required/optional theo `gobp/schema/core_nodes.yaml` (và `v2_template` nếu `schema_name: gobp_core_v2`):
+
+```
+gobp(query="template: Document")
+gobp(query="template: ErrorCase")
+```
+
+Response gồm `frame.required` / `frame.optional`, `batch_format`, `batch_example`, `suggested_edges`. Dùng đúng các key đó trong `create:` hoặc trong `batch`, không bịa tên field.
+
+**Batch mẫu** — nhiều chỗ trống cùng một type:
+
+```
+gobp(query="template_batch: Flow count=3")
+```
+
 ### 3.1 — create: — 1 node đơn lẻ
 
 ```
@@ -228,6 +345,8 @@ edge+: PaymentService --depends_on--> orders_audit, payments_archive
 
 → Mỗi target sau dấu phẩy là một cạnh `depends_on` riêng. `edge-:` cũng hỗ trợ nhiều target tương tự. `edge*:` (thay thế toàn bộ cạnh cùng type đi ra) vốn đã dùng danh sách phẩy; `edge~:` chỉ **một** target + hậu tố ` to=…`.
 
+**Chuỗi `ops=` (batch / quick):** truyền `ops='…'` với **một** lớp quote bọc ngoài; mỗi dòng không rỗng là một op (`create:`, `edge+:`, … — danh sách prefix trong `gobp/mcp/batch_parser.py`). Tránh nháy đơn lồng nhau không khớp (parser có kiểm tra quote chưa đóng). Nội dung dài hoặc ký tự đặc biệt: ưu tiên mô tả ngắn trong batch, chi tiết bổ sung bằng `edit:` / file node sau.
+
 ### 3.3 — quick: — capture nhanh
 
 ```
@@ -248,19 +367,34 @@ gobp(query="quick: session_id='...' ops='
 Sau quick: → dùng get: để enrich từng node
 ```
 
-### 3.4 — import: + commit: — từ file doc
+### 3.4 — `import:` (MCP) vs luồng `import_proposal` + `commit:`
+
+Hai luồng **khác nhau** — đừng trộn:
+
+#### A — `import:` qua MCP (đăng ký Document từ file)
+
+**Hành vi thật** (`gobp/mcp/dispatcher.py`): đọc file (relative `project_root`), tính `doc:…` id, **upsert một node `Document`** (metadata, hash, sections). **Không** tạo file `.pending.yaml`, **không** trả `proposal_id` dạng `imp:…` để commit.
 
 ```
-Dùng khi: Import từ .md file có sẵn trong repo, cần review trước
-Workflow: propose → human review → commit
+gobp(query="import: docs/SPEC.md session_id='audit:run-1'")
+```
 
-gobp(query="import: docs/SPEC.md session_id='...'")
-→ Nhận proposal_id
+→ Kết quả: `document_node`, `sections`, gợi ý bước tiếp (`create:Node` / `edge:` nối tới `doc:…`). **`session_id`** là chuỗi audit (opaque hoặc id node `Session` — không còn yêu cầu “phải có Session trên graph”).
 
-Review proposal content
+#### B — `import_proposal()` (Python) + `commit:` (proposal đã review)
 
-gobp(query="commit: {proposal_id}")
-→ Nodes được tạo chính thức
+Dùng khi cần **nhiều node + edge** trong một proposal YAML, review trước khi ghi: gọi **`gobp.mcp.tools.import_.import_proposal(...)`** với đủ field (`source_path`, `proposal_type`, `ai_notes`, `proposed_nodes`, `proposed_edges`, `confidence`, `session_id`) — không có chuỗi query MCP một dòng cho payload đầy đủ.
+
+Sau khi có file `.gobp/proposals/<id>.pending.yaml`, **commit** qua MCP:
+
+```
+gobp(query="commit: imp:2026-04-21_my_doc accept=all session_id='audit:run-1'")
+```
+
+**Bắt buộc:** `proposal_id`, `accept` ∈ `{all, partial, reject}`, **`session_id`** (chuỗi audit — resolve giống mọi write khác, §0.4). Tuỳ chọn: `dry_run=true` để chỉ validate.
+
+```
+gobp(query="commit: imp:2026-04-21_my_doc accept=all session_id='audit:run-1' dry_run=true")
 ```
 
 ### 3.5 — upsert: — idempotent
@@ -359,6 +493,20 @@ gobp(query="batch session_id='{SESSION}' ops='
 edge-: BillingCore --depends_on--> legacy_audit, deprecated_cache
 '")
 ```
+
+**I — Hai Document + quan hệ Knowledge→Knowledge (`depends_on`)**
+
+Hai tài liệu cùng nhóm Knowledge: **không** dùng `implements` giữa chúng (policy); dùng **`depends_on`** để “PRD tổng” phụ thuộc “Spec chi tiết”, hoặc ngược lại tùy nghiệp vụ.
+
+```
+gobp(query="batch session_id='{SESSION}' ops='
+create: Document: PRD Checkout 2026 | Tổng quan sản phẩm checkout, scope và ưu tiên.
+create: Document: Spec Payment Hooks | Chi tiết webhook, idempotency, retry.
+edge+: PRD Checkout 2026 --depends_on--> Spec Payment Hooks
+'")
+```
+
+*(Tên sau `create: Document:` phải khớp chính xác phần tên trong `edge+:`; hoặc dùng `doc:…` sau khi đã có id.)*
 
 ---
 
@@ -495,16 +643,25 @@ Xem thêm **§3.6** cho ví dụ fan-out, `edge*:` / `edge~:` / `edge-:` và `qu
 
 ### Session management
 
+**Hai lớp (đừng trộn):**
+
+1. **Audit write (mặc định):** `session_id` trên mọi lệnh ghi = chuỗi log — **opaque**, **`GOBP_SESSION_ID`**, hoặc id node **`Session`**. Không bắt buộc `session:start`. Xem §0.4.
+2. **Node `Session` trên graph (tuỳ chọn):** khi cần entity phiên (goal, actor, `session:end`). Một lần **`session:start`** tạo **một** node; **host** nên gọi **ít lần**, không nhồi vào mỗi micro-bước AI.
+
 ```
-Session mới:
+Writes không cần graph Session (opaque hoặc GOBP_SESSION_ID):
+  gobp(query="create:Idea name='Test' session_id='audit:pr-42'")
+  # hoặc đặt GOBP_SESSION_ID=audit:pr-42; lớp ghi có thể dùng khi query không truyền session_id
+
+Hoặc node Session (discovered_in + vòng đời):
   gobp(query="overview:")
   gobp(query="session:start actor='cursor' goal='implement X'")
-  → Lấy session_id, dùng cho tất cả writes
+  → dùng session_id trả về cho mọi write trong run (không start lại mỗi batch)
 
-Tiếp tục session cũ (tiết kiệm 70% tokens):
+Tiếp tục phiên cũ (PostgreSQL v3):
   gobp(query="session:resume id='meta.session.YYYY-MM-DD.xxxxxxx'")
 
-Kết thúc session:
+Kết thúc node Session (nếu dùng lớp 2):
   gobp(query="validate: metadata")
   gobp(query="session:end session_id='...' outcome='...' handoff='...'")
 ```
@@ -620,9 +777,14 @@ Bước 1 — Check existence trước:
   → Nếu có node tương tự → dùng lại
   → Nếu không có → tiến hành tạo mới
 
-Bước 2 — Start session:
-  gobp(query="session:start actor='...' goal='import ...'")
-  → Lấy session_id
+Bước 2 — Chuỗi audit cho mọi write (§0.4):
+  Thứ tự ưu tiên: **`GOBP_SESSION_ID`** (host) → **`session_id`** trong query (opaque hoặc id Session) → runtime tự sinh `audit:…` nếu thiếu.
+  **Không** bắt buộc `session:start`. Chỉ gọi `session:start` khi cần **node Session** + `discovered_in` / vòng đời — tối đa một lần mỗi run.
+  gobp(query="session:start actor='...' goal='import ...'")   # tuỳ chọn
+
+Bước 2b — (Tuỳ chọn) Đăng ký file .md làm node Document:
+  gobp(query="import: docs/your.md session_id='audit:…'")
+  → Một `doc:…` id; không phải luồng `imp:` + `commit:` (§3.4)
 
 Bước 3 — Import nodes theo batch:
   Gộp các nodes liên quan vào 1 batch
@@ -650,12 +812,18 @@ Bước 6 — Validate + End:
 
 | Lỗi | Nguyên nhân | Fix đúng |
 |-----|-------------|----------|
-| YAML corrupt khi rebuild | Description có `:`, `{`, `}` | Viết plain text, không dùng special chars |
+| YAML corrupt khi rebuild | Description có `:`, `{`, `}` | Viết plain text, không dùng special chars (§2) |
 | edge+ unresolved trong batch | Sai tên / chưa create node đích trước dòng edge | Đặt `create:` trước; khớp đúng tên hoặc dùng id; fan-out: `A --t--> B, C` |
-| Duplicate nodes | Không suggest: trước create: | Luôn suggest: trước khi tạo |
+| Policy edge: `implements` giữa hai Document/Spec | Sai ngữ nghĩa Knowledge→Knowledge | Dùng `depends_on` hoặc `references` theo `core_edges.yaml` / edge policy |
+| `import:` không trả `imp:…` | Kỳ vọng nhầm luồng proposal | MCP `import:` chỉ upsert **một** Document; `imp:…` đến từ `import_proposal()` (§3.4) |
+| `commit:` báo thiếu `session_id` / `accept` | Thiếu tham số bắt buộc | `commit: imp:… accept=all session_id='audit:…'` (hoặc id Session hợp lệ) |
+| Ghi với id `Session` đã `COMPLETED` | Vẫn dùng id node Session đã đóng | Mở session mới hoặc dùng opaque / `GOBP_SESSION_ID` (§0.4) |
+| `session:resume` failed | Không PG, schema ≠ v3, hoặc session không có trong DB | Set `GOBP_DB_URL`, schema v3; hoặc `session:start` mới (§0.3) |
+| `find:` không thấy node vừa tạo | Cache index chưa reload / chỉ tìm trên FTS DB | `refresh:` sau sửa tay; hoặc `get: node:…` bằng id từ kết quả `create` |
+| Duplicate nodes | Không `suggest:` trước `create:` | Luôn `suggest:` trước khi tạo (dec:d011 Lessons) |
 | Score < 100 khi validate | Nodes thiếu description | Thêm description cho mọi node |
-| Session IN_PROGRESS tồn đọng | Quên session:end | session:end với outcome + handoff |
-| implemented=true nhưng no code | Đánh dấu done nhưng không ghi path | Thêm code=path/to/file khi đánh implemented=true |
+| Session IN_PROGRESS tồn đọng | Quên session:end | `session:end` với outcome + handoff |
+| implemented=true nhưng no code | Đánh dấu done nhưng không ghi path | Thêm `code=` path khi đánh implemented=true |
 
 ---
 
@@ -663,17 +831,17 @@ Bước 6 — Validate + End:
 
 ```
 □ Đã suggest: trước mọi create:
-□ Có session_id (session:start hoặc session:resume)
+□ Mọi write có audit: `session_id` trong query **hoặc** `GOBP_SESSION_ID` **hoặc** chấp nhận `audit:…` tự sinh (§0.4); `session:resume` chỉ khi PG v3 — §0.3
 □ Description: plain text, không có :, {, }, |, #, >, !
 □ Nodes trong batch: Knowledge → Code → Constraint → Error → Test → Edges
 □ Edges: trong batch dùng `edge+:` (đủ tên/id); hoặc `edge:` riêng khi cần reason= chi tiết
 □ implemented=false cho tất cả Spec/Feature chưa có code
 □ validate: metadata → score 100/100
-□ session:end với outcome đầy đủ + handoff cho session tiếp theo
+□ Nếu dùng **node `Session`** trên graph: `session:end` + handoff; nếu chỉ audit opaque/env — không bắt buộc
 ```
 
 ---
 
-*GoBP IMPORT GUIDE v1 — 2026-04-20*  
-*Generic — áp dụng cho mọi project, mọi AI agent.*  
+*GoBP IMPORT GUIDE v2 — 2026-04-22*  
+*Generic — áp dụng cho mọi project, mọi AI agent; audit write: `gobp/mcp/session_audit.py`; đối chiếu `gobp/mcp/` khi nghi ngờ.*  
 ◈

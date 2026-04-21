@@ -15,6 +15,7 @@ from gobp.core.graph import GraphIndex
 from gobp.core.loader import load_schema, package_schema_dir
 from gobp.core.fs_mutator import _atomic_write, coerce_and_validate_node, create_edge, create_node
 from gobp.core.validator import validate_edge
+from gobp.mcp.session_audit import resolve_write_session
 
 
 def _dry_run_flag(val: Any) -> bool:
@@ -67,11 +68,12 @@ def import_proposal(index: GraphIndex, project_root: Path, args: dict[str, Any])
         return {"ok": False, "error": "confidence must be low, medium, or high"}
 
     session_id = args["session_id"]
-    session = index.get_node(session_id)
-    if not session:
-        return {"ok": False, "error": f"Session not found: {session_id}"}
-    if session.get("status") == "COMPLETED":
-        return {"ok": False, "error": "Session already ended"}
+    resolved_id, _session_node, sess_err, _auto = resolve_write_session(
+        index, session_id if session_id else None
+    )
+    if sess_err:
+        return {"ok": False, "error": sess_err}
+    session_id = resolved_id
 
     proposed_nodes = args["proposed_nodes"]
     proposed_edges = args["proposed_edges"]
@@ -160,9 +162,12 @@ def import_commit(index: GraphIndex, project_root: Path, args: dict[str, Any]) -
     if not session_id:
         return {"ok": False, "error": "session_id required"}
 
-    session = index.get_node(session_id)
-    if not session:
-        return {"ok": False, "error": f"Session not found: {session_id}"}
+    resolved_id, _session_node, sess_err, _auto = resolve_write_session(
+        index, str(session_id).strip() if session_id else None
+    )
+    if sess_err:
+        return {"ok": False, "error": sess_err}
+    session_id = resolved_id
 
     dry_run = _dry_run_flag(args.get("dry_run", False))
 

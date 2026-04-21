@@ -87,7 +87,8 @@ def test_node_upsert_creates_idea(populated_root):
     assert nid.startswith("idea:i") or ".meta." in nid or "idea." in nid or ".idea." in nid
 
 
-def test_node_upsert_missing_session(populated_root):
+def test_node_upsert_opaque_session_id_without_graph_session(populated_root):
+    """Unknown session id is treated as opaque audit (no Session node required)."""
     index = _load_index(populated_root)
     result = tools_write.node_upsert(
         index,
@@ -95,12 +96,62 @@ def test_node_upsert_missing_session(populated_root):
         {
             "type": "Idea",
             "name": "X",
-            "fields": {"status": "ACTIVE"},
+            "fields": {
+                "status": "ACTIVE",
+                "subject": "test:opaque",
+                "raw_quote": "q",
+                "interpretation": "i",
+                "maturity": "RAW",
+                "confidence": "low",
+            },
             "session_id": "session:nonexistent",
         },
     )
+    assert result["ok"] is True, result
+    assert result["node_id"]
+
+
+def test_node_upsert_completed_graph_session_rejected(populated_root):
+    """When session_id points to a Session node with status COMPLETED, reject writes."""
+    data_dir = populated_root / ".gobp" / "nodes"
+    data_dir.mkdir(parents=True, exist_ok=True)
+    (data_dir / "session_done.md").write_text(
+        """---
+id: session:done_test
+type: Session
+name: Done
+actor: test
+started_at: 2026-04-14T09:00:00+00:00
+goal: done
+status: COMPLETED
+created: 2026-04-14T09:00:00+00:00
+updated: 2026-04-14T09:00:00+00:00
+---
+
+x
+""",
+        encoding="utf-8",
+    )
+    index = _load_index(populated_root)
+    result = tools_write.node_upsert(
+        index,
+        populated_root,
+        {
+            "type": "Idea",
+            "name": "After close",
+            "fields": {
+                "status": "ACTIVE",
+                "subject": "t",
+                "raw_quote": "q",
+                "interpretation": "i",
+                "maturity": "RAW",
+                "confidence": "low",
+            },
+            "session_id": "session:done_test",
+        },
+    )
     assert result["ok"] is False
-    assert "Session not found" in result["error"]
+    assert "ended" in result["error"].lower() or "COMPLETED" in result["error"]
 
 
 def test_node_upsert_missing_required_fields(populated_root):
