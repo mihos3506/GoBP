@@ -20,10 +20,25 @@ from typing import Any
 
 
 class GoBPCache:
-    """LRU cache with per-entry TTL.
+    """In-memory LRU cache with per-entry TTL.
 
-    Evicts least-recently-used entries when max_size is reached.
-    Entries expire after TTL seconds regardless of access.
+    **Invalidation policy:** See ``docs/ARCHITECTURE.md`` Section 9.4.
+
+    - Scope: in-process only (each Python process has its own cache / singleton).
+    - Default: ``max_size=500``, ``default_ttl`` seconds per entry (LRU eviction when full).
+    - Writes: MCP / file mutator paths typically call ``invalidate_all()`` after mutations.
+    - Multi-process: not coordinated — two MCP instances may see different cached views
+      until TTL expiry or explicit refresh.
+
+    Example:
+
+        >>> cache = GoBPCache()
+        >>> cache.set("key", {"value": 42})
+        >>> cache.get("key")
+        {'value': 42}
+        >>> cache.invalidate_all()
+        >>> cache.get("key")
+        None
     """
 
     def __init__(self, max_size: int = 500, default_ttl: float = 60.0) -> None:
@@ -114,7 +129,11 @@ class GoBPCache:
                 del self._cache[key]
 
     def invalidate_all(self) -> None:
-        """Clear entire cache."""
+        """Clear all cache entries.
+
+        Called after graph-affecting writes so read paths do not serve stale results.
+        See ``docs/ARCHITECTURE.md`` Section 9.4.
+        """
         with self._lock:
             self._cache.clear()
 
